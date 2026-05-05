@@ -1,0 +1,189 @@
+package com.personblog.article.controller.Article;
+
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.personblog.api.interactionAPI.BrowseHistoryApi;
+import com.personblog.article.dto.ArticlePublishDTO;
+import com.personblog.article.service.IArticleService;
+import com.personblog.article.vo.*;
+import com.personblog.common.dto.Article.ArticleQueryDTO;
+import com.personblog.common.enums.BizCodeEnum;
+import com.personblog.common.exception.BizException;
+import com.personblog.common.result.JsonData;
+import com.personblog.common.utils.UserContextHolder;
+import com.personblog.common.vo.HotTagVO;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Objects;
+
+@RestController
+@RequestMapping("/article")
+@RequiredArgsConstructor
+@Tag(name = "文章接口", description = "文章相关接口")
+public class ArticleController {
+
+    private final IArticleService articleService;
+    private final BrowseHistoryApi browseHistoryApi;
+
+    /**
+     * 获取轮播图数据
+     * 返回热门推荐文章列表，用于首页轮播图展示
+     * @param size 返回数量，默认3，最大10
+     * @return 轮播图列表
+     */
+    @Operation(summary = "获取轮播图数据", description = "获取首页轮播图数据，返回热门推荐文章列表")
+    @GetMapping("/banners")
+    public JsonData<List<BannerVO>> getBanners(
+            @Parameter(description = "返回数量，默认3，最大10")
+            @RequestParam(required = false) Integer size) {
+        List<BannerVO> banners = articleService.getBanners(size);
+        return JsonData.buildSuccess(banners);
+    }
+
+    /**
+     * 获取文章分页列表
+     * 支持按分类、标签筛选，支持关键词搜索和排序
+     * @return 分页文章列表
+     */
+    @Operation(summary = "获取文章列表", description = "获取文章分页列表，支持分类、标签筛选和排序")
+    @PostMapping("/articles")
+    public JsonData<Page<ArticleListVO>> getArticlePage(@RequestBody ArticleQueryDTO dto) {
+        Page<ArticleListVO> page = articleService.getArticlePage(dto);
+        return JsonData.buildSuccess(page);
+    }
+
+    /**
+     * 获取随机文章列表
+     * 用于首页"换一批"功能，返回随机排序的文章
+     * @param size 返回数量，默认6，最大20
+     * @return 随机文章列表
+     */
+    @Operation(summary = "获取随机文章", description = "获取随机排序的文章列表，用于'换一批'功能")
+    @GetMapping("/articles/random")
+    public JsonData<List<ArticleListVO>> getRandomArticles(
+            @Parameter(description = "返回数量，默认6，最大20")
+            @RequestParam(required = false) Integer size) {
+        List<ArticleListVO> articles = articleService.getRandomArticles(size);
+        return JsonData.buildSuccess(articles);
+    }
+
+    /**
+     * 获取热门文章列表
+     * 按浏览量排序，用于侧边栏展示
+     * @param size 返回数量，默认5，最大20
+     * @return 热门文章列表
+     */
+    @Operation(summary = "获取热门文章", description = "获取按浏览量排序的热门文章列表")
+    @GetMapping("/articles/hot")
+    public JsonData<List<HotArticleVO>> getHotArticles(
+            @Parameter(description = "返回数量，默认5，最大20")
+            @RequestParam(required = false) Integer size) {
+        List<HotArticleVO> articles = articleService.getHotArticles(size);
+        return JsonData.buildSuccess(articles);
+    }
+
+    /**
+     * 获取热门标签列表
+     * 按使用次数排序，用于侧边栏展示
+     * @param size 返回数量，默认10，最大30
+     * @return 热门标签列表
+     */
+    @Operation(summary = "获取热门标签", description = "获取按使用次数排序的热门标签列表")
+    @GetMapping("/tags/hot")
+    public JsonData<List<HotTagVO>> getHotTags(
+            @Parameter(description = "返回数量，默认10，最大30")
+            @RequestParam(required = false) Integer size) {
+        List<HotTagVO> tags = articleService.getHotTags(size);
+        return JsonData.buildSuccess(tags);
+    }
+
+    @GetMapping("/articles/{id}")
+    @Operation(summary = "获取文章详情")
+    public JsonData<ArticleDetailVO> getArticleDetail(@PathVariable Long id){
+       ArticleDetailVO vo = articleService.getArticleDetail(id);
+       Long userId = UserContextHolder.getUserId();
+       browseHistoryApi.recordBrowse(userId, id);
+       return JsonData.buildSuccess(vo);
+    }
+
+    @GetMapping("/my-articles")
+    @Operation(summary = "查询我的文章", description = "获取当前登录用户发布的文章列表，支持分页、状态筛选和排序")
+    public JsonData<Page<MyArticleVO>> getMyArticles(
+            @Parameter(description = "当前页码") @RequestParam(defaultValue = "1") Integer current,
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size,
+            @Parameter(description = "文章状态筛选：0-草稿，1-已发布，2-已下架") @RequestParam(required = false) Integer status,
+            @Parameter(description = "排序字段：created_at-按时间，likes-按点赞数，views-按阅读数") @RequestParam(required = false, defaultValue = "created_at") String orderBy) {
+        Long userId = UserContextHolder.getUserId();
+        Page<MyArticleVO> page = articleService.getMyArticles(userId, current, size, status, orderBy);
+        return JsonData.buildSuccess(page);
+    }
+
+    /**
+     * 获取相关文章列表
+     * 根据文章分类和标签获取相关文章推荐
+     * @param id 当前文章ID
+     * @param limit 返回数量，默认3，最大10
+     * @return 相关文章列表
+     */
+    @Operation(summary = "获取相关文章", description = "根据文章分类和标签获取相关文章推荐")
+    @GetMapping("/articles/{id}/related")
+    public JsonData<List<RelatedArticleVO>> getRelatedArticles(
+            @Parameter(description = "文章ID")
+            @PathVariable Long id,
+            @Parameter(description = "返回数量，默认3，最大10")
+            @RequestParam(required = false) Integer limit) {
+        List<RelatedArticleVO> articles = articleService.getRelatedArticles(id, limit);
+        return JsonData.buildSuccess(articles);
+    }
+
+    @Operation(summary = "创建文章", description = "创建文章并支持保存为草稿或直接发布")
+    @PostMapping("/articles/publish")
+    public JsonData<ArticlePublishVO> createArticle(@RequestBody ArticlePublishDTO dto) {
+        Long userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new BizException(BizCodeEnum.NOT_LOGIN);
+        }
+        ArticlePublishVO vo = articleService.createArticle(userId, dto);
+        return JsonData.buildSuccess(vo);
+    }
+
+    @Operation(summary = "更新文章", description = "更新文章并支持保存草稿或发布")
+    @PutMapping("/articles/{id}")
+    public JsonData<ArticlePublishVO> updateArticle(@PathVariable Long id, @RequestBody ArticlePublishDTO dto) {
+        Long userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new BizException(BizCodeEnum.NOT_LOGIN);
+        }
+        if (Objects.equals(id, 0L)) {
+            throw new BizException(BizCodeEnum.PARAMETER_ERROR);
+        }
+        ArticlePublishVO vo = articleService.updateArticle(userId, id, dto);
+        return JsonData.buildSuccess(vo);
+    }
+
+    @Operation(summary = "获取编辑文章回填数据", description = "仅作者可获取，用于编辑页面数据回填")
+    @GetMapping("/articles/{id}/edit")
+    public JsonData<ArticleEditVO> getEditArticle(@PathVariable Long id) {
+        Long userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new BizException(BizCodeEnum.NOT_LOGIN);
+        }
+        ArticleEditVO vo = articleService.getEditArticle(userId, id);
+        return JsonData.buildSuccess(vo);
+    }
+
+    @Operation(summary = "删除文章", description = "删除当前登录用户创建的文章")
+    @DeleteMapping("/articles/{id}")
+    public JsonData<Void> deleteArticle(@PathVariable Long id) {
+        Long userId = UserContextHolder.getUserId();
+        if (userId == null) {
+            throw new BizException(BizCodeEnum.NOT_LOGIN);
+        }
+        articleService.deleteArticle(userId, id);
+        return JsonData.buildSuccess();
+    }
+}

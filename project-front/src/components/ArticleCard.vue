@@ -1,0 +1,115 @@
+<script setup>
+import {DEFAULT_COVER, getAvatar} from '@/utils/defaults'
+
+defineProps({
+  article: {
+    type: Object,
+    required: true
+  }
+})
+
+const formatDate = (date) => {
+  const d = new Date(date)
+  const now = new Date()
+  const diff = now - d
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  
+  if (days === 0) return '今天'
+  if (days === 1) return '昨天'
+  if (days < 7) return `${days}天前`
+  return d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })
+}
+</script>
+
+<template>
+  <router-link 
+    :to="`/article/${article.id}`"
+    class="flex gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
+  >
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 mb-2">
+        <span 
+          v-if="article.isTop" 
+          class="px-1.5 py-0.5 bg-red-500 text-white text-xs rounded"
+        >置顶</span>
+        <span 
+          v-if="article.isHot" 
+          class="px-1.5 py-0.5 bg-orange-500 text-white text-xs rounded"
+        >热门</span>
+        <span class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
+          {{ article.category }}
+        </span>
+      </div>
+      
+      <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-primary-500 transition-colors line-clamp-1">
+        {{ article.title }}
+      </h3>
+      
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-3 line-clamp-2">
+        {{ article.summary }}
+      </p>
+      
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <div class="flex items-center gap-3 text-xs text-gray-400">
+          <div class="flex items-center gap-1">
+            <img 
+              :src="getAvatar(article.authorId, article.author?.avatar)" 
+              :alt="article.author.name"
+              class="w-4 h-4 rounded-full"
+            />
+            <span>{{ article.author.name }}</span>
+          </div>
+          <span>{{ formatDate(article.createdAt) }}</span>
+        </div>
+        
+        <div class="flex items-center gap-4 text-xs text-gray-400">
+          <span class="flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            {{ article.views }}
+          </span>
+          <span class="flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+            {{ article.likes }}
+          </span>
+          <span class="flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            {{ article.comments || 0 }}
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="flex-shrink-0 hidden sm:block">
+      <div class="w-32 h-24 rounded overflow-hidden">
+        <img 
+          :src="article.cover || DEFAULT_COVER" 
+          :alt="article.title"
+          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        />
+      </div>
+    </div>
+  </router-link>
+</template>
+
+<style scoped>
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.personblog.question.mapper.QuestionMapper">
+
+    <resultMap id="questionListResultMap" type="com.personblog.question.vo.QuestionListVO">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="excerpt" column="excerpt"/>
+        <result property="views" column="views"/>
+        <result property="answers" column="answers"/>
+        <result property="likes" column="likes"/>
+        <result property="isSolved" column="isSolved"/>
+        <result property="createdAt" column="createdAt"/>
+        <association property="author" javaType="com.personblog.question.vo.AuthorInfoVO">
+            <id property="id" column="author_id"/>
+            <result property="name" column="author_name"/>
+            <result property="avatar" column="author_avatar"/>
+        </association>
+    </resultMap>
+
+    <resultMap id="questionDetailResultMap" type="com.personblog.question.vo.QuestionDetailVO">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="views" column="views"/>
+        <result property="answers" column="answers"/>
+        <result property="likes" column="likes"/>
+        <result property="isSolved" column="isSolved"/>
+        <result property="isLiked" column="isLiked"/>
+        <result property="createdAt" column="createdAt"/>
+        <result property="updatedAt" column="updatedAt"/>
+        <association property="author" javaType="com.personblog.question.vo.AuthorInfoVO">
+            <id property="id" column="author_id"/>
+            <result property="name" column="author_name"/>
+            <result property="avatar" column="author_avatar"/>
+        </association>
+    </resultMap>
+
+    <!-- 分页查询问题列表（含作者信息） -->
+    <select id="selectQuestionPageWithInfo" resultMap="questionListResultMap">
+        SELECT
+            q.id,
+            q.title,
+            SUBSTRING(q.content, 1, 200) AS excerpt,
+            u.id AS author_id,
+            u.nickname AS author_name,
+            u.avatar AS author_avatar,
+            q.views,
+            q.answers,
+            q.likes,
+            q.is_solved AS isSolved,
+            q.created_at AS createdAt
+        FROM tb_question q
+        LEFT JOIN tb_user u ON q.author_id = u.id
+        <if test="dto.tagId != null">
+            INNER JOIN tb_question_tag qt ON q.id = qt.question_id AND qt.tag_id = #{dto.tagId}
+        </if>
+        WHERE q.is_deleted = false
+        <choose>
+            <when test="dto.status == 'unanswered'">
+                AND q.is_solved = false AND q.answers = 0
+            </when>
+            <when test="dto.status == 'solved'">
+                AND q.is_solved = true
+            </when>
+            <when test="dto.status == 'hot'">
+                AND (q.views > 0 OR q.likes > 0 OR q.answers > 0)
+            </when>
+        </choose>
+        <if test="dto.keyword != null and dto.keyword != ''">
+            AND (q.title ILIKE CONCAT('%', #{dto.keyword}, '%') OR q.content ILIKE CONCAT('%', #{dto.keyword}, '%'))
+        </if>
+        <choose>
+            <when test="dto.sortBy == 'hot' or dto.status == 'hot'">
+                ORDER BY (q.views * 0.3 + q.likes * 0.5 + q.answers * 0.2) DESC, q.created_at DESC
+            </when>
+            <otherwise>
+                ORDER BY q.created_at DESC
+            </otherwise>
+        </choose>
+        LIMIT #{dto.size} OFFSET #{offset}
+    </select>
+
+    <!-- 查询问题总数（用于分页） -->
+    <select id="countQuestionsWithCondition" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM tb_question q
+        <if test="dto.tagId != null">
+            INNER JOIN tb_question_tag qt ON q.id = qt.question_id AND qt.tag_id = #{dto.tagId}
+        </if>
+        WHERE q.is_deleted = false
+        <choose>
+            <when test="dto.status == 'unanswered'">
+                AND q.is_solved = false AND q.answers = 0
+            </when>
+            <when test="dto.status == 'solved'">
+                AND q.is_solved = true
+            </when>
+            <when test="dto.status == 'hot'">
+                AND (q.views > 0 OR q.likes > 0 OR q.answers > 0)
+            </when>
+        </choose>
+        <if test="dto.keyword != null and dto.keyword != ''">
+            AND (q.title ILIKE CONCAT('%', #{dto.keyword}, '%') OR q.content ILIKE CONCAT('%', #{dto.keyword}, '%'))
+        </if>
+    </select>
+
+    <!-- 查询问题详情（含作者信息）并更新浏览量 -->
+    <select id="selectQuestionDetailById" resultMap="questionDetailResultMap">
+        UPDATE tb_question SET views = views + 1 WHERE id = #{id} AND is_deleted = false;
+        
+        SELECT
+            q.id,
+            q.title,
+            q.content,
+            u.id AS author_id,
+            u.nickname AS author_name,
+            u.avatar AS author_avatar,
+            q.views,
+            q.answers,
+            q.likes,
+            q.is_solved AS isSolved,
+            false AS isLiked,
+            TO_CHAR(q.created_at, 'YYYY-MM-DD"T"HH24:MI:SS') AS createdAt,
+            TO_CHAR(q.updated_at, 'YYYY-MM-DD"T"HH24:MI:SS') AS updatedAt
+        FROM tb_question q
+        LEFT JOIN tb_user u ON q.author_id = u.id
+        WHERE q.id = #{id} AND q.is_deleted = false
+    </select>
+
+</mapper>

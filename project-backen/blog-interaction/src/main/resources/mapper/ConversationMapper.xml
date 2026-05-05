@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.personblog.interaction.mapper.ConversationMapper">
+
+    <select id="selectConversationsByUserId" resultType="com.personblog.interaction.entity.Conversation">
+        SELECT 
+            c.id,
+            c.target_user_id AS targetUserId,
+            c.last_message AS lastMessage,
+            c.unread_count AS unreadCount,
+            c.updated_at AS updatedAt
+        FROM tb_conversation c
+        WHERE c.user_id = #{userId}
+        ORDER BY c.updated_at DESC
+    </select>
+
+</mapper>

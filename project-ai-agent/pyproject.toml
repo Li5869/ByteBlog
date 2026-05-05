@@ -1,0 +1,87 @@
+[project]
+name = "project-ai-agent"
+version = "0.1.0"
+description = "AI Agent Service for Personal Blog"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # Web 框架
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "python-multipart>=0.0.20",
+    # 数据库
+    "sqlalchemy>=2.0.36",
+    "psycopg[binary]>=3.2.0",
+    "pgvector>=0.2.5,<0.4",
+    "redis>=5.2.0",
+    # LangChain 生态系统 (2026-05 更新至 1.x 稳定版)
+    "langchain>=1.2.0",
+    "langchain-core>=1.2.0",
+    "langchain-openai>=1.2.0",
+    "langchain-postgres>=0.0.17",
+    "langchain-tavily>=0.2.0",
+    "langchain-text-splitters>=1.1.0",
+    "langgraph>=1.1.0",
+    "langgraph-checkpoint>=4.0.0",
+    "langgraph-sdk>=0.3.0",
+    "langsmith>=0.7.0",
+    # Deep Agents 框架 (2026-05 新增)
+    "deepagents>=0.5.0",
+    # AI
+    "openai>=1.60.0",
+    "tiktoken>=0.9.0",
+    # 搜索引擎
+    "elasticsearch>=8.16.0",
+    # HTTP 客户端
+    "httpx>=0.28.0",
+    # 数据验证与配置
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "python-dotenv>=1.0.1",
+    "pyyaml>=6.0.2",
+    # 日志与输出
+    "loguru>=0.7.3",
+    "rich>=13.9.0",
+    # 数值计算 (约束版本避免 Windows DLL 问题)
+    "numpy<2.0.0",
+    "datetime>=6.0",
+    "langchain-community==0.4.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "black>=24.0.0",
+    "isort>=5.13.0",
+    "pytest>=9.0.0",
+    "pytest-asyncio>=0.25.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["agents", "api", "common", "config", "models", "services", "tools", "vectorstore"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 120
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false

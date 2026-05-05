@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.personblog.security.mapper.UserMapper">
+
+    <update id="batchUpdateLikeCount" parameterType="java.util.List">
+        UPDATE tb_user
+        SET likes_count = likes_count + t.delta
+        FROM (
+            <foreach collection="list" item="user" separator="UNION ALL">
+                SELECT #{user.authorId} AS id, #{user.delta} AS delta
+            </foreach>
+        ) t
+        WHERE tb_user.id = t.id
+    </update>
+
+</mapper>

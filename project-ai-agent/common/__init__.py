@@ -1,0 +1,17 @@
+"""
+公共基础模块
+"""
+
+from common.constants import *
+
+__all__ = [
+    "ES_INDEX_ARTICLE",
+    "ES_INDEX_AUTHOR",
+    "REDIS_KEY_CHAT_PREFIX",
+    "REDIS_KEY_WRITING_TASK_PREFIX",
+    "REDIS_KEY_WRITING_EVENTS_PREFIX",
+    "REDIS_KEY_WRITING_PLAN_PREFIX",
+    "REDIS_KEY_WRITING_REFERENCES_PREFIX",
+    "THINKING_TAGS",
+    "DEFAULT_TTL_SECONDS",
+]

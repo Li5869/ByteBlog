@@ -1,0 +1,64 @@
+/* md-editor-v3 暗黑模式样式 */
+.md-editor-dark {
+  --md-bk-color: #1f2937;
+  --md-color: #f3f4f6;
+  --md-border-color: #374151;
+  --md-hover-border-color: #4b5563;
+  --md-toolbar-bg-color: #111827;
+  --md-toolbar-hover-bg-color: #374151;
+  --md-toolbar-active-bg-color: #4b5563;
+  --md-preview-bg-color: #1f2937;
+  --md-code-bg-color: #111827;
+  --md-code-color: #e5e7eb;
+  --md-table-stripe-color: #374151;
+  --md-blockquote-color: #9ca3af;
+}
+
+.md-editor-dark .md-editor {
+  background-color: var(--md-bk-color);
+  color: var(--md-color);
+  border-color: var(--md-border-color);
+}
+
+.md-editor-dark .md-editor-header,
+.md-editor-dark .md-editor-footer {
+  background-color: var(--md-toolbar-bg-color);
+  border-color: var(--md-border-color);
+}
+
+.md-editor-dark .md-editor-toolbar-item:hover {
+  background-color: var(--md-toolbar-hover-bg-color);
+}
+
+.md-editor-dark .md-editor-toolbar-item.active {
+  background-color: var(--md-toolbar-active-bg-color);
+}
+
+.md-editor-dark .md-editor-input-wrapper textarea {
+  background-color: var(--md-bk-color);
+  color: var(--md-color);
+}
+
+.md-editor-dark .md-editor-preview {
+  background-color: var(--md-preview-bg-color);
+  color: var(--md-color);
+}
+
+.md-editor-dark .md-editor-preview pre code {
+  background-color: var(--md-code-bg-color) !important;
+  color: var(--md-code-color) !important;
+}
+
+.md-editor-dark .md-editor-preview blockquote {
+  color: var(--md-blockquote-color);
+  border-left-color: #6b7280;
+}
+
+.md-editor-dark .md-editor-preview table tr:nth-child(2n) {
+  background-color: var(--md-table-stripe-color);
+}
+
+.md-editor-dark .md-editor-preview table th,
+.md-editor-dark .md-editor-preview table td {
+  border-color: var(--md-border-color);
+}

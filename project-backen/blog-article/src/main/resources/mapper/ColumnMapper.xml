@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.personblog.article.mapper.ColumnMapper">
+
+    <!-- 分页查询专栏列表 -->
+    <select id="selectColumnPage" resultType="com.personblog.article.vo.ColumnListVO">
+        SELECT
+            c.id,
+            c.title,
+            c.description,
+            c.cover,
+            c.articles_count AS articlesCount,
+            c.subscription_count AS subscriptionCount,
+            c.views,
+            c.status,
+            c.created_at AS createdAt,
+            c.updated_at AS updatedAt,
+            c.user_id AS authorId,
+            u.nickname AS authorName,
+            u.avatar AS authorAvatar
+        FROM tb_column c
+        LEFT JOIN tb_user u ON c.user_id = u.id
+        WHERE c.is_deleted = FALSE
+        <choose>
+            <!-- 查看指定用户的专栏 -->
+            <when test="dto.userId != null">
+                AND c.user_id = #{dto.userId}
+                <!-- 如果不是查看自己的专栏，只显示已发布的 -->
+                <if test="dto.status == null">
+                    AND c.status = 1
+                </if>
+            </when>
+            <otherwise>
+                <!-- 公开查询，只显示已发布的 -->
+                AND c.status = 1
+            </otherwise>
+        </choose>
+        <!-- 关键词搜索 -->
+        <if test="dto.keyword != null and dto.keyword != ''">
+            AND c.title LIKE CONCAT('%', #{dto.keyword}, '%')
+        </if>
+        <!-- 排序 -->
+        <choose>
+            <when test="dto.orderBy == 'articles_count'">
+                ORDER BY c.articles_count DESC
+            </when>
+            <when test="dto.orderBy == 'views'">
+                ORDER BY c.views DESC
+            </when>
+            <otherwise>
+                ORDER BY c.updated_at DESC
+            </otherwise>
+        </choose>
+    </select>
+
+    <!-- 查询专栏文章列表 -->
+    <select id="selectColumnArticles" resultType="com.personblog.article.vo.ColumnDetailVO$ColumnArticleVO">
+        SELECT
+            a.id,
+            a.title,
+            a.summary,
+            a.cover,
+            a.views,
+            a.likes,
+            a.comments,
+            a.created_at AS createdAt
+        FROM tb_column_article ca
+        LEFT JOIN tb_article a ON ca.article_id = a.id
+        WHERE ca.column_id = #{columnId}
+          AND a.is_deleted = FALSE
+          AND a.status = 1
+        ORDER BY ca.created_at DESC
+    </select>
+
+    <!-- 查询可添加到专栏的文章 -->
+    <select id="selectAvailableArticles" resultType="com.personblog.article.vo.MyArticleVO">
+        SELECT
+            a.id,
+            a.title,
+            a.summary,
+            a.cover,
+            a.created_at AS createdAt,
+            a.updated_at AS updatedAt,
+            a.status,
+            a.review,
+            a.views,
+            a.likes,
+            a.comments
+        FROM tb_article a
+        WHERE a.author_id = #{userId}
+          AND a.status = 1
+          AND a.is_deleted = FALSE
+          AND a.id NOT IN (
+              SELECT article_id FROM tb_column_article WHERE column_id = #{columnId}
+          )
+        ORDER BY a.created_at DESC
+        LIMIT 100
+    </select>
+
+    <!-- 查询用户订阅的专栏列表 -->
+    <select id="selectSubscriptions" resultType="com.personblog.article.vo.SubscriptionVO">
+        SELECT
+            c.id AS columnId,
+            c.title AS columnTitle,
+            c.cover AS columnCover,
+            u.nickname AS authorName,
+            c.articles_count AS articlesCount,
+            s.created_at AS subscribedAt
+        FROM tb_column_subscription s
+        LEFT JOIN tb_column c ON s.column_id = c.id
+        LEFT JOIN tb_user u ON c.user_id = u.id
+        WHERE s.user_id = #{userId}
+          AND c.is_deleted = FALSE
+          AND c.status = 1
+        ORDER BY s.created_at DESC
+    </select>
+
+    <!-- 查询专栏的订阅用户列表 -->
+    <select id="selectSubscribers" resultType="com.personblog.article.vo.SubscriberVO">
+        SELECT
+            u.id AS userId,
+            u.nickname,
+            u.avatar,
+            s.created_at AS subscribedAt
+        FROM tb_column_subscription s
+        LEFT JOIN tb_user u ON s.user_id = u.id
+        WHERE s.column_id = #{columnId}
+        ORDER BY s.created_at DESC
+        LIMIT 100
+    </select>
+
+    <!-- 查询热门专栏列表 -->
+    <select id="selectHotColumns" resultType="com.personblog.article.vo.ColumnListVO">
+        SELECT
+            c.id,
+            c.title,
+            c.description,
+            c.cover,
+            c.articles_count AS articlesCount,
+            c.subscription_count AS subscriptionCount,
+            c.views,
+            c.status,
+            c.created_at AS createdAt,
+            c.updated_at AS updatedAt,
+            c.user_id AS authorId,
+            u.nickname AS authorName,
+            u.avatar AS authorAvatar
+        FROM tb_column c
+        LEFT JOIN tb_user u ON c.user_id = u.id
+        WHERE c.is_deleted = FALSE
+          AND c.status = 1
+        ORDER BY c.subscription_count DESC, c.views DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

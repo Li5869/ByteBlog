@@ -1,0 +1,47 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:person_blog}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:2}
+      timeout: 60000
+      lettuce:
+        pool:
+          max-active: 32
+          max-wait: -1
+          max-idle: 16
+          min-idle: 8
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+  elasticsearch:
+    uris: ${ES_URIS:http://localhost:9200}
+    connection-timeout: 5s
+    socket-timeout: 60s
+
+# 搜索模块配置
+search:
+  enabled: true
+  sync-on-startup: false
+
+# XXL-JOB 执行器核心配置
+xxl:
+  job:
+    admin:
+      addresses: ${XXL_JOB_ADMIN_ADDRESSES:http://localhost:8080/xxl-job-admin}
+    accessToken: ${XXL_JOB_ACCESS_TOKEN:}
+    executor:
+      appname: ${spring.application.name}-executor
+      ip: ${XXL_JOB_EXECUTOR_IP:}
+      port: ${XXL_JOB_EXECUTOR_PORT:9999}
+      logpath: ./data/applogs/xxl-job/jobhandler
+      logretentiondays: 30
+      enabled: true

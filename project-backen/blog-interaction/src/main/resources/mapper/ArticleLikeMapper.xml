@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.personblog.interaction.mapper.ArticleLikeMapper">
+
+    <select id="selectMyLikes" resultType="com.personblog.interaction.vo.MyLikeVO">
+        SELECT 
+            al.id,
+            al.article_id AS articleId,
+            a.title,
+            a.summary,
+            a.cover,
+            u.nickname AS authorName,
+            u.avatar AS authorAvatar,
+            a.created_at AS createdAt,
+            al.created_at AS likedAt,
+            CASE WHEN a.id IS NULL OR a.is_deleted = true THEN true ELSE false END AS isDeleted
+        FROM tb_article_like al
+        LEFT JOIN tb_article a ON al.article_id = a.id
+        LEFT JOIN tb_user u ON a.author_id = u.id
+        WHERE al.user_id = #{userId}
+        ORDER BY al.created_at DESC
+    </select>
+
+</mapper>

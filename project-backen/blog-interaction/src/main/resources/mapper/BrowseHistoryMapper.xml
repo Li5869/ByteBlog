@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.personblog.interaction.mapper.BrowseHistoryMapper">
+
+    <insert id="batchInsertOrUpdate" parameterType="java.util.List">
+        INSERT INTO tb_browse_history (id, user_id, article_id, browse_at)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.id}, #{item.userId}, #{item.articleId}, #{item.browseAt})
+        </foreach>
+        ON CONFLICT (user_id, article_id) 
+        DO UPDATE SET browse_at = EXCLUDED.browse_at
+    </insert>
+
+    <select id="selectUserBrowseHistory" resultType="com.personblog.interaction.vo.BrowseHistoryVO">
+        SELECT 
+            bh.article_id AS articleId,
+            a.title AS articleTitle,
+            a.cover AS articleCover,
+            a.summary,
+            u.nickname AS authorName,
+            u.avatar AS authorAvatar,
+            a.created_at AS createdAt,
+            bh.browse_at AS browseTime,
+            CASE WHEN a.id IS NULL OR a.is_deleted = true THEN true ELSE false END AS isDeleted
+        FROM tb_browse_history bh
+        LEFT JOIN tb_article a ON bh.article_id = a.id
+        LEFT JOIN tb_user u ON a.author_id = u.id
+        WHERE bh.user_id = #{userId}
+        ORDER BY bh.browse_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(*) FROM tb_browse_history WHERE user_id = #{userId}
+    </select>
+
+</mapper>
