@@ -121,10 +121,13 @@ public class SecurityConfig {
                                 "/admin/auth/refresh"
                         ).permitAll()
 
-                        // 3.3 管理员路径：需要 admin 权限
+                        // 3.3 Actuator 监控端点（生产环境建议限制 IP 或加认证）
+                        .requestMatchers("/actuator/**").permitAll()
+
+                        // 3.4 管理员路径：需要 admin 权限
                         .requestMatchers("/admin/**").hasAuthority("admin")
 
-                        // 3.3 其他所有请求：需要认证
+                        // 3.5 其他所有请求：需要认证
                         .anyRequest().authenticated()
                 )
 

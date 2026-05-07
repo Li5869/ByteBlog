@@ -5,6 +5,7 @@ import com.personblog.comment.dto.CommentCreateDTO;
 import com.personblog.comment.service.ICommentService;
 import com.personblog.comment.vo.CommentRemoveVO;
 import com.personblog.comment.vo.CommentVO;
+import com.personblog.common.monitor.BusinessMetrics;
 import com.personblog.common.result.JsonData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,6 +29,7 @@ import java.util.Set;
 public class CommentController {
 
     private final ICommentService commentService;
+    private final BusinessMetrics businessMetrics;
 
     /**
      * 获取文章评论列表
@@ -62,6 +64,7 @@ public class CommentController {
     @PostMapping("/comments")
     public JsonData<CommentVO> createComment(@Valid @RequestBody CommentCreateDTO dto) {
         CommentVO vo = commentService.createComment(dto);
+        businessMetrics.recordCommentSubmit();
         return JsonData.buildSuccess(vo);
     }
 

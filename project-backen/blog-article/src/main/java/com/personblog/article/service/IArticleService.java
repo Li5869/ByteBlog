@@ -57,7 +57,21 @@ public interface IArticleService extends IService<Article> {
      */
     List<HotTagVO> getHotTags(Integer size);
 
-    ArticleDetailVO getArticleDetail(Long id);
+    /**
+     * 获取文章基础信息（含正文、分类、标签）
+     * 此数据变化频率低，会进行多级缓存
+     * @param id 文章ID
+     * @return 文章基础信息
+     */
+    ArticleMetadataVO getArticleMetadata(Long id);
+
+    /**
+     * 获取文章互动数据（浏览量、点赞、收藏、评论）
+     * 此数据变化频繁，实时查询不缓存
+     * @param id 文章ID
+     * @return 文章互动数据
+     */
+    ArticleInteractionVO getArticleInteraction(Long id);
 
     /**
      * 获取相关文章列表

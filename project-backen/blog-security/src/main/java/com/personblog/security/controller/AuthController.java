@@ -3,6 +3,7 @@ package com.personblog.security.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.personblog.api.searchAPI.SearchSyncApi;
 import com.personblog.common.enums.BizCodeEnum;
+import com.personblog.common.monitor.BusinessMetrics;
 import com.personblog.common.result.JsonData;
 import com.personblog.security.dto.LoginDTO;
 import com.personblog.security.dto.RefreshTokenDTO;
@@ -54,6 +55,7 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final SearchSyncApi searchSyncApi;
+    private final BusinessMetrics businessMetrics;
     @Resource(name = "ArticleCountExecutor")
     private Executor articleCountExecutor;
     
@@ -204,7 +206,8 @@ public class AuthController {
                 });
         
         log.info("用户注册成功: userId={}, username={}", user.getId(), user.getUsername());
-        
+        businessMetrics.recordUserRegister();
+
         return JsonData.buildSuccess();
     }
 

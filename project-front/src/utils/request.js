@@ -317,6 +317,10 @@ export const articleApi = {
   getBanners: (size) => get('/article/banners', size ? { size } : null),
   getArticlePage: (data) => post('/article/articles', data),
   getArticleDetail: (id) => get(`/article/articles/${id}`),
+  /** 获取文章基础信息（含正文、分类、标签，可缓存） */
+  getArticleMetadata: (id) => get(`/article/articles/${id}`),
+  /** 获取文章互动数据（浏览量、点赞、收藏、评论，实时） */
+  getArticleInteraction: (id) => get(`/article/articles/${id}/interaction`),
   getEditArticle: (id) => get(`/article/articles/${id}/edit`),
   createArticle: (data) => post('/article/articles/publish', data),
   updateArticle: (id, data) => put(`/article/articles/${id}`, data),

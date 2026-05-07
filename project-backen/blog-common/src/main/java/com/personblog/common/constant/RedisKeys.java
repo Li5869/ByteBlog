@@ -115,12 +115,28 @@ public class RedisKeys {
     // =============================================
 
     /**
-     * 文章详情缓存前缀
+     * 文章详情缓存前缀（已废弃，拆分为元数据+内容）
      * 完整 Key 格式：article:detail:{articleId}
-     * 存储内容：文章详情信息
+     * 存储内容：文章详情信息（含正文，易造成大体积缓存）
      * 数据类型：String（JSON）
      */
     public static final String ARTICLE_DETAIL = "article:detail:";
+
+    /**
+     * 文章元数据缓存前缀
+     * 完整 Key 格式：article:metadata:{articleId}
+     * 存储内容：文章元数据（不含正文，体积小、加载快）
+     * 数据类型：String（JSON）
+     */
+    public static final String ARTICLE_METADATA = "article:metadata:";
+
+    /**
+     * 文章正文内容缓存前缀
+     * 完整 Key 格式：article:content:{articleId}
+     * 存储内容：文章 Markdown 正文内容
+     * 数据类型：String（JSON）
+     */
+    public static final String ARTICLE_CONTENT = "article:content:";
 
     /**
      * 文章分页列表缓存前缀

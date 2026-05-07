@@ -8,6 +8,7 @@ import com.personblog.ai.service.ChatService;
 import com.personblog.ai.vo.ChatEventVO;
 import com.personblog.ai.vo.ConversationDetailVO;
 import com.personblog.ai.vo.ConversationListVO;
+import com.personblog.common.monitor.BusinessMetrics;
 import com.personblog.common.result.JsonData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,6 +29,7 @@ public class ChatController {
 
     private final ChatService chatService;
     private final PythonAiChatService pythonAiChatService;
+    private final BusinessMetrics businessMetrics;
 
     @Operation(summary = "创建会话", description = "创建一个新的AI对话会话")
     @PostMapping("/conversations")
@@ -62,6 +64,7 @@ public class ChatController {
     @Operation(summary = "Agent智能对话（流式响应）", description = "通过Python Agent服务进行智能对话，AI自动选择工具获取信息，以SSE流式方式返回响应")
     @PostMapping(value = "/agent/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ChatEventVO> agentChatStream(@Valid @RequestBody ChatMessageDTO dto) {
-        return pythonAiChatService.streamChat(dto.getConversationId(), dto.getContent(),dto.getIsDeepThinking());
+        businessMetrics.recordAiCall();
+        return pythonAiChatService.streamChat(dto.getConversationId(), dto.getContent(), dto.getIsDeepThinking());
     }
 }

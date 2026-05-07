@@ -8,6 +8,7 @@ import com.personblog.article.vo.*;
 import com.personblog.common.dto.Article.ArticleQueryDTO;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
+import com.personblog.common.monitor.BusinessMetrics;
 import com.personblog.common.result.JsonData;
 import com.personblog.common.utils.UserContextHolder;
 import com.personblog.common.vo.HotTagVO;
@@ -28,6 +29,7 @@ public class ArticleController {
 
     private final IArticleService articleService;
     private final BrowseHistoryApi browseHistoryApi;
+    private final BusinessMetrics businessMetrics;
 
     /**
      * 获取轮播图数据
@@ -102,12 +104,17 @@ public class ArticleController {
     }
 
     @GetMapping("/articles/{id}")
-    @Operation(summary = "获取文章详情")
-    public JsonData<ArticleDetailVO> getArticleDetail(@PathVariable Long id){
-       ArticleDetailVO vo = articleService.getArticleDetail(id);
-       Long userId = UserContextHolder.getUserId();
-       browseHistoryApi.recordBrowse(userId, id);
-       return JsonData.buildSuccess(vo);
+    @Operation(summary = "获取文章基础信息", description = "获取文章基础信息（标题、摘要、正文、分类、标签等可缓存数据）")
+    public JsonData<ArticleMetadataVO> getArticleMetadata(@PathVariable Long id) {
+        ArticleMetadataVO vo = articleService.getArticleMetadata(id);
+        return JsonData.buildSuccess(vo);
+    }
+
+    @GetMapping("/articles/{id}/interaction")
+    @Operation(summary = "获取文章互动数据", description = "获取实时互动数据（浏览量、点赞、收藏、评论数以及当前用户点赞/收藏状态），不缓存")
+    public JsonData<ArticleInteractionVO> getArticleInteraction(@PathVariable Long id) {
+        ArticleInteractionVO vo = articleService.getArticleInteraction(id);
+        return JsonData.buildSuccess(vo);
     }
 
     @GetMapping("/my-articles")
@@ -148,6 +155,7 @@ public class ArticleController {
             throw new BizException(BizCodeEnum.NOT_LOGIN);
         }
         ArticlePublishVO vo = articleService.createArticle(userId, dto);
+        businessMetrics.recordArticlePublish();
         return JsonData.buildSuccess(vo);
     }
 

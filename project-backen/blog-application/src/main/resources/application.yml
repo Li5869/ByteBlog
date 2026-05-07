@@ -52,6 +52,40 @@ aliyun:
     endpoint: ${ALIYUN_OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
     # OSS 桶名称
     bucket-name: ${ALIYUN_OSS_BUCKET_NAME:person-blog-lsh}
+# ==================== Actuator 监控配置 ====================
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        # 只暴露必要端点，生产环境不要暴露全部
+        include: health,info,prometheus,metrics,threaddump
+  endpoint:
+    health:
+      show-details: when-authorized
+      # 显示各组件健康状态：DB、Redis、RabbitMQ、ES
+      show-components: when-authorized
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      # 全局标签，方便 Prometheus 区分应用
+      application: ${spring.application.name}
+    distribution:
+      # HTTP 请求耗时直方图（用于计算分位数）
+      percentiles-histogram:
+        http.server.requests: true
+      # 预定义 SLA 桶边界（毫秒）
+      sla:
+        http.server.requests: 50,100,200,500,1000,2000
+  health:
+    redis:
+      enabled: true
+    rabbit:
+      enabled: true
+    db:
+      enabled: true
+
 logging:
   level:
     root: info

@@ -49,17 +49,23 @@ const replyingTo = ref(null)
 const replyContent = ref({})
 const showFullContent = ref(false)
 
-const fetchArticleDetail = async () => {
+const fetchArticleData = async () => {
   try {
     loading.value = true
     error.value = null
     
-    const data = await articleApi.getArticleDetail(articleId.value)
-    article.value = data
+    // 并行请求：基础信息（含正文，可缓存） + 互动数据（实时）
+    const [metadata, interaction] = await Promise.all([
+      articleApi.getArticleMetadata(articleId.value),
+      articleApi.getArticleInteraction(articleId.value)
+    ])
+    
+    // 合并互动数据到文章对象
+    article.value = { ...metadata, ...interaction }
     
     fetchRelatedArticles()
-    if (data?.authorId) {
-      fetchAuthorInfo(data.authorId)
+    if (metadata?.authorId) {
+      fetchAuthorInfo(metadata.authorId)
     }
   } catch (e) {
     error.value = e.message || '加载文章失败'
@@ -198,16 +204,16 @@ const headings = computed(() => {
 
 const renderedContent = computed(() => {
   if (!article.value?.content) return ''
-  
+
   let index = 0
   const renderer = new marked.Renderer()
-  
+
   renderer.heading = function({ text, depth }) {
     const id = `heading-${index}`
     index++
     return `<h${depth} id="${id}">${text}</h${depth}>`
   }
-  
+
   return marked(article.value.content, { renderer })
 })
 
@@ -647,7 +653,7 @@ watch(articleId, async () => {
   if (articleId.value) {
     // 切换文章时重置展开状态
     showFullContent.value = false
-    await fetchArticleDetail()
+    await fetchArticleData()
     // 切换文章后如果有 commentId，重新定位
     if (commentId.value) {
       await scrollToComment(commentId.value)
@@ -663,7 +669,7 @@ watch(commentId, (newVal) => {
 })
 
 onMounted(async () => {
-  await fetchArticleDetail()
+  await fetchArticleData()
   fetchSidebarData()
   window.addEventListener('scroll', updateActiveHeading)
   updateActiveHeading()

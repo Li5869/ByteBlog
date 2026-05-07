@@ -4,6 +4,11 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      # 连接存活检测间隔（毫秒），配合 Prometheus 监控连接池
+      keepalive-time: 30000
+      # 连接最大存活时间（毫秒），防止长时间未释放
+      max-lifetime: 1800000
   data:
     redis:
       host: ${REDIS_HOST:localhost}

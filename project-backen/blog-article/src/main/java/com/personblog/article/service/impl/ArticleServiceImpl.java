@@ -10,6 +10,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.personblog.api.AIAPI.AiArticleDraftApi;
 import com.personblog.api.articleAPI.ArticleInfoAPI;
+import com.personblog.api.interactionAPI.BrowseHistoryApi;
 import com.personblog.api.interactionAPI.CollectedApi;
 import com.personblog.api.interactionAPI.FollowApi;
 import com.personblog.api.interactionAPI.LikeApi;
@@ -47,6 +48,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.redis.connection.DefaultStringRedisConnection;
+import org.springframework.data.redis.connection.StringRedisConnection;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -96,6 +100,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private final RabbitTemplate rabbitTemplate;
     private final WritingTaskApi writingTaskApi;
     private final AiArticleDraftApi draftApi;
+    private final BrowseHistoryApi browseHistoryApi;
     private final IColumnArticleService columnArticleService;
     // ========== 新增：缓存相关组件 ==========
     private final MultiLevelCacheUtil cacheUtil;
@@ -355,74 +360,125 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
      * 重要：必须创建新对象副本再修改，避免污染缓存中的原始对象
      */
     @Override
-    public ArticleDetailVO getArticleDetail(Long id) {
-        String cacheKey = ARTICLE_DETAIL + id;
-        Long userId = UserContextHolder.getUserId() == null ? -1 : UserContextHolder.getUserId();
-        
-        // 从缓存获取文章详情（包含基础浏览量和点赞量）
-        ArticleDetailVO cached = cacheUtil.get(
+    public ArticleMetadataVO getArticleMetadata(Long id) {
+        String cacheKey = ARTICLE_METADATA + id;
+        articleCountExecutor.execute(()-> browseHistoryApi.recordBrowse(
+                UserContextHolder.getUserId(), id));
+        // 从缓存获取文章基础信息（含正文、分类、标签），不包含互动数据
+        return cacheUtil.get(
                 cacheKey,
-                key -> loadArticleDetailFromDB(id),
+                key -> loadArticleMetadataFromDB(id),
                 600,
                 120,
-                ArticleDetailVO.class
+                ArticleMetadataVO.class
         );
-        
-        // 创建新对象副本，避免修改缓存中的原始对象导致浏览量跳跃
-        ArticleDetailVO vo = BeanUtil.copyProperties(cached, ArticleDetailVO.class);
-        
-        // 查询用户互动状态
-        boolean isCollected = collectedApi.isCollected(id, userId);
-        boolean isLiked = likeApi.isLiked(id, userId, ARTICLE);
-        
-        // 实时浏览量 = 缓存中的基础值 + Redis增量
-        Object browseCount = redisTemplate.opsForHash().get(BROWSE_COUNT_KEY, id.toString());
-        if (browseCount != null) {
-            vo.setViews(vo.getViews() + Long.parseLong(browseCount.toString()));
-        }
-        
-        // 实时点赞量：从 Redis 获取（点赞量完全由 Redis 管理）
-        long likeCount = likeApi.getLikeCount(id, ARTICLE);
-        if (likeCount > 0) {
-            vo.setTotalLikes(likeCount);
-        }
-        
-        vo.setIsLiked(isLiked);
-        vo.setIsCollected(isCollected);
-        
-        return vo;
     }
-    
-    /**
-     * 从数据库加载文章详情
-     * 缓存内容包含：
-     * - 文章基本信息（标题、内容、摘要等）
-     * - 数据库中的基础浏览量和点赞量
-     * - 分类信息、标签信息
-     * 注意：浏览量和点赞量会被缓存，但获取详情时会叠加 Redis 中的实时增量
-     */
-    private ArticleDetailVO loadArticleDetailFromDB(Long id) {
+
+    @Override
+    public ArticleInteractionVO getArticleInteraction(Long id) {
+        Long userId = UserContextHolder.getUserId() == null ? -1 : UserContextHolder.getUserId();
+        
+        // Pipeline 批量查询实时互动状态（isCollected、isLiked、浏览量增量、点赞数）
+        InteractionQueryResult interaction = queryArticleInteractions(id, userId);
+        
+        // 从数据库获取文章的评论数和收藏数（单表主键查询，性能极高）
         Article article = getById(id);
         if (article == null) {
             throw new BizException(NOT_ARTICLE);
         }
         
-        Long currentUserId = UserContextHolder.getUserId();
+        ArticleInteractionVO vo = new ArticleInteractionVO();
+        vo.setId(id);
+        vo.setIsLiked(interaction.isLiked());
+        vo.setIsCollected(interaction.isCollected());
+        vo.setTotalLikes(interaction.likeCount());
+        
+        // 浏览量 = 数据库基础值 + Redis 实时增量
+        long baseViews = article.getViews() != null ? article.getViews() : 0L;
+        if (interaction.browseCount() != null) {
+            vo.setViews(baseViews + Long.parseLong(interaction.browseCount().toString()));
+        } else {
+            vo.setViews(baseViews);
+        }
+        
+        vo.setComments(article.getComments() != null ? article.getComments() : 0L);
+        vo.setCollections(article.getCollections() != null ? article.getCollections() : 0L);
+        
+        return vo;
+    }
+
+    /**
+     * 文章互动数据查询结果（Pipeline 批量返回）
+     */
+    private record InteractionQueryResult(
+            boolean isCollected,
+            boolean isLiked,
+            Object browseCount,
+            long likeCount
+    ) {}
+
+    /**
+     * 使用 Redis Pipeline 批量查询文章互动数据
+     * 将 4 次 Redis 网络请求合并为 1 次，消除串行 IO 开销
+     *
+     * Pipeline 命令顺序：
+     * 1. SISMEMBER collections:set:articleId:{id} {userId}  - 是否已收藏
+     * 2. SISMEMBER likes:set:article:{id} {userId}          - 是否已点赞
+     * 3. HGET browse:count {id}                             - 浏览量增量
+     * 4. SCARD likes:set:article:{id}                       - 实时点赞数
+     */
+    private InteractionQueryResult queryArticleInteractions(Long articleId, Long userId) {
+        // 未登录用户直接返回默认值，无需查 Redis
+        if (userId == -1) {
+            return new InteractionQueryResult(false, false, null, 0L);
+        }
+
+        String collectionKey = COLLECTION_USER_KEY_PREFIX + articleId;
+        String likeKey = LIKE_BIZ_KEY_PREFIX(ARTICLE, articleId);
+        String userIdStr = String.valueOf(userId);
+
+        List<Object> results = redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+            StringRedisConnection src = new DefaultStringRedisConnection(connection);
+            src.sIsMember(collectionKey, userIdStr);
+            src.sIsMember(likeKey, userIdStr);
+            src.hGet(BROWSE_COUNT_KEY, articleId.toString());
+            src.sCard(likeKey);
+            return null;
+        });
+
+        boolean isCollected = (boolean) results.get(0);
+        boolean isLiked = (boolean) results.get(1);
+        Object browseCount = results.get(2);
+        long likeCount = (long) results.get(3);
+
+        return new InteractionQueryResult(isCollected, isLiked, browseCount, likeCount);
+    }
+
+    /**
+     * 从数据库加载文章基础信息（含正文、分类、标签）
+     * ArticleMetadataVO 包含 content 字段，统一缓存，避免分拆加载的网络开销
+     */
+    private ArticleMetadataVO loadArticleMetadataFromDB(Long id) {
+        Article article = getById(id);
+        if (article == null) {
+            throw new BizException(NOT_ARTICLE);
+        }
+        
+        Long userId = UserContextHolder.getUserId();
         
         if (!APPROVED.equals(article.getReview())) {
-            if (currentUserId == null || !currentUserId.equals(article.getAuthorId())) {
-                log.warn("用户尝试访问未审核通过的文章, articleId={}, userId={}", id, currentUserId);
+            if (userId == null || !userId.equals(article.getAuthorId())) {
+                log.warn("用户尝试访问未审核通过的文章, articleId={}, userId={}", id, userId);
                 throw new BizException(NOT_ARTICLE);
             }
         }
-        
-        ArticleDetailVO vo = BeanUtil.copyProperties(article, ArticleDetailVO.class);
+        ArticleMetadataVO vo = BeanUtil.copyProperties(article, ArticleMetadataVO.class);
         
         // 查询分类信息
         Category one = categoryService.lambdaQuery()
                 .eq(Category::getId, article.getCategoryId())
                 .one();
-        ArticleDetailVO.CategoryInfo categoryInfoVO = BeanUtil.copyProperties(one, ArticleDetailVO.CategoryInfo.class);
+        ArticleMetadataVO.CategoryInfo categoryInfoVO = BeanUtil.copyProperties(one, ArticleMetadataVO.CategoryInfo.class);
         
         // 查询标签信息
         Set<Long> tagIds = getTagIdsByArticleId(article.getId());
@@ -430,7 +486,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             List<Tag> tags = tagService.listByIds(tagIds);
             if (CollectionUtil.isNotEmpty(tags)) {
                 vo.setTags(tags.stream()
-                        .map(tag -> BeanUtil.copyProperties(tag, ArticleDetailVO.TagInfo.class)).toList());
+                        .map(tag -> BeanUtil.copyProperties(tag, ArticleMetadataVO.TagInfo.class)).toList());
             }
         }
         vo.setCategory(categoryInfoVO);
