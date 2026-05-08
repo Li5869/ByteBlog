@@ -17,14 +17,7 @@ public class PageConstant {
      * 默认热门文章数量
      */
     public static final int DEFAULT_HOT_SIZE = 3;
-    public static final int MAX_HOT_SIZE = 10;
-
-    /**
-     * 默认热门标签数量
-     */
-    public static final int DEFAULT_TAG_SIZE = 10;
-    public static final int MAX_TAG_SIZE = 30;
-
+    public static final int MAX_HOT_SIZE = 5;
     /**
      * 默认分页大小
      */

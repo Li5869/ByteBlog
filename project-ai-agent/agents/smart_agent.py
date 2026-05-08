@@ -57,10 +57,8 @@ class StreamEvent:
 
 class AgentState(TypedDict):
     """LangGraph Agent 状态"""
-    user_input: str
     messages: List[Any]
     thinking: str
-    tool_results: List[str]
     iteration: int
     final_answer: str
     deep_thinking: bool
@@ -96,16 +94,6 @@ class SmartAgent:
             temperature=0.3,
             streaming=True
         )
-
-        self.llm_deep = ChatOpenAI(
-            model=settings.model_name_deepseek,
-            base_url=settings.openai_base_url_deepseek,
-            api_key=settings.openai_api_key_deepseek,
-            extra_body={"thinking": {"type": "enabled"}},
-            temperature=0.1,
-            streaming=True
-        )
-
         # 原生 OpenAI 客户端：深度思考模式下绕过 LangChain，
         # 由我们手动控制消息格式，确保 reasoning_content 正确回传
         self.raw_deep_client = openai.AsyncOpenAI(
@@ -125,7 +113,6 @@ class SmartAgent:
             progressive_disclosure=True
         )
         self._event_queue: Optional[asyncio.Queue] = None
-        self._tool_call_infos: List[dict] = []
         self.graph = self._build_graph()
 
         # 预转换工具定义为 OpenAI 格式
@@ -201,7 +188,7 @@ class SmartAgent:
 
     async def _think_node(self, state: AgentState) -> dict:
         """思考节点路由：根据是否开启深度思考，选择不同的实现"""
-        if state.get("deep_thinking", False):
+        if state.get("deep_thinking",False):
             return await self._think_node_deep(state)
         return await self._think_node_normal(state)
 
@@ -336,10 +323,6 @@ class SmartAgent:
         if tool_calls:
             # 有工具调用 → 发射 tool_call 事件，继续循环
             for tc in tool_calls:
-                self._tool_call_infos.append({
-                    "name": tc["name"],
-                    "args": tc["args"],
-                })
                 await self._emit(StreamEvent(
                     event_type="tool_call",
                     content=f"\n🔧 调用工具: {tc['name']}",
@@ -404,7 +387,6 @@ class SmartAgent:
 
         return {
             "messages": list(state["messages"]) + results,
-            "tool_results": state.get("tool_results", []) + [r.content for r in results],
         }
 
     # ==================== 路由函数 ====================
@@ -449,18 +431,15 @@ class SmartAgent:
         logger.info(f"[LangGraph] 开始处理, message={message[:50]}..., deep_thinking={deep_thinking}, user_id={user_id}")
 
         self._event_queue = asyncio.Queue()
-        self._tool_call_infos = []
 
         system_prompt = self.deep_system_prompt if deep_thinking else self.system_prompt
 
         initial_state: AgentState = {
-            "user_input": message,
             "messages": [
                 SystemMessage(content=system_prompt),
                 HumanMessage(content=message),
             ],
             "thinking": "",
-            "tool_results": [],
             "iteration": 0,
             "final_answer": "",
             "deep_thinking": deep_thinking,

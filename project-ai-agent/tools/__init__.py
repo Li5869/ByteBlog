@@ -27,7 +27,7 @@ from tools.blog_tool import (
 from tools.user_tool import get_current_user_id, set_current_user_id
 from tools.skill_tool import get_skill_details, list_available_skills
 
-# ==================== 工具分组（类似 Java 的 ToolGroup 枚举） ====================
+# ==================== 工具分组 ====================
 
 _base_tools = [
     search_articles_by_keyword,

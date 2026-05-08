@@ -1238,9 +1238,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     @Transactional(rollbackFor = Exception.class)
     public void refreshHotArticles() {
         articleMapper.clearAllHotFlags();
-        articleMapper.refreshHotFlags(5);
+        articleMapper.refreshHotFlags(MAX_HOT_SIZE);
         hotArticleCache.invalidateAll();
-        log.info("热门文章标记已刷新, Top {}", MAX_HOT_SIZE * 5);
+        log.info("热门文章标记已刷新, Top {}", MAX_HOT_SIZE);
     }
 
     // ==================== MQ 消息发送 ====================
