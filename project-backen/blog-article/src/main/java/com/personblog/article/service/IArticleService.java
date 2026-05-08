@@ -8,7 +8,6 @@ import com.personblog.article.dto.ArticlePublishDTO;
 import com.personblog.article.entity.Article;
 import com.personblog.article.vo.*;
 import com.personblog.common.dto.Article.ArticleQueryDTO;
-import com.personblog.common.vo.HotTagVO;
 
 import java.util.List;
 
@@ -49,14 +48,6 @@ public interface IArticleService extends IService<Article> {
      * @return 热门文章列表
      */
     List<HotArticleVO> getHotArticles(Integer size);
-
-    /**
-     * 获取热门标签列表（按使用次数排序）
-     * @param size 返回数量
-     * @return 热门标签列表
-     */
-    List<HotTagVO> getHotTags(Integer size);
-
     /**
      * 获取文章基础信息（含正文、分类、标签）
      * 此数据变化频率低，会进行多级缓存

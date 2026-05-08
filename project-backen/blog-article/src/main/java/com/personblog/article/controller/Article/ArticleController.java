@@ -1,7 +1,6 @@
 package com.personblog.article.controller.Article;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.personblog.api.interactionAPI.BrowseHistoryApi;
 import com.personblog.article.dto.ArticlePublishDTO;
 import com.personblog.article.service.IArticleService;
 import com.personblog.article.vo.*;
@@ -11,7 +10,6 @@ import com.personblog.common.exception.BizException;
 import com.personblog.common.monitor.BusinessMetrics;
 import com.personblog.common.result.JsonData;
 import com.personblog.common.utils.UserContextHolder;
-import com.personblog.common.vo.HotTagVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,7 +26,6 @@ import java.util.Objects;
 public class ArticleController {
 
     private final IArticleService articleService;
-    private final BrowseHistoryApi browseHistoryApi;
     private final BusinessMetrics businessMetrics;
 
     /**
@@ -86,21 +83,6 @@ public class ArticleController {
             @RequestParam(required = false) Integer size) {
         List<HotArticleVO> articles = articleService.getHotArticles(size);
         return JsonData.buildSuccess(articles);
-    }
-
-    /**
-     * 获取热门标签列表
-     * 按使用次数排序，用于侧边栏展示
-     * @param size 返回数量，默认10，最大30
-     * @return 热门标签列表
-     */
-    @Operation(summary = "获取热门标签", description = "获取按使用次数排序的热门标签列表")
-    @GetMapping("/tags/hot")
-    public JsonData<List<HotTagVO>> getHotTags(
-            @Parameter(description = "返回数量，默认10，最大30")
-            @RequestParam(required = false) Integer size) {
-        List<HotTagVO> tags = articleService.getHotTags(size);
-        return JsonData.buildSuccess(tags);
     }
 
     @GetMapping("/articles/{id}")

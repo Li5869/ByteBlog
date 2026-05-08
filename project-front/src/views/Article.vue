@@ -33,6 +33,8 @@ const authorInfo = ref(null)
 const relatedArticles = ref([])
 const hotArticles = ref([])
 const randomArticles = ref([])
+const hotArticlesLoading = ref(true)
+const randomArticlesLoading = ref(true)
 const comments = ref([])
 const commentTotal = ref(0)
 const commentCurrent = ref(1)
@@ -106,10 +108,12 @@ const fetchAuthorInfo = async (userId) => {
 }
 
 const fetchSidebarData = async () => {
+  hotArticlesLoading.value = true
+  randomArticlesLoading.value = true
   try {
     const [hotData, randomData] = await Promise.all([
-      articleApi.getHotArticles(3),
-      articleApi.getRandomArticles(4)
+      articleApi.getHotArticles(3).finally(() => { hotArticlesLoading.value = false }),
+      articleApi.getRandomArticles(4).finally(() => { randomArticlesLoading.value = false })
     ])
     hotArticles.value = hotData || []
     randomArticles.value = randomData || []
@@ -669,11 +673,14 @@ watch(commentId, (newVal) => {
 })
 
 onMounted(async () => {
-  await fetchArticleData()
+  // 并行发起：主文章 + 侧边栏同时加载，不互相等待
+  const articlePromise = fetchArticleData()
   fetchSidebarData()
+
+  await articlePromise
   window.addEventListener('scroll', updateActiveHeading)
   updateActiveHeading()
-  
+
   if (commentId.value) {
     await scrollToComment(commentId.value)
   }
@@ -805,35 +812,47 @@ onUnmounted(() => {
                 <h3 class="font-bold text-gray-900 dark:text-white text-sm">热门文章</h3>
               </div>
               <div class="divide-y divide-gray-50 dark:divide-gray-700/50">
-                <router-link 
-                  v-for="(item, index) in hotArticles" 
-                  :key="item.id"
-                  :to="`/article/${item.id}`"
-                  class="flex items-start gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group"
-                >
-                  <span 
-                    class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg text-xs font-bold transition-transform group-hover:scale-110"
-                    :class="{
-                      'bg-gradient-to-br from-red-500 to-rose-500 text-white shadow-lg shadow-red-500/30': index === 0,
-                      'bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/30': index === 1,
-                      'bg-gradient-to-br from-yellow-500 to-orange-400 text-white shadow-lg shadow-yellow-500/30': index === 2
-                    }"
-                  >
-                    {{ index + 1 }}
-                  </span>
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-primary-500 line-clamp-2 transition-colors font-medium leading-relaxed">
-                      {{ item.title }}
-                    </p>
-                    <p class="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                      {{ formatNumber(item.views) }} 阅读
-                    </p>
+                <template v-if="hotArticlesLoading">
+                  <div v-for="i in 3" :key="i" class="flex items-start gap-3 p-3">
+                    <div class="flex-shrink-0 w-6 h-6 rounded-lg bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+                    <div class="flex-1 min-w-0 space-y-2">
+                      <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-full"></div>
+                      <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-2/3"></div>
+                      <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-1/3 mt-1"></div>
+                    </div>
                   </div>
-                </router-link>
+                </template>
+                <template v-else>
+                  <router-link
+                    v-for="(item, index) in hotArticles"
+                    :key="item.id"
+                    :to="`/article/${item.id}`"
+                    class="flex items-start gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group"
+                  >
+                    <span
+                      class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg text-xs font-bold transition-transform group-hover:scale-110"
+                      :class="{
+                        'bg-gradient-to-br from-red-500 to-rose-500 text-white shadow-lg shadow-red-500/30': index === 0,
+                        'bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/30': index === 1,
+                        'bg-gradient-to-br from-yellow-500 to-orange-400 text-white shadow-lg shadow-yellow-500/30': index === 2
+                      }"
+                    >
+                      {{ index + 1 }}
+                    </span>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-primary-500 line-clamp-2 transition-colors font-medium leading-relaxed">
+                        {{ item.title }}
+                      </p>
+                      <p class="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        {{ formatNumber(item.views) }} 阅读
+                      </p>
+                    </div>
+                  </router-link>
+                </template>
               </div>
             </div>
 
@@ -844,22 +863,30 @@ onUnmounted(() => {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                 </div>
-                <h3 class="font-bold text-gray-900 dark:text-white text-sm">随机推荐</h3>
+                <h3 class="font-bold text-gray-900 dark:text-white text-sm">猜你喜欢</h3>
               </div>
               <div class="divide-y divide-gray-50 dark:divide-gray-700/50">
-                <router-link 
-                  v-for="item in randomArticles" 
-                  :key="item.id"
-                  :to="`/article/${item.id}`"
-                  class="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group"
-                >
-                  <p class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-primary-500 line-clamp-1 flex-1 mr-2 font-medium">
-                    {{ item.title }}
-                  </p>
-                  <span class="text-xs text-gray-400 whitespace-nowrap">
-                    {{ formatNumber(item.views) }} 阅读
-                  </span>
-                </router-link>
+                <template v-if="randomArticlesLoading">
+                  <div v-for="i in 4" :key="i" class="flex items-center justify-between p-3">
+                    <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse flex-1 mr-3"></div>
+                    <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-14"></div>
+                  </div>
+                </template>
+                <template v-else>
+                  <router-link
+                    v-for="item in randomArticles"
+                    :key="item.id"
+                    :to="`/article/${item.id}`"
+                    class="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group"
+                  >
+                    <p class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-primary-500 line-clamp-1 flex-1 mr-2 font-medium">
+                      {{ item.title }}
+                    </p>
+                    <span class="text-xs text-gray-400 whitespace-nowrap">
+                      {{ formatNumber(item.views) }} 阅读
+                    </span>
+                  </router-link>
+                </template>
               </div>
             </div>
           </div>

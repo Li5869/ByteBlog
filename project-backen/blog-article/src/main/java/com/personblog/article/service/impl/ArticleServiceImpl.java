@@ -11,7 +11,6 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.personblog.api.AIAPI.AiArticleDraftApi;
 import com.personblog.api.articleAPI.ArticleInfoAPI;
 import com.personblog.api.interactionAPI.BrowseHistoryApi;
-import com.personblog.api.interactionAPI.CollectedApi;
 import com.personblog.api.interactionAPI.FollowApi;
 import com.personblog.api.interactionAPI.LikeApi;
 import com.personblog.api.usrAPI.UseApi;
@@ -40,7 +39,6 @@ import com.personblog.common.exception.BizException;
 import com.personblog.common.service.ITagService;
 import com.personblog.common.utils.MultiLevelCacheUtil;
 import com.personblog.common.utils.UserContextHolder;
-import com.personblog.common.vo.HotTagVO;
 import com.personblog.common.vo.TagVO;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
@@ -93,7 +91,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private final IArticleTagService articleTagService;
     private final ITagService tagService;
     private final UseApi useApi;
-    private final CollectedApi collectedApi;
     private final FollowApi followApi;
     private final LikeApi likeApi;
     private final StringRedisTemplate redisTemplate;
@@ -102,6 +99,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private final AiArticleDraftApi draftApi;
     private final BrowseHistoryApi browseHistoryApi;
     private final IColumnArticleService columnArticleService;
+    private final ArticleMapper articleMapper;
     // ========== 新增：缓存相关组件 ==========
     private final MultiLevelCacheUtil cacheUtil;
 
@@ -154,7 +152,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
         // 先查本地缓存
         List<BannerVO> cached = bannerCache.getIfPresent(cacheKey);
-        if (cached != null) {
+        if (cached != null&& !cached.isEmpty()) {
             log.debug("Banner缓存命中");
             return cached;
         }
@@ -285,6 +283,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     /**
      * 获取热门文章
+     * 查询由定时任务 refreshHotArticles 预计算的 is_hot 标记
      * 缓存策略：Caffeine 本地缓存，5分钟
      */
     @Override
@@ -299,26 +298,28 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             return cached;
         }
 
-        // 查询数据库
+        // 查询 is_hot=true 的文章，按综合热度分降序
         LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Article::getStatus, 1)
+        wrapper.eq(Article::getIsHot, true)
+                .eq(Article::getStatus, 1)
                 .eq(Article::getIsDeleted, false)
-                .eq(Article::getReview, APPROVED);
+                .eq(Article::getReview, APPROVED)
+                .orderByDesc(Article::getViews, Article::getLikes, Article::getComments, Article::getCollections);
         List<Article> articles = page(new Page<>(1, limit), wrapper).getRecords();
 
         List<HotArticleVO> result = articles.stream().map(article -> {
-                    Object browseCount = redisTemplate.opsForHash().get(BROWSE_COUNT_KEY, article.getId().toString());
-                    Long view = article.getViews();
-                    if (browseCount != null) {
-                        view += Long.parseLong(browseCount.toString());
-                    }
                     HotArticleVO vo = new HotArticleVO();
                     vo.setId(article.getId());
                     vo.setTitle(article.getTitle());
+                    // 实时浏览量 = DB基础值 + Redis未刷新增量
+                    Long view = article.getViews() != null ? article.getViews() : 0L;
+                    Object browseCount = redisTemplate.opsForHash().get(BROWSE_COUNT_KEY, article.getId().toString());
+                    if (browseCount != null) {
+                        view += Long.parseLong(browseCount.toString());
+                    }
                     vo.setViews(view);
                     return vo;
-                }).sorted(Comparator.comparingLong(HotArticleVO::getViews).reversed())
-                .collect(Collectors.toList());
+                }).collect(Collectors.toList());
 
         // 写入本地缓存
         hotArticleCache.put(cacheKey, result);
@@ -326,25 +327,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
         return result;
     }
-
-    @Override
-    public List<HotTagVO> getHotTags(Integer size) {
-        int limit = (size == null || size <= 0) ? DEFAULT_TAG_SIZE : Math.min(size, MAX_TAG_SIZE);
-
-        LambdaQueryWrapper<Tag> wrapper = new LambdaQueryWrapper<>();
-        wrapper.orderByDesc(Tag::getUseCount);
-
-        List<Tag> tags = tagService.page(new Page<>(1, limit), wrapper).getRecords();
-
-        return tags.stream().map(tag -> {
-            HotTagVO vo = new HotTagVO();
-            vo.setId(tag.getId());
-            vo.setName(tag.getName());
-            vo.setUseCount(tag.getUseCount());
-            return vo;
-        }).collect(Collectors.toList());
-    }
-
     /**
      * 获取文章详情
      * 缓存策略：多级缓存（本地缓存 + Redis），10分钟
@@ -1244,6 +1226,21 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     public String getArticleTitle(Long articleId) {
         Article article = getById(articleId);
         return article != null ? article.getTitle() : null;
+    }
+
+    /**
+     * 刷新热门文章标记
+     * 1. 清除所有 is_hot 标记
+     * 2. 根据综合热度分重新标记 Top N
+     * 3. 清除本地缓存
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void refreshHotArticles() {
+        articleMapper.clearAllHotFlags();
+        articleMapper.refreshHotFlags(5);
+        hotArticleCache.invalidateAll();
+        log.info("热门文章标记已刷新, Top {}", MAX_HOT_SIZE * 5);
     }
 
     // ==================== MQ 消息发送 ====================

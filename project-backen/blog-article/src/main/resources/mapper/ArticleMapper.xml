@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.personblog.article.mapper.ArticleMapper">
+
+    <!-- 批量清除热门标记 -->
+    <update id="clearAllHotFlags">
+        UPDATE tb_article SET is_hot = false WHERE is_hot = true
+    </update>
+
+    <!-- 综合热度分排序，标记 Top N
+         PostgreSQL 必须用 OFFSET 0 强制物化子查询，否则优化器可能忽略 LIMIT 导致全表更新 -->
+    <update id="refreshHotFlags">
+        UPDATE tb_article SET is_hot = true
+        WHERE id IN (
+            SELECT id FROM (
+                SELECT id FROM tb_article
+                WHERE status = 1 AND is_deleted = false AND review = 'approved'
+                ORDER BY (COALESCE(views, 0) + COALESCE(likes, 0) * 10 + COALESCE(comments, 0) * 5 + COALESCE(collections, 0) * 8) DESC
+                LIMIT #{limit}
+            ) t
+        )
+    </update>
+
+</mapper>
