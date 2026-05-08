@@ -17,9 +17,6 @@ public class PythonChatRequest {
 
     private String message;
 
-    @JsonProperty("deep_thinking")
-    private Boolean deepThinking;
-
     /**
      * 当前用户ID（由 Java 后端从 UserContextHolder 获取并传递）
      * Python 端可根据此 ID 提供个性化服务。

@@ -18,6 +18,4 @@ public class PythonStreamEvent {
 
     @JsonProperty("conversation_id")
     private String conversationId;
-
-    private String reasoning;
 }

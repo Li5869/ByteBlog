@@ -652,10 +652,9 @@ export const aiApi = {
    * 发送消息到 Agent（SSE 流式响应，调用 Python Agent）
    * @param {string} conversationId - 会话ID
    * @param {string} content - 消息内容
-   * @param {boolean} isDeepThinking - 是否开启深度思考
    * @returns {ReadableStream} SSE 流
    */
-  sendAgentMessageStream: (conversationId, content, isDeepThinking = false) => {
+  sendAgentMessageStream: (conversationId, content) => {
     const token = getToken()
     const url = `${BASE_URL}/ai/chat/agent/stream`
 
@@ -670,7 +669,7 @@ export const aiApi = {
           'Accept': 'text/event-stream',
           ...(token ? { 'token': token } : {})
         },
-        body: JSON.stringify({ conversationId, content, isDeepThinking }),
+        body: JSON.stringify({ conversationId, content }),
         signal
       }).then(response => {
         if (!response.ok) {

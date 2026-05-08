@@ -47,30 +47,37 @@ public class PythonAiChatService {
     private final IAiConversationService aiConversationService;
     private final StringRedisTemplate redisTemplate;
     private final RabbitTemplate rabbitTemplate;
+
     @Transactional(rollbackFor = Exception.class)
-    public Flux<ChatEventVO> streamChat(Long conversationId, String message, Boolean isDeepThinking) {
+    public Flux<ChatEventVO> streamChat(Long conversationId, String message) {
         // 从当前请求上下文中获取用户ID（可能为 null，表示未登录）
         Long currentUserId = UserContextHolder.getUserId();
         String userIdStr = currentUserId != null ? currentUserId.toString() : null;
         log.debug("当前对话用户ID: {}", currentUserId);
+
         PythonChatRequest request = PythonChatRequest.builder()
                 .conversationId(conversationId.toString())
                 .message(message)
-                .deepThinking(isDeepThinking != null && isDeepThinking)
                 .userId(userIdStr)
                 .build();
-        String key = REDIS_MEMORY_PREFIX+conversationId;
-        if(!redisTemplate.hasKey(key)){
+
+        String key = REDIS_MEMORY_PREFIX + conversationId;
+        if (!redisTemplate.hasKey(key)) {
             AiConversationSendDTO messageDto = AiConversationSendDTO.builder()
                     .conversationId(conversationId)
                     .userPrompt(message)
                     .build();
-            rabbitTemplate.convertAndSend(AI_EXCHANGE,AI_TITLE_KEY,messageDto);
+            rabbitTemplate.convertAndSend(AI_EXCHANGE, AI_TITLE_KEY, messageDto);
         }
-        executor.execute(()-> saveHumanMessage(message,conversationId));
-        log.info("调用 Python AI 服务，会话ID: {}, 深度思考: {}", conversationId, isDeepThinking);
+
+        executor.execute(() -> saveHumanMessage(message, conversationId));
+
+        log.info("调用 Python AI 服务，会话ID: {}", conversationId);
+
+        // 分别收集最终回答和思考过程
         StringBuilder answer = new StringBuilder();
         StringBuilder thinking = new StringBuilder();
+
         return pythonAiWebClient.post()
                 .uri("/api/v1/chat/stream")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -80,37 +87,29 @@ public class PythonAiChatService {
                 .filter(event -> event.data() != null)
                 .map(this::parseEvent)
                 .filter(Objects::nonNull)
-                .filter(event -> {
-                    if (event.getEventType() == ChatEventTypeEnum.REASONING.getValue()) {
-                        return isDeepThinking != null && isDeepThinking;
-                    }
-                    return true;
-                })
-                // 收集内容
+                // 按事件类型分流收集
                 .doOnNext(event -> {
                     String eventData = (String) event.getEventData();
                     if (eventData == null) {
                         return;
                     }
-
                     int eventType = event.getEventType();
-                    if (eventType == DATA.getValue()||eventType == PARAM.getValue()) {
-                        // 收集回答内容
-                       answer.append(eventData);
-                    } else if (eventType == ChatEventTypeEnum.REASONING.getValue()) {
-                        // 收集深度思考内容
+                    if (eventType == DATA.getValue()) {
+                        // chunk 文本 → 最终回答
+                        answer.append(eventData);
+                    } else if (eventType == PARAM.getValue()) {
+                        // thinking 分析 + tool_call 描述 → 思考过程
                         thinking.append(eventData);
                     }
                 })
-                // 流完成后异步保存消息
+                // 流完成后异步保存消息（回答 + 思考过程）
                 .doOnComplete(() -> {
                     String answers = answer.toString();
-                    String reasoning = thinking.toString();
-                    if (StringUtils.hasText(answer)) {
-                        // 异步保存
+                    String reasonings = thinking.toString();
+                    if (StringUtils.hasText(answers) || StringUtils.hasText(reasonings)) {
                         CompletableFuture.runAsync(() -> {
                             try {
-                                saveMessageAndUpdateCount(conversationId,answers, reasoning);
+                                saveMessageAndUpdateCount(conversationId, answers, reasonings);
                             } catch (Exception e) {
                                 log.error("保存消息失败，会话ID: {}", conversationId, e);
                             }
@@ -118,7 +117,7 @@ public class PythonAiChatService {
                     }
                 })
                 .doOnNext(event -> {
-                    if (event.getEventType() == ChatEventTypeEnum.STOP.getValue()&& event.getEventData() != null) {
+                    if (event.getEventType() == ChatEventTypeEnum.STOP.getValue() && event.getEventData() != null) {
                         log.info("Python AI 流式响应完成，会话ID: {}", conversationId);
                     }
                 })
@@ -128,12 +127,13 @@ public class PythonAiChatService {
                         .eventData("服务异常: " + e.getMessage())
                         .build()));
     }
-    private void saveMessageAndUpdateCount(Long conversationId, String answers, String reasoning) {
+
+    private void saveMessageAndUpdateCount(Long conversationId, String answers, String reasonings) {
         AiMessage aiMessage = new AiMessage();
         aiMessage.setConversationId(conversationId);
         aiMessage.setRole(ASSISTANT);
         aiMessage.setContent(answers);
-        aiMessage.setThinking(reasoning);
+        aiMessage.setThinking(reasonings);
         aiConversationService.lambdaUpdate()
                 .set(AiConversation::getLastMessage, answers)
                 .setSql("message_count = message_count + " + 1)
@@ -172,16 +172,14 @@ public class PythonAiChatService {
 
             String type = (String) dataMap.get("type");
             String content = (String) dataMap.get("content");
-            String conversationId = dataMap.get("conversation_id") != null 
-                    ? dataMap.get("conversation_id").toString() 
+            String conversationId = dataMap.get("conversation_id") != null
+                    ? dataMap.get("conversation_id").toString()
                     : null;
-            String reasoning = (String) dataMap.get("reasoning");
 
             PythonStreamEvent streamEvent = new PythonStreamEvent();
             streamEvent.setType(type);
             streamEvent.setContent(content);
             streamEvent.setConversationId(conversationId);
-            streamEvent.setReasoning(reasoning);
 
             return convertEvent(streamEvent);
         } catch (Exception e) {
@@ -196,14 +194,17 @@ public class PythonAiChatService {
         }
 
         return switch (event.getType()) {
-            case "reasoning" -> ChatEventVO.builder()
-                    .eventType(ChatEventTypeEnum.REASONING.getValue())
+            // thinking → 模型思考分析内容（前端展示在"思考过程"面板），映射为 PARAM 事件
+            case "thinking" -> ChatEventVO.builder()
+                    .eventType(PARAM.getValue())
                     .eventData(event.getContent())
                     .build();
+            // chunk → 回答文本片段（打字机效果），映射为 DATA 事件
             case "chunk" -> ChatEventVO.builder()
                     .eventType(DATA.getValue())
                     .eventData(event.getContent())
                     .build();
+            // tool_call → ReAct 循环中的工具调用（前端展示在"思考过程"面板），映射为 PARAM 事件
             case "tool_call" -> ChatEventVO.builder()
                     .eventType(PARAM.getValue())
                     .eventData(event.getContent())

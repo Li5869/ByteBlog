@@ -65,6 +65,6 @@ public class ChatController {
     @PostMapping(value = "/agent/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ChatEventVO> agentChatStream(@Valid @RequestBody ChatMessageDTO dto) {
         businessMetrics.recordAiCall();
-        return pythonAiChatService.streamChat(dto.getConversationId(), dto.getContent(), dto.getIsDeepThinking());
+        return pythonAiChatService.streamChat(dto.getConversationId(), dto.getContent());
     }
 }

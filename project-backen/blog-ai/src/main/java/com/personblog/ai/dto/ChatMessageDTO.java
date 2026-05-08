@@ -16,9 +16,6 @@ public class ChatMessageDTO {
     @JsonSerialize(using = ToStringSerializer.class)
     private Long conversationId;
 
-    @Schema(description = "是否开启深度思考")
-    private Boolean isDeepThinking;
-
     @NotBlank(message = "消息内容不能为空")
     @Schema(description = "消息内容")
     private String content;

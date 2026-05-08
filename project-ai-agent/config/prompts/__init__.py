@@ -37,19 +37,17 @@ class PromptManager:
 
     @staticmethod
     def get_smart_agent_system_prompt(
-        deep_thinking: bool = False,
         progressive_disclosure: bool = False,
     ) -> str:
         """
         获取 SmartAgent 分析阶段（think 节点）的系统提示词
         
         Args:
-            deep_thinking: 是否启用深度思考模式
             progressive_disclosure: 是否启用渐进式披露（减少 token 消耗）
         
         定义位置：prompts/smart_agent_prompts.py
         """
-        return _get_smart_agent_system_prompt(deep_thinking, progressive_disclosure=progressive_disclosure)
+        return _get_smart_agent_system_prompt(progressive_disclosure=progressive_disclosure)
 
     # ==================== WritingAgent ====================
 

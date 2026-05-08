@@ -26,7 +26,6 @@ class ChatRequest(BaseModel):
     """对话请求"""
     conversation_id: Optional[str] = Field(None, description="会话ID，首次对话为空")
     message: str = Field(..., description="用户消息", min_length=1, max_length=4000)
-    deep_thinking: bool = Field(False, description="是否开启深度思考模式")
     user_id: Optional[str] = Field(None, description="当前登录用户ID（由Java端传入）")
 
 class ChatResponse(BaseModel):

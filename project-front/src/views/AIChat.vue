@@ -2,7 +2,7 @@
 import {nextTick, onMounted, ref} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {marked} from 'marked'
-import {NButton, NEmpty, NSpin, NTooltip} from 'naive-ui'
+import {NButton, NEmpty, NSpin} from 'naive-ui'
 import {aiApi, isLoggedIn} from '@/utils/request'
 import {toast} from '@/utils/toast'
 import {modal} from '@/utils/modal'
@@ -25,7 +25,6 @@ const isLoading = ref(false)
 const isStreaming = ref(false)
 const conversationsLoading = ref(false)
 const messagesLoading = ref(false)
-const isDeepThinking = ref(false)
 const expandedThinking = ref({})
 const messagesContainer = ref(null)
 const currentReader = ref(null)
@@ -303,8 +302,7 @@ const sendMessage = async () => {
   try {
     const stream = await aiApi.sendAgentMessageStream(
       currentConversation.value.id, 
-      content,
-      isDeepThinking.value
+      content
     )
     
     if (!stream) {
@@ -351,11 +349,9 @@ const sendMessage = async () => {
                 }
               } else if (event.eventType === 2) {
                 break
-              } else if (event.eventType === 3 || event.eventType === 4) {
+              } else if (event.eventType === 3) {
                 if (event.eventData && typeof event.eventData === 'string') {
-                  messages.value[assistantIdx].thinking += event.eventType === 3 
-                    ? `\n${event.eventData}` 
-                    : event.eventData
+                  messages.value[assistantIdx].thinking += event.eventData
                   expandedThinking.value[messages.value[assistantIdx].id] = true
                   await nextTick()
                   scrollToBottom()
@@ -651,22 +647,6 @@ onMounted(async () => {
         <!-- 输入区域 -->
         <div class="input-area">
           <div class="input-wrapper">
-            <!-- 深度思考开关 -->
-            <n-tooltip trigger="hover">
-              <template #trigger>
-                <button
-                  class="deep-thinking-btn"
-                  :class="{ active: isDeepThinking }"
-                  @click="isDeepThinking = !isDeepThinking"
-                >
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
-                </button>
-              </template>
-              {{ isDeepThinking ? '已开启深度思考' : '开启深度思考模式' }}
-            </n-tooltip>
-
             <!-- 输入框 -->
             <textarea
               v-model="inputMessage"
@@ -1369,37 +1349,6 @@ onMounted(async () => {
 .input-wrapper:focus-within {
   border-color: #8b5cf6;
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-}
-
-.deep-thinking-btn {
-  width: 40px;
-  height: 40px;
-  background: rgba(139, 92, 246, 0.05);
-  border: 1px solid transparent;
-  border-radius: 12px;
-  color: #9ca3af;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.deep-thinking-btn:hover {
-  background: rgba(139, 92, 246, 0.1);
-  color: #8b5cf6;
-}
-
-.deep-thinking-btn.active {
-  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
-  color: white;
-  border-color: transparent;
-}
-
-.deep-thinking-btn svg {
-  width: 20px;
-  height: 20px;
 }
 
 .input-wrapper textarea {

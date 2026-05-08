@@ -24,7 +24,7 @@ router = APIRouter()
 @router.get("/history/{conversation_id}")
 async def get_history(conversation_id: str, limit: int = 20):
     """
-    获取对话历史（包含思考内容）
+    获取对话历史（包含思考过程和工具调用记录）
 
     Args:
         conversation_id: 会话 ID
@@ -70,12 +70,22 @@ async def list_tools():
 @router.post("/stream")
 async def stream_message(request: ChatRequest):
     """
-    流式对话接口
+    流式对话接口（纯 ReAct 范式，思考/回答分阶段）
+
+    ReAct 循环的思考/回答分界：
+      - 模型分析规划阶段 → thinking 事件（前端展示在"思考过程"面板）
+      - 模型拿到工具结果后 → chunk 事件（前端展示在回答区域，打字机效果）
+
+    SSE 事件类型：
+    - thinking: 思考分析内容 → 前端追加到 thinking 面板
+    - tool_call: 工具调用记录 → 前端追加到 thinking 面板
+    - chunk: 最终回答文本片段 → 前端追加到回答区域
+    - done: 对话完成信号
 
     返回格式（SSE）：
-    - data: {"type": "reasoning", "content": "思考过程片段"}
+    - data: {"type": "thinking", "content": "思考文本片段"}
     - data: {"type": "tool_call", "content": "调用工具名称", "tool_name": "xxx"}
-    - data: {"type": "chunk", "content": "文本片段"}
+    - data: {"type": "chunk", "content": "回答文本片段"}
     - data: {"type": "done", "conversation_id": "xxx"}
     """
     conversation_id = request.conversation_id or str(uuid.uuid4())
@@ -93,8 +103,8 @@ async def stream_message(request: ChatRequest):
     await memory_service.add_message(conversation_id, "user", request.message)
 
     async def generate():
-        full_response = ""
-        full_reasoning = ""
+        full_response = ""    # 最终回答
+        full_thinking = ""    # 思考过程
         tool_calls_list: List[ToolCall] = []
         saved = False
 
@@ -104,46 +114,47 @@ async def stream_message(request: ChatRequest):
             if saved:
                 return
             saved = True
-            if full_response:
+            if full_response or full_thinking:
                 await memory_service.add_message(
                     conversation_id, "assistant",
                     content=full_response,
-                    # 没开启深度思考时，不保存思考内容到 Redis，防止刷新后展示
-                    thinking=full_reasoning if request.deep_thinking else None,
+                    thinking=full_thinking or None,
                     tool_calls=tool_calls_list or None,
                 )
                 logger.info(f"[中断保存] 已保存部分响应 (conversation: {conversation_id})")
 
         try:
             async for event in agent.astream_chat_with_result(
-                enhanced_message, deep_thinking=request.deep_thinking, user_id=request.user_id
+                enhanced_message, user_id=request.user_id
             ):
-                if event.event_type == "reasoning":
-                    if event.reasoning_content:
-                        full_reasoning = event.reasoning_content
-                    yield f"data: {json.dumps({'type': 'reasoning', 'content': event.content}, ensure_ascii=False)}\n\n"
+                if event.event_type == "thinking":
+                    # 思考分析内容 → 前端展示在思考过程面板
+                    thinking_chunk = event.content
+                    full_thinking += thinking_chunk
+                    yield f"data: {json.dumps({'type': 'thinking', 'content': thinking_chunk}, ensure_ascii=False)}\n\n"
 
                 elif event.event_type == "token":
+                    # 最终回答文本片段 → 前端打字机效果展示
                     chunk = event.content
                     full_response += chunk
                     yield f"data: {json.dumps({'type': 'chunk', 'content': chunk}, ensure_ascii=False)}\n\n"
 
                 elif event.event_type == "tool_call":
+                    # 工具调用记录 → 前端追加到思考面板
                     tool_calls_list.append(ToolCall(
                         id=len(tool_calls_list),
                         name=event.tool_name,
                         args=event.tool_args,
                     ))
+                    full_thinking += event.content
                     yield f"data: {json.dumps({'type': 'tool_call', 'content': event.content.strip(), 'tool_name': event.tool_name}, ensure_ascii=False)}\n\n"
 
                 elif event.event_type == "done":
                     final_content = event.content or full_response
-                    final_reasoning = event.reasoning_content or full_reasoning
                     await memory_service.add_message(
                         conversation_id, "assistant",
                         content=final_content,
-                        # 没开启深度思考时，不保存思考内容到 Redis，防止刷新后展示
-                        thinking=final_reasoning if request.deep_thinking else None,
+                        thinking=full_thinking or None,
                         tool_calls=tool_calls_list or None,
                     )
                     saved = True
