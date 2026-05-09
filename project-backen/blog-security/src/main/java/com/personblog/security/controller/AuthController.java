@@ -101,19 +101,24 @@ public class AuthController {
             // 4. 认证成功，获取用户信息
             LoginUser loginUser = (LoginUser) authentication.getPrincipal();
 
-            // 5. 生成 Access Token 和 Refresh Token（双 Token）
+            // 5. 踢人机制：检查用户是否已在其他地方登录，如果已登录则踢掉旧登录
+            userDetailsService.kickOutUser(loginUser.getUserId());
+
+            // 6. 生成 Access Token 和 Refresh Token（双 Token）
             String token = jwtUtil.generateToken(loginUser.getUserId());
             String refreshToken = jwtUtil.generateRefreshToken(loginUser.getUserId());
             
-            // 6. 将登录用户信息存入 Redis（Access Token 30分钟过期）
+            // 7. 将登录用户信息存入 Redis（Access Token 30分钟过期）
             userDetailsService.setLoginUser(token, loginUser);
             // 将 Refresh Token 存入 Redis（7天过期，支持服务端主动失效）
             userDetailsService.setRefreshToken(loginUser.getUserId(), refreshToken);
+            // 设置用户当前登录的 Token（用于踢人机制）
+            userDetailsService.setCurrentToken(loginUser.getUserId(), token);
             
-            // 7. 从数据库查询完整用户信息用于返回
+            // 8. 从数据库查询完整用户信息用于返回
             User user = userMapper.selectById(loginUser.getUserId());
             
-            // 8. 构建返回的用户信息（包含 Access Token 和 Refresh Token）
+            // 9. 构建返回的用户信息（包含 Access Token 和 Refresh Token）
             UserInfoVO userInfoVO = new UserInfoVO();
             userInfoVO.setId(user.getId());
             userInfoVO.setUsername(user.getUsername());
@@ -123,7 +128,7 @@ public class AuthController {
             userInfoVO.setToken(token);
             userInfoVO.setRefreshToken(refreshToken);
             
-            // 9. 更新最后登录时间
+            // 10. 更新最后登录时间
             User updateUser = new User();
             updateUser.setId(loginUser.getUserId());
             updateUser.setLastLoginTime(LocalDateTime.now());
@@ -294,6 +299,8 @@ public class AuthController {
         // 7. 将新 Token 存入 Redis
         userDetailsService.setLoginUser(newAccessToken, loginUser);
         userDetailsService.setRefreshToken(userId, newRefreshToken);
+        // 更新用户当前登录的 Token（用于踢人机制）
+        userDetailsService.setCurrentToken(userId, newAccessToken);
 
         // 8. 返回新 Token
         RefreshTokenVO vo = new RefreshTokenVO();

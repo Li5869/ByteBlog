@@ -135,14 +135,21 @@ public class UserDetailsServiceImpl implements UserDetailsService {
      * 刷新 Token 过期时间
      * 在用户请求时调用，实现"活跃用户不过期"的效果
      * 只要用户在 30 分钟内有请求，Token 就不会过期
+     * 同时刷新用户当前登录 Token 映射的过期时间，确保踢人机制同步
      * 
      * @param token JWT Token
      */
     public void refreshToken(String token) {
-        // 构建 Redis Key
+        // 1. 刷新 Access Token 的过期时间
         String key = RedisKeys.USER_TOKEN + token;
-        // 重置过期时间为 30 分钟
         redisUtil.expire(key, 30, TimeUnit.MINUTES);
+        
+        // 2. 获取用户信息，刷新用户当前登录 Token 映射的过期时间
+        LoginUser loginUser = getLoginUserByToken(token);
+        if (loginUser != null) {
+            String loginKey = RedisKeys.getUserLoginTokenKey(loginUser.getUserId());
+            redisUtil.expire(loginKey, 30, TimeUnit.MINUTES);
+        }
     }
     
     /**
@@ -199,6 +206,71 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     public void removeRefreshToken(Long userId) {
         // 构建 Redis Key：user:refresh_token:{userId}
         String key = RedisKeys.getUserRefreshTokenKey(userId);
+        // 从 Redis 删除
+        redisUtil.delete(key);
+    }
+
+    /**
+     * 获取用户当前登录的 Token
+     * 用于实现踢人机制，检查用户是否已在其他地方登录
+     * 
+     * @param userId 用户ID
+     * @return 当前登录的 Token，不存在则返回 null
+     */
+    public String getCurrentTokenByUserId(Long userId) {
+        // 构建 Redis Key：user:login:{userId}
+        String key = RedisKeys.getUserLoginTokenKey(userId);
+        // 从 Redis 获取
+        Object obj = redisUtil.get(key);
+        return obj != null ? obj.toString() : null;
+    }
+
+    /**
+     * 设置用户当前登录的 Token
+     * 在用户登录成功后调用，建立用户ID与Token的映射关系
+     * 用于实现踢人机制
+     * 
+     * @param userId 用户ID
+     * @param token 当前登录的 Access Token
+     */
+    public void setCurrentToken(Long userId, String token) {
+        // 构建 Redis Key：user:login:{userId}
+        String key = RedisKeys.getUserLoginTokenKey(userId);
+        // 存入 Redis，设置 30 分钟过期（与 Access Token 一致）
+        redisUtil.set(key, token, 30, TimeUnit.MINUTES);
+    }
+
+    /**
+     * 踢出用户（删除旧登录）
+     * 在用户重新登录时调用，删除旧的登录状态
+     * 实现一个账号只能在一个地方登录
+     * 
+     * @param userId 用户ID
+     */
+    public void kickOutUser(Long userId) {
+        // 1. 获取用户当前的 Token
+        String oldToken = getCurrentTokenByUserId(userId);
+        
+        if (oldToken != null) {
+            // 2. 删除旧的 Token 登录状态
+            removeLoginUser(oldToken);
+            log.info("踢出用户旧登录: userId={}, oldToken={}", userId, oldToken);
+        }
+        
+        // 3. 删除用户ID到Token的映射
+        String loginKey = RedisKeys.getUserLoginTokenKey(userId);
+        redisUtil.delete(loginKey);
+    }
+
+    /**
+     * 删除用户当前登录 Token 映射
+     * 在用户登出时调用，清理用户ID到Token的映射关系
+     * 
+     * @param userId 用户ID
+     */
+    public void removeCurrentToken(Long userId) {
+        // 构建 Redis Key：user:login:{userId}
+        String key = RedisKeys.getUserLoginTokenKey(userId);
         // 从 Redis 删除
         redisUtil.delete(key);
     }

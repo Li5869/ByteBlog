@@ -40,6 +40,16 @@ public class RedisKeys {
     public static final String USER_REFRESH_TOKEN = "user:refresh_token:";
 
     /**
+     * 用户当前登录 Token 前缀
+     * 完整 Key 格式：user:login:{userId}
+     * 存储内容：当前用户的 Access Token
+     * 数据类型：String
+     * 过期时间：30 分钟（与 Access Token 一致）
+     * 用途：实现单点登录踢人机制，一个账号只能在一个地方登录
+     */
+    public static final String USER_LOGIN_TOKEN = "user:login:";
+
+    /**
      * 验证码前缀
      * 完整 Key 格式：captcha:{uuid}
      * 存储内容：验证码答案
@@ -350,6 +360,16 @@ public class RedisKeys {
      */
     public static String getUserRefreshTokenKey(Long userId) {
         return USER_REFRESH_TOKEN + userId;
+    }
+
+    /**
+     * 获取用户当前登录 Token 的完整 Key
+     *
+     * @param userId 用户ID
+     * @return 完整的 Redis Key
+     */
+    public static String getUserLoginTokenKey(Long userId) {
+        return USER_LOGIN_TOKEN + userId;
     }
 
     /**
