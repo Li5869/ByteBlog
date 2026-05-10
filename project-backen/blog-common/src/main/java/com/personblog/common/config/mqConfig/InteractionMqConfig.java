@@ -20,6 +20,8 @@ public class InteractionMqConfig {
     public static final String COLLECTION_QUEUE = "collection_queue";
     //浏览历史队列
     public static final String BROWSE_HISTORY_QUEUE = "browse_history_queue";
+    //点赞缓存同步队列
+    public static final String LIKE_SYNC_CACHE_QUEUE = "like_sync_cache_queue";
 
     //互动相关交换机
     public static final String INTERACTION_EXCHANGE ="interaction_exchange";
@@ -40,6 +42,8 @@ public class InteractionMqConfig {
     public static final String COLLECTION_KEY = "collection.key";
     //浏览历史key
     public static final String BROWSE_HISTORY_KEY = "browse.history.key";
+    //点赞缓存同步key
+    public static final String LIKE_SYNC_CACHE_KEY = "like.sync.cache.key";
 
     // ========== 死信队列配置 ==========
     // 死信交换机
@@ -65,6 +69,9 @@ public class InteractionMqConfig {
     // browse_history_queue 死信队列
     public static final String BROWSE_HISTORY_DLQ = "browse_history_dlq";
     public static final String BROWSE_HISTORY_DLK = "browse.history.dlk";
+    // like_sync_cache_queue 死信队列
+    public static final String LIKE_SYNC_CACHE_DLQ = "like_sync_cache_dlq";
+    public static final String LIKE_SYNC_CACHE_DLK = "like.sync.cache.dlk";
 
     @Bean
     public Queue likeQueue(){
@@ -121,6 +128,14 @@ public class InteractionMqConfig {
                 .withArgument("x-dead-letter-routing-key", BROWSE_HISTORY_DLK)
                 .build();
     }
+    //点赞缓存同步队列
+    @Bean
+    public Queue likeSyncCacheQueue(){
+        return QueueBuilder.durable(LIKE_SYNC_CACHE_QUEUE)
+                .withArgument("x-dead-letter-exchange", INTERACTION_DLX)
+                .withArgument("x-dead-letter-routing-key", LIKE_SYNC_CACHE_DLK)
+                .build();
+    }
     //互动相关交换机
     @Bean
     public DirectExchange interactionExchange(){
@@ -160,6 +175,11 @@ public class InteractionMqConfig {
     @Bean
     public Binding browseHistoryBinding(){
         return BindingBuilder.bind(browseHistoryQueue()).to(interactionExchange()).with(BROWSE_HISTORY_KEY);
+    }
+    //点赞缓存同步队列绑定
+    @Bean
+    public Binding likeSyncCacheBinding(){
+        return BindingBuilder.bind(likeSyncCacheQueue()).to(interactionExchange()).with(LIKE_SYNC_CACHE_KEY);
     }
 
     // ========== 死信队列 Bean ==========
@@ -244,5 +264,16 @@ public class InteractionMqConfig {
     @Bean
     public Binding browseHistoryDlqBinding(){
         return BindingBuilder.bind(browseHistoryDlq()).to(interactionDlx()).with(BROWSE_HISTORY_DLK);
+    }
+
+    // like_sync_cache_queue 死信队列
+    @Bean
+    public Queue likeSyncCacheDlq(){
+        return QueueBuilder.durable(LIKE_SYNC_CACHE_DLQ).build();
+    }
+
+    @Bean
+    public Binding likeSyncCacheDlqBinding(){
+        return BindingBuilder.bind(likeSyncCacheDlq()).to(interactionDlx()).with(LIKE_SYNC_CACHE_DLK);
     }
 }

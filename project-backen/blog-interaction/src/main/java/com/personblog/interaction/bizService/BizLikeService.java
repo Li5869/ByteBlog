@@ -11,6 +11,7 @@ import com.personblog.common.exception.BizException;
 import com.personblog.common.utils.UserContextHolder;
 import com.personblog.interaction.dto.LikedDTO;
 import com.personblog.interaction.dto.MqMessage.LikeSaveDBMessageDTO;
+import com.personblog.interaction.dto.MqMessage.SyncLikeCacheMessageDTO;
 import com.personblog.interaction.mapper.ArticleLikeMapper;
 import com.personblog.interaction.service.AnswerLikeService;
 import com.personblog.interaction.service.ArticleLikeService;
@@ -24,6 +25,7 @@ import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
+import org.redisson.api.RedissonClient;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.connection.DefaultStringRedisConnection;
 import org.springframework.data.redis.connection.StringRedisConnection;
@@ -57,10 +59,11 @@ public class BizLikeService implements LikeApi {
     private final AnswerLikeService answerLikeService;
     private final ArticleLikeMapper articleLikeMapper;
     private final NotificationApi notificationApi;
+    private final RedissonClient redissonClient;
     private final UseApi useApi;
     @Resource(name = "ArticleCountExecutor")
     private Executor executor;
-    private final Map<String, LikeStrategy> likeStrategyMap = new HashMap<>();
+    private static final Map<String, LikeStrategy> likeStrategyMap = new HashMap<>();
 
     @PostConstruct
     public void init() {
@@ -71,7 +74,20 @@ public class BizLikeService implements LikeApi {
     }
     public boolean isLiked(Long targetId, Long userId,String targetType) {
         String key = LIKE_BIZ_KEY_PREFIX(targetType,targetId);
-        return redisTemplate.opsForSet().isMember(key, userId.toString());
+        Boolean result=redisTemplate.opsForSet().isMember(key, userId.toString());
+        if(result==null||!redisTemplate.hasKey(key)){
+            LikeStrategy likeStrategy = likeStrategyMap.get(targetType);
+            result = likeStrategy.getIsLike(userId,targetId);
+            if(result){
+                // 使用 MQ 异步同步缓存
+                SyncLikeCacheMessageDTO messageDTO = SyncLikeCacheMessageDTO.builder()
+                        .targetType(targetType)
+                        .build();
+                rabbitTemplate.convertAndSend(INTERACTION_EXCHANGE, LIKE_SYNC_CACHE_KEY, messageDTO);
+                log.info("消息已发送");
+            }
+        }
+        return Boolean.TRUE.equals(result);
     }
 
     //获取单个点赞数
@@ -120,6 +136,7 @@ public class BizLikeService implements LikeApi {
                 } else {
                     // 理论上不会走到这里，但保留防御性代码
                     // 可以根据需要记录日志
+                    log.info("获取点赞个数失败");
                 }
             }
         }

@@ -422,16 +422,15 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         List<Object> results = redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
             StringRedisConnection src = new DefaultStringRedisConnection(connection);
             src.sIsMember(collectionKey, userIdStr);
-            src.sIsMember(likeKey, userIdStr);
             src.hGet(BROWSE_COUNT_KEY, articleId.toString());
             src.sCard(likeKey);
             return null;
         });
 
         boolean isCollected = (boolean) results.get(0);
-        boolean isLiked = (boolean) results.get(1);
-        Object browseCount = results.get(2);
-        long likeCount = (long) results.get(3);
+        boolean isLiked = likeApi.isLiked(articleId,userId,ARTICLE);
+        Object browseCount = results.get(1);
+        long likeCount = (long) results.get(2);
 
         return new InteractionQueryResult(isCollected, isLiked, browseCount, likeCount);
     }

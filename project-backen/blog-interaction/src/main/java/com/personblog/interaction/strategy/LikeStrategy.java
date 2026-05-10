@@ -21,4 +21,16 @@ public interface LikeStrategy {
      * @param targetId 目标ID
      */
     void removeLike(Long userId, Long targetId);
+
+    /**
+     * 判断某个业务是否点赞
+     * @param userId 用户id
+     * @param targetId 业务id
+     */
+    Boolean getIsLike(Long userId,Long targetId);
+
+    /**
+     * 全量同步点赞相关到缓存
+     */
+    void AllSync2Cache();
 }
