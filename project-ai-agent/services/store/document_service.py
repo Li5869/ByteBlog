@@ -3,12 +3,9 @@
 文件：project-ai-agent/services/store/document_service.py
 """
 
-from langchain_text_splitters import (
-    RecursiveCharacterTextSplitter,
-    MarkdownHeaderTextSplitter
-)
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-from typing import List, Optional
+from typing import List
 from loguru import logger
 import uuid
 
@@ -35,107 +32,10 @@ class DocumentService:
             is_separator_regex=False
         )
 
-        self.markdown_splitter = MarkdownHeaderTextSplitter(
-            headers_to_split_on=[
-                ("#", "header1"),
-                ("##", "header2"),
-                ("###", "header3"),
-            ]
-        )
-
     async def initialize(self):
         """异步初始化向量存储"""
         from vectorstore.pgvector_store import get_vector_store
         self.vector_store = await get_vector_store()
-
-    def split_text(
-        self,
-        text: str,
-        metadata: Optional[dict] = None
-    ) -> List[Document]:
-        """
-        切片纯文本
-
-        Args:
-            text: 待切片的文本
-            metadata: 元数据（会附加到每个切片）
-
-        Returns:
-            Document 列表
-        """
-        chunks = self.text_splitter.split_text(text)
-
-        documents = []
-        for i, chunk in enumerate(chunks):
-            doc = Document(
-                page_content=chunk,
-                metadata={
-                    **(metadata or {}),
-                    "chunk_index": i,
-                    "chunk_count": len(chunks)
-                }
-            )
-            documents.append(doc)
-
-        logger.info(f"文本切片完成：共 {len(documents)} 个切片")
-        return documents
-
-    def split_markdown(
-        self,
-        markdown_text: str,
-        metadata: Optional[dict] = None
-    ) -> List[Document]:
-        """
-        切片 Markdown 文档
-
-        先按标题分割，再对每个部分进行细粒度切片。
-
-        Args:
-            markdown_text: Markdown 文本
-            metadata: 元数据
-
-        Returns:
-            Document 列表
-        """
-        md_chunks = self.markdown_splitter.split_text(markdown_text)
-
-        documents = []
-        for md_doc in md_chunks:
-            sub_chunks = self.text_splitter.split_text(md_doc.page_content)
-
-            for i, chunk in enumerate(sub_chunks):
-                doc = Document(
-                    page_content=chunk,
-                    metadata={
-                        **(metadata or {}),
-                        **md_doc.metadata,
-                        "chunk_index": i
-                    }
-                )
-                documents.append(doc)
-
-        logger.info(f"Markdown 切片完成：共 {len(documents)} 个切片")
-        return documents
-
-    async def add_documents_to_vectorstore(
-        self,
-        documents: List[Document],
-        ids: Optional[List[str]] = None
-    ) -> List[str]:
-        """
-        异步：将文档添加到向量库
-
-        Args:
-            documents: Document 列表
-            ids: 文档 ID 列表（可选）
-
-        Returns:
-            添加的文档 ID 列表
-        """
-        logger.info(f"调用向量库入库方法，文档数: {len(documents)}, ID数: {len(ids) if ids else 0}")
-        result = await self.vector_store.aadd_documents(documents, ids=ids)
-        logger.info(f"向量库入库返回结果: {result}")
-        return result
 
     async def parent_child_add_documents(
         self,
@@ -183,54 +83,8 @@ class DocumentService:
             f"{len(all_children)} 个 Child"
         )
 
-    async def process_and_store_text(
-            self,
-            text: str,
-            metadata: Optional[dict] = None,
-            doc_id_prefix: str = "doc"
-    ) -> List[str]:
-        """
-        异步：处理并存储文本（切片 + 向量化）
 
-        Args:
-            text: 原始文本
-            metadata: 元数据
-            doc_id_prefix: 文档 ID 前缀
-
-        Returns:
-            添加的文档 ID 列表
-        """
-        documents = self.split_text(text, metadata)
-
-        ids = [str(uuid.uuid4()) for _ in range(len(documents))]
-
-        return await self.add_documents_to_vectorstore(documents, ids=ids)
-
-    async def process_and_store_markdown(
-            self,
-            markdown_text: str,
-            metadata: Optional[dict] = None,
-            doc_id_prefix: str = "md"
-    ) -> List[str]:
-        """
-        异步：处理并存储 Markdown 文档
-
-        Args:
-            markdown_text: Markdown 文本
-            metadata: 元数据
-            doc_id_prefix: 文档 ID 前缀
-
-        Returns:
-            添加的文档 ID 列表
-        """
-        documents = self.split_markdown(markdown_text, metadata)
-
-        ids = [str(uuid.uuid4()) for _ in range(len(documents))]
-
-        return await self.add_documents_to_vectorstore(documents, ids=ids)
-
-
-_document_service: Optional[DocumentService] = None
+_document_service: "DocumentService | None" = None
 
 
 async def get_document_service() -> DocumentService:

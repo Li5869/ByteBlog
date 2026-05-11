@@ -5,7 +5,6 @@ Pydantic 数据模型
 
 from pydantic import BaseModel, Field
 from typing import Optional, List, Any, Generic, TypeVar
-from datetime import datetime
 
 
 T = TypeVar("T")
@@ -33,29 +32,6 @@ class ChatResponse(BaseModel):
     conversation_id: str = Field(..., description="会话ID")
     answer: str = Field(..., description="AI 回答")
     tools_used: Optional[List[str]] = Field(None, description="使用的工具列表")
-
-
-# ==================== RAG 相关 ====================
-
-class RAGQueryRequest(BaseModel):
-    """RAG 查询请求"""
-    question: str = Field(..., description="用户问题", min_length=1)
-    top_k: int = Field(5, ge=1, le=20, description="返回文档数量")
-    session_id: Optional[str] = Field(None, description="会话ID，用于多轮对话")
-
-
-class Source(BaseModel):
-    """知识来源"""
-    article_id: int = Field(..., description="文章ID")
-    title: str = Field(..., description="文章标题")
-    relevance_score: float = Field(..., description="相关度分数")
-
-
-class RAGQueryResponse(BaseModel):
-    """RAG 查询响应"""
-    answer: str = Field(..., description="AI 回答")
-    sources: List[Source] = Field(default_factory=list, description="知识来源")
-    confidence: float = Field(..., ge=0, le=1, description="置信度")
 
 
 # ==================== Agent 相关 ====================

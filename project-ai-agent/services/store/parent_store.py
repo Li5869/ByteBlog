@@ -1,35 +1,37 @@
 """
 Parent Chunk 持久化存储
-文件：project-ai-agent/services/store/parent_store.py
 
-继承 LangChain BaseStore 接口，使 ParentDocumentRetriever
-能够将 Parent Documents 持久化到 PostgreSQL。
+将 Parent Documents 持久化到 PostgreSQL knowledge_parent_chunks 表。
+当前仅实现批量读取（amget）和批量写入（amset），供 RAG Parent-Child 策略使用。
 """
 
 import json
-from typing import (
-    AsyncIterator, Iterator, List, Optional, Sequence, Tuple
-)
-from loguru import logger
+from typing import List, Optional, Sequence, Tuple
 
 import asyncpg
 
-from langchain_core.stores import BaseStore
 from langchain_core.documents import Document
 
 from config.settings import get_settings
 
 
-class PostgresParentStore(BaseStore[str, Document]):
+class PostgresParentStore:
     """
     基于 PostgreSQL 的 Parent Document 存储
 
-    实现 BaseStore 接口，供 ParentDocumentRetriever.docstore 使用。
-    读写 knowledge_parent_chunks 表。
+    读写 knowledge_parent_chunks 表，供 vector_tool 和 document_service 使用。
     """
 
     def __init__(self):
         self._pool: Optional[asyncpg.Pool] = None
+
+    @staticmethod
+    def _parse_metadata(raw_metadata) -> dict:
+        if isinstance(raw_metadata, dict):
+            return raw_metadata
+        if isinstance(raw_metadata, str):
+            return json.loads(raw_metadata)
+        return {}
 
     async def initialize(self):
         """初始化数据库连接池并自动建表"""
@@ -45,31 +47,19 @@ class PostgresParentStore(BaseStore[str, Document]):
             max_size=10,
             command_timeout=10
         )
-    async def aget(self, key: str) -> Optional[Document]:
-        async with self._pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT content, metadata FROM knowledge_parent_chunks WHERE id = $1",
-                key
-            )
-            if row is None:
-                return None
-            return Document(
-                page_content=row["content"],
-                metadata=row["metadata"]
-            )
 
-    async def aset(self, key: str, value: Document) -> None:
         async with self._pool.acquire() as conn:
-            await conn.execute(
-                """INSERT INTO knowledge_parent_chunks (id, content, metadata)
-                   VALUES ($1, $2, $3::jsonb)
-                   ON CONFLICT (id) DO UPDATE SET content = $2, metadata = $3::jsonb""",
-                key,
-                value.page_content,
-                json.dumps(value.metadata, ensure_ascii=False)
-            )
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS knowledge_parent_chunks (
+                    id      uuid PRIMARY KEY,
+                    content text NOT NULL,
+                    metadata jsonb DEFAULT '{}'::jsonb,
+                    created_at timestamp(6) DEFAULT now()
+                )
+            """)
 
     async def amget(self, keys: Sequence[str]) -> List[Optional[Document]]:
+        """批量获取 Parent Documents"""
         if not keys:
             return []
         async with self._pool.acquire() as conn:
@@ -77,16 +67,17 @@ class PostgresParentStore(BaseStore[str, Document]):
                 "SELECT id, content, metadata FROM knowledge_parent_chunks WHERE id = ANY($1)",
                 list(keys)
             )
-            row_map = {row["id"]: row for row in rows}
+            row_map = {str(row["id"]): row for row in rows}
             return [
                 Document(
                     page_content=row_map[k]["content"],
-                    metadata=row_map[k]["metadata"]
+                    metadata=self._parse_metadata(row_map[k]["metadata"])
                 ) if k in row_map else None
                 for k in keys
             ]
 
     async def amset(self, key_value_pairs: Sequence[Tuple[str, Document]]) -> None:
+        """批量写入 Parent Documents"""
         if not key_value_pairs:
             return
         async with self._pool.acquire() as conn:
@@ -100,32 +91,6 @@ class PostgresParentStore(BaseStore[str, Document]):
                         doc.page_content,
                         json.dumps(doc.metadata, ensure_ascii=False)
                     )
-
-    async def adelete(self, keys: Sequence[str]) -> None:
-        if not keys:
-            return
-        async with self._pool.acquire() as conn:
-            await conn.execute(
-                "DELETE FROM knowledge_parent_chunks WHERE id = ANY($1)",
-                list(keys)
-            )
-
-    async def ayield_keys(self, **kwargs) -> AsyncIterator[str]:
-        async with self._pool.acquire() as conn:
-            async for row in conn.cursor("SELECT id FROM knowledge_parent_chunks"):
-                yield row["id"]
-
-    def mget(self, keys: Sequence[str]) -> List[Optional[Document]]:
-        raise NotImplementedError("请使用异步方法 amget")
-
-    def mset(self, key_value_pairs: Sequence[Tuple[str, Document]]) -> None:
-        raise NotImplementedError("请使用异步方法 amset")
-
-    def mdelete(self, keys: Sequence[str]) -> None:
-        raise NotImplementedError("请使用异步方法 adelete")
-
-    def yield_keys(self, **kwargs) -> Iterator[str]:
-        raise NotImplementedError("请使用异步方法 ayield_keys")
 
 
 _parent_store: Optional[PostgresParentStore] = None

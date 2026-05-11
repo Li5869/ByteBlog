@@ -182,27 +182,6 @@ class SkillLoader:
             return skills[skill_name]["content"]
         return None
 
-    def get_all_skill_contents(self) -> str:
-        """
-        获取所有 Skills 的完整内容（合并）
-        
-        当需要将所有 Skills 注入到系统提示词时使用。
-        注意：内容较长，可能占用较多 token。
-        
-        Returns:
-            所有 Skills 合并后的 Markdown 内容
-        """
-        skills = self.load()
-        
-        if not skills:
-            return ""
-
-        parts = []
-        for name, skill in skills.items():
-            parts.append(f"---\n# Skill: {name}\n\n{skill['content']}\n")
-
-        return "\n".join(parts)
-
     def list_skills(self) -> list[str]:
         """
         列出所有 Skill 名称
@@ -212,45 +191,6 @@ class SkillLoader:
         """
         skills = self.load()
         return list(skills.keys())
-
-    def debug_print(self) -> None:
-        """
-        打印所有 Skills 的详细信息（用于调试）
-        
-        在控制台输出每个 Skill 的完整信息，方便调试和验证。
-        """
-        skills = self.load()
-        
-        print("\n" + "=" * 60)
-        print("📋 Skills 加载状态")
-        print("=" * 60)
-        print(f"目录: {self.skills_dir.absolute()}")
-        print(f"已加载: {len(skills)} 个 Skills")
-        print("-" * 60)
-        
-        if not skills:
-            print("⚠️  无 Skills 被加载")
-        else:
-            for i, (name, skill) in enumerate(skills.items(), 1):
-                print(f"\n{i}. **{name}**")
-                print(f"   路径: {skill['path']}")
-                print(f"   描述: {skill['description'][:80]}...")
-                print(f"   内容长度: {len(skill['content'])} 字符")
-        
-        print("\n" + "=" * 60 + "\n")
-
-    def reload(self) -> dict:
-        """
-        重新加载所有 Skills
-        
-        用于热更新场景，当 Skills 文件被修改后调用。
-        
-        Returns:
-            重新加载后的 Skills dict
-        """
-        self._loaded = False
-        self._skills = {}
-        return self.load()
 
 
 # ==================== 单例 ====================
@@ -272,13 +212,3 @@ def get_skill_loader(skills_dir: str | Path = "skills") -> SkillLoader:
     if _skill_loader is None:
         _skill_loader = SkillLoader(skills_dir)
     return _skill_loader
-
-
-def reload_skills() -> dict:
-    """
-    重新加载所有 Skills（便捷函数）
-    
-    Returns:
-        重新加载后的 Skills dict
-    """
-    return get_skill_loader().reload()
