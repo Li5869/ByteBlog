@@ -90,3 +90,4 @@ logs/
 *.key
 *.p12
 *.jks
+.env

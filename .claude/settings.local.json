@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(.venv/Scripts/python -m pip show nacos-sdk-python)",
+      "Bash(.venv/Scripts/pip show *)",
+      "Bash(uv lock *)",
+      "Bash(uv sync *)",
+      "Bash(curl *)",
+      "Bash(.venv/Scripts/python -c ' *)",
+      "Bash(.venv/Scripts/pip list *)",
+      "Bash(findstr /i nacos)",
+      "Bash(.venv/Scripts/python -c \"import importlib.metadata; print\\([\\(d.metadata['Name'], d.version\\) for d in importlib.metadata.distributions\\(\\) if 'nacos' in d.metadata['Name'].lower\\(\\)]\\)\")"
     ]
   }
 }

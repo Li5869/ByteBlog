@@ -10,8 +10,20 @@ spring:
       enabled: true
   application:
     name: person-blog
+  cloud:
+    nacos:
+      discovery:
+        enabled: true
+        server-addr: ${NACOS_SERVER:}
+        namespace: ${NACOS_NAMESPACE:}
+        group: ${NACOS_GROUP:}
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
+        heart-beat-interval: ${NACOS_HEART_BEAT_INTERVAL:5}
+        heart-beat-timeout: ${NACOS_HEART_BEAT_TIMEOUT:15}
+        ip-delete-timeout: ${NACOS_IP_DELETE_TIMEOUT:30}
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   jackson:
     time-zone: Asia/Shanghai
     date-format: yyyy-MM-dd HH:mm:ss
@@ -20,9 +32,9 @@ spring:
       max-file-size: 10MB
       max-request-size: 20MB
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   servlet:
-    context-path: /api
+    context-path: ${SERVER_CONTEXT_PATH:/api}
 
 springdoc:
   api-docs:
@@ -40,8 +52,8 @@ mybatis-plus:
       logic-not-delete-value: "false"
 jwt:
   secret: ${JWT_SECRET:}
-  expiration: 1800000
-  refresh-token-expiration: 604800000
+  expiration: ${JWT_EXPIRATION:1800000}
+  refresh-token-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 aliyun:
   oss:
     # 引用系统变量中的 AccessKeyId，若不存在则用空字符串（避免启动报错）
@@ -49,9 +61,9 @@ aliyun:
     # 引用系统变量中的 AccessKeySecret
     access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
     # OSS 地域节点（如杭州：oss-cn-hangzhou.aliyuncs.com）
-    endpoint: ${ALIYUN_OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
+    endpoint: ${ALIYUN_OSS_ENDPOINT:}
     # OSS 桶名称
-    bucket-name: ${ALIYUN_OSS_BUCKET_NAME:person-blog-lsh}
+    bucket-name: ${ALIYUN_OSS_BUCKET_NAME:}
 # ==================== Actuator 监控配置 ====================
 management:
   endpoints:

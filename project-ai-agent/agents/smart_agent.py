@@ -107,7 +107,7 @@ class SmartAgent:
         三种场景：
         - 有 tool_calls → 全部为 thinking，进入 execute_tools
         - 有 [ANSWER] 标记 → 标记前 thinking，标记后 token
-        - 无标记无工具 → 兜底，全部内容作为 final_answer
+        - 无标记无工具 → 全部内容作为 token 流式输出
         """
         llm_with_tools = self.llm.bind_tools(self.tools)
         messages = state["messages"]
@@ -124,11 +124,9 @@ class SmartAgent:
                 continue
 
             if marker_found:
-                # 标记已过，后续全部为回答，逐 chunk 实时输出
                 answer_content += chunk.content
                 await self._emit(StreamEvent(event_type="token", content=chunk.content))
             else:
-                # 用 buffer 累积内容，自然处理跨 chunk 边界的标记
                 buffer += chunk.content
                 idx = buffer.find(ANSWER_MARKER)
                 if idx >= 0:
@@ -141,16 +139,14 @@ class SmartAgent:
                     if answer_content:
                         await self._emit(StreamEvent(event_type="token", content=answer_content))
 
-        # 流结束，标记未找到 → 全部为思考内容
-        if not marker_found:
-            thinking_content = buffer
-            if thinking_content:
-                await self._emit(StreamEvent(event_type="thinking", content=thinking_content))
-
-        # 检查工具调用
         tool_calls = full_response.tool_calls if full_response and hasattr(full_response, "tool_calls") else []
 
         if tool_calls:
+            if not marker_found:
+                thinking_content = buffer
+                if thinking_content:
+                    await self._emit(StreamEvent(event_type="thinking", content=thinking_content))
+            
             for tc in tool_calls:
                 await self._emit(StreamEvent(
                     event_type="tool_call", content=f"\n🔧 调用工具: {tc['name']}",
@@ -161,21 +157,17 @@ class SmartAgent:
             ]
             return {"messages": new_messages, "iteration": state.get("iteration", 0) + 1}
 
-        # 无工具调用 → 准备回答
-        if marker_found:
-            return {
-                "messages": state["messages"],
-                "iteration": state.get("iteration", 0) + 1,
-                "final_answer": answer_content.strip(),
-                "answer_already_streamed": True,
-            }
-        else:
-            return {
-                "messages": state["messages"],
-                "iteration": state.get("iteration", 0) + 1,
-                "final_answer": thinking_content,
-                "answer_already_streamed": False,
-            }
+        if not marker_found:
+            answer_content = buffer
+            if answer_content:
+                await self._emit(StreamEvent(event_type="token", content=answer_content))
+
+        return {
+            "messages": state["messages"],
+            "iteration": state.get("iteration", 0) + 1,
+            "final_answer": answer_content.strip(),
+            "answer_already_streamed": True,
+        }
 
     async def _execute_tools_node(self, state: AgentState) -> dict:
         """工具执行节点：并发执行所有工具调用，返回结果供 think 节点继续推理。"""

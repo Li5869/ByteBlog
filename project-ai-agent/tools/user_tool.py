@@ -8,6 +8,7 @@
 
 import contextvars
 from langchain_core.tools import tool
+from services.business.user_service import get_user_service
 
 # 当前用户ID上下文变量（每个请求独立，线程安全）
 # 在 chat_router 中接收请求时 set，在工具函数中 get
@@ -45,3 +46,27 @@ async def get_current_user_id() -> str:
     if user_id:
         return f"当前用户ID: {user_id}"
     return "当前用户未登录"
+
+
+@tool
+async def get_current_user_info() -> str:
+    """
+    获取当前登录用户的详细信息
+
+    当需要展示当前用户的个人资料（用户名、昵称、邮箱、头像、个人简介等）时使用此工具。
+    返回格式化的用户详细信息，如果用户未登录则返回提示信息。
+
+    Returns:
+        当前登录用户的详细信息字符串，未登录时返回"未登录"
+    """
+    user_id = current_user_id.get()
+    if not user_id:
+        return "当前用户未登录"
+
+    user_service = get_user_service()
+    user_info = await user_service.get_user_info(user_id)
+
+    if not user_info:
+        return f"未找到用户信息 (ID: {user_id})"
+
+    return user_info.to_formatted_string()

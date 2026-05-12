@@ -20,6 +20,7 @@ from loguru import logger
 from config.settings import get_settings
 from api import chat_router, knowledge_router
 from api.writing_router import router as writing_router
+from services.core.nacos_service import get_nacos_service
 
 
 def setup_logging():
@@ -43,8 +44,13 @@ async def lifespan(app: FastAPI):
     logger.info(f"📦 Redis: {settings.redis_url}")
     logger.info(f"🔍 ES: {settings.es_host}")
 
+    nacos_service = get_nacos_service()
+    await nacos_service.register()
+
     yield
 
+    await nacos_service.deregister()
+    await nacos_service.shutdown()
     logger.info("👋 应用关闭")
 
 

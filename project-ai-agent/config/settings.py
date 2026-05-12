@@ -61,6 +61,15 @@ class Settings(BaseSettings):
     backend_api_base: str = "http://localhost:8080/api"
     backend_api_key: str = ""
 
+    # ===== Nacos 服务发现 =====
+    nacos_enabled: bool = False
+    nacos_server_addr: str = "127.0.0.1:8848"
+    nacos_namespace: str = "public"
+    nacos_group: str = "DEFAULT_GROUP"
+    nacos_service_name: str = "python-ai"
+    nacos_username: str = ""
+    nacos_password: str = ""
+
     # Pydantic v2 配置
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(__file__), "..", ".env"),

@@ -4,10 +4,10 @@
 """
 
 import httpx
-from typing import Optional, List
+from typing import List
 from functools import lru_cache
 from loguru import logger
-from config.settings import get_settings
+from services.business.base_client import NacosAwareClient
 
 
 @lru_cache
@@ -16,21 +16,11 @@ def get_blog_service() -> "BlogApiService":
     return BlogApiService()
 
 
-class BlogApiService:
-    """博客 API 服务"""
+class BlogApiService(NacosAwareClient):
+    """博客 API 服务 - 通过 Nacos 发现 Java 后端并调用"""
 
     def __init__(self):
-        settings = get_settings()
-        self.base_url = settings.backend_api_base
-
-        headers = {}
-        if settings.backend_api_key:
-            headers["X-API-Key"] = settings.backend_api_key
-
-        self.client = httpx.AsyncClient(
-            timeout=30.0,
-            headers=headers
-        )
+        super().__init__(service_tag="BlogService", timeout=30.0)
 
     async def get_categories(self) -> List[dict]:
         """
@@ -43,7 +33,7 @@ class BlogApiService:
             分类列表，每个分类包含 id、name 等字段
         """
         try:
-            response = await self.client.get(f"{self.base_url}/category")
+            response = await self.client.get(f"{await self._get_base_url()}/category")
             response.raise_for_status()
             json_data = response.json()
             return json_data.get("data", [])
@@ -68,7 +58,7 @@ class BlogApiService:
             标签列表，每个标签包含 id、name 等字段
         """
         try:
-            response = await self.client.get(f"{self.base_url}/tag")
+            response = await self.client.get(f"{await self._get_base_url()}/tag")
             response.raise_for_status()
             json_data = response.json()
             return json_data.get("data", [])
@@ -96,7 +86,7 @@ class BlogApiService:
         """
         try:
             response = await self.client.get(
-                f"{self.base_url}/article/tags/hot",
+                f"{await self._get_base_url()}/article/tags/hot",
                 params={"limit": limit}
             )
             response.raise_for_status()

@@ -30,7 +30,9 @@ public class ArticlePolishService {
                     .call()
                     .content();
 
-            log.info("文章润色成功，润色后长度: {}", result.length());
+            if (result != null) {
+                log.info("文章润色成功，润色后长度: {}", result.length());
+            }
 
             return ArticlePolishVO.builder()
                     .polishedContent(result)

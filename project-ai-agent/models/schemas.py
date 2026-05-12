@@ -36,6 +36,31 @@ class ChatResponse(BaseModel):
 
 # ==================== Agent 相关 ====================
 
+class UserInfoDTO(BaseModel):
+    """用户信息 DTO（与 Java 后端 UserDTO 对应）"""
+    id: Optional[int] = Field(None, description="用户ID")
+    username: Optional[str] = Field(None, description="用户名")
+    email: Optional[str] = Field(None, description="邮箱")
+    phone: Optional[str] = Field(None, description="手机号")
+    nickname: Optional[str] = Field(None, description="昵称")
+    avatar: Optional[str] = Field(None, description="头像URL")
+    bio: Optional[str] = Field(None, description="个人简介")
+    gender: Optional[int] = Field(None, description="性别: 0-未知, 1-男, 2-女")
+
+    def to_formatted_string(self) -> str:
+        """格式化为人类可读的字符串"""
+        parts = [
+            f"用户ID: {self.id}",
+            f"用户名: {self.username or '未设置'}",
+            f"昵称: {self.nickname or '未设置'}",
+            f"邮箱: {self.email or '未设置'}",
+            f"手机: {self.phone or '未设置'}",
+            f"简介: {self.bio or '未设置'}",
+            f"头像: {self.avatar or '未设置'}",
+        ]
+        return "\n".join(parts)
+
+
 class ArticleSyncRequest(BaseModel):
     """文章同步请求"""
     id: int = Field(..., description="文章ID")

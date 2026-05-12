@@ -9,7 +9,7 @@ import httpx
 from typing import Optional, Dict, Any
 from functools import lru_cache
 from loguru import logger
-from config.settings import get_settings
+from services.business.base_client import NacosAwareClient
 
 
 @lru_cache
@@ -18,20 +18,13 @@ def get_writing_task_service() -> "WritingTaskService":
     return WritingTaskService()
 
 
-class WritingTaskService:
-    """写作任务服务 - 调用 Java 后端 API"""
+class WritingTaskService(NacosAwareClient):
+    """写作任务服务 - 通过 Nacos 发现 Java 后端并调用 API"""
 
     def __init__(self):
-        settings = get_settings()
-        self.base_url = settings.backend_api_base
-
-        headers = {}
-        if settings.backend_api_key:
-            headers["X-API-Key"] = settings.backend_api_key
-
-        self.client = httpx.AsyncClient(
-            timeout=httpx.Timeout(connect=5.0, read=30.0, write=10.0, pool=5.0),
-            headers=headers
+        super().__init__(
+            service_tag="WritingTask",
+            timeout=httpx.Timeout(connect=5.0, read=30.0, write=10.0, pool=5.0)
         )
 
     async def create_task(self, user_id: Optional[int], user_request: str) -> Optional[int]:
@@ -47,7 +40,7 @@ class WritingTaskService:
         """
         try:
             response = await self.client.post(
-                f"{self.base_url}/ai/writing/internal/task",
+                f"{await self._get_base_url()}/ai/writing/internal/task",
                 json={
                     "user_id": user_id,
                     "user_request": user_request
@@ -80,7 +73,7 @@ class WritingTaskService:
                 payload["currentStep"] = current_step
 
             response = await self.client.put(
-                f"{self.base_url}/ai/writing/internal/task/{task_id}/status",
+                f"{await self._get_base_url()}/ai/writing/internal/task/{task_id}/status",
                 json=payload
             )
             response.raise_for_status()
@@ -106,7 +99,7 @@ class WritingTaskService:
         """
         try:
             response = await self.client.put(
-                f"{self.base_url}/ai/writing/internal/task/{task_id}/revision",
+                f"{await self._get_base_url()}/ai/writing/internal/task/{task_id}/revision",
                 params={"revisionCount": revision_count}
             )
             response.raise_for_status()
@@ -133,7 +126,7 @@ class WritingTaskService:
                 params["finalAction"] = final_action
 
             response = await self.client.put(
-                f"{self.base_url}/ai/writing/internal/task/{task_id}/complete",
+                f"{await self._get_base_url()}/ai/writing/internal/task/{task_id}/complete",
                 params=params
             )
             response.raise_for_status()
@@ -159,7 +152,7 @@ class WritingTaskService:
         """
         try:
             response = await self.client.post(
-                f"{self.base_url}/ai/writing/internal/plan",
+                f"{await self._get_base_url()}/ai/writing/internal/plan",
                 json={
                     "task_id": task_id,
                     "plan_data": plan_data,
@@ -189,7 +182,7 @@ class WritingTaskService:
         """
         try:
             response = await self.client.put(
-                f"{self.base_url}/ai/writing/internal/plan/{plan_id}/approval",
+                f"{await self._get_base_url()}/ai/writing/internal/plan/{plan_id}/approval",
                 params={"approvalStatus": approval_status}
             )
             response.raise_for_status()
@@ -211,7 +204,7 @@ class WritingTaskService:
         """
         try:
             response = await self.client.get(
-                f"{self.base_url}/ai/writing/internal/task/{task_id}"
+                f"{await self._get_base_url()}/ai/writing/internal/task/{task_id}"
             )
             response.raise_for_status()
             json_data = response.json()
@@ -232,7 +225,7 @@ class WritingTaskService:
         """
         try:
             response = await self.client.get(
-                f"{self.base_url}/ai/writing/internal/plan/latest/{task_id}"
+                f"{await self._get_base_url()}/ai/writing/internal/plan/latest/{task_id}"
             )
             response.raise_for_status()
             json_data = response.json()
@@ -257,7 +250,7 @@ class WritingTaskService:
         """
         try:
             response = await self.client.post(
-                f"{self.base_url}/ai/writing/internal/draft",
+                f"{await self._get_base_url()}/ai/writing/internal/draft",
                 json={
                     "task_id": task_id,
                     "user_id": user_id,

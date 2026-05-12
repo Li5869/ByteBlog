@@ -5,9 +5,7 @@ spring:
     password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
     hikari:
-      # 连接存活检测间隔（毫秒），配合 Prometheus 监控连接池
       keepalive-time: 30000
-      # 连接最大存活时间（毫秒），防止长时间未释放
       max-lifetime: 1800000
   data:
     redis:
@@ -32,12 +30,10 @@ spring:
     connection-timeout: 5s
     socket-timeout: 60s
 
-# 搜索模块配置
 search:
   enabled: true
   sync-on-startup: false
 
-# XXL-JOB 执行器核心配置
 xxl:
   job:
     admin:
@@ -47,6 +43,6 @@ xxl:
       appname: ${spring.application.name}-executor
       ip: ${XXL_JOB_EXECUTOR_IP:}
       port: ${XXL_JOB_EXECUTOR_PORT:9999}
-      logpath: ./data/applogs/xxl-job/jobhandler
-      logretentiondays: 30
+      logpath: ${XXL_JOB_LOG_PATH:./data/applogs/xxl-job/jobhandler}
+      logretentiondays: ${XXL_JOB_LOG_RETENTION_DAYS:30}
       enabled: true

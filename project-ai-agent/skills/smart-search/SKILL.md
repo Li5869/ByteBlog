@@ -26,7 +26,6 @@ description: "综合搜索工具，自动协调站内文章搜索和外部技术
 | `smart_search_references(keywords, topic="")` | **核心工具**：智能搜索策略，优先站内搜索，结果不足时自动补充外部搜索，最大返回 10 条 | `tools/smart_search_tool.py` |
 | `search_articles_by_keyword(keyword, limit=5)` | 单独使用站内 ES 搜索，适合纯站内场景 | `tools/article_tool.py` |
 | `search_external_tech_blogs(query)` | 单独使用 Tavily 外部搜索，限定国内技术社区域名 | `tools/article_tool.py` |
-| `search_knowledge_base(query, top_k=5)` | 向量知识库搜索，用于补充语义相关的深度内容 | `tools/vector_tool.py` |
 | `get_category_list()` | 获取分类列表，辅助限定搜索范围 | `tools/blog_tool.py` |
 | `get_hot_tag_list(limit=20)` | 获取热门标签，辅助扩展搜索关键词 | `tools/blog_tool.py` |
 
@@ -106,14 +105,6 @@ description: "综合搜索工具，自动协调站内文章搜索和外部技术
    - 按相关性综合排序
    - 自动去重（按标题相似度）
 
-### 向量搜索补充
-
-当常规搜索仍无法满足需求时，可进一步调用 `search_knowledge_base(query, top_k=5)`：
-
-- 基于语义相似度而非关键词匹配
-- 能发现关键词不同但语义相关的内容
-- 适合深度技术调研场景
-
 ## 使用示例
 
 ### 站内结果充足
@@ -149,30 +140,6 @@ AI：正在搜索站内文章...
 🌐 **外部资料**（6 条）：
 3. 📄 《2026 年 AI Agent 框架对比》 - 来源: 掘金
 4. 📄 《AutoGPT 深度解析》 - 来源: CSDN
-...
-```
-
-### 深度技术调研
-
-```
-用户：我想全面了解一下 RAG 技术的实现方案
-AI：好的，我使用综合搜索来全面调研...
-[调用 smart_search_references("RAG 检索增强生成", topic="AI")]
-[站内找到 3 条，外部补充 4 条]
-[进一步调用 search_knowledge_base("RAG implementation", top_k=5)]
-[向量搜索补充 3 条语义相关内容]
-
-📚 **搜索结果汇总**（共 10 条）：
-
-📖 **站内文章**（3 条）：
-1. 📄 《RAG 技术详解》 - 相关性 ⭐ 0.95
-2. 📄 《构建 RAG 系统实践》 - 相关性 ⭐ 0.88
-
-🌐 **外部资料**（4 条）：
-3. 📄 《Advanced RAG 技术》 - 来源: 掘金
-
-🧠 **知识库相关**（3 条）：
-4. 📄 《LangChain RAG 实现》 - 语义相似度 0.82
 ...
 ```
 

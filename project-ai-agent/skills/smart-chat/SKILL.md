@@ -1,13 +1,13 @@
 ---
 name: "smart-chat"
-description: "智能对话助手，支持多轮对话、工具调用和深度思考模式。当用户进行一般性对话、提问、闲聊或需要综合使用博客功能时调用此 Skill。"
+description: "智能对话助手，支持多轮对话和工具调用。当用户进行一般性对话、提问、闲聊或需要综合使用博客功能时调用此 Skill。"
 ---
 
 # 智能对话 Skill
 
 ## 概述
 
-本 Skill 提供**智能对话助手**能力，支持多轮对话、工具调用和深度思考模式。可以理解用户意图并自动选择合适的工具完成任务，是用户与博客平台交互的核心入口。适用于一般性对话、综合查询、问题解答和需要调用多种工具完成复杂任务的场景。
+本 Skill 提供**智能对话助手**能力，支持多轮对话和工具调用。可以理解用户意图并自动选择合适的工具完成任务，是用户与博客平台交互的核心入口。适用于一般性对话、综合查询、问题解答和需要调用多种工具完成复杂任务的场景。
 
 ## 触发条件
 
@@ -16,7 +16,6 @@ description: "智能对话助手，支持多轮对话、工具调用和深度思
 - 一般性对话和闲聊（如"你好"、"帮我个忙"）
 - 综合性问题（如"这个博客平台有哪些功能？"）
 - 无法明确归类到其他 Skill 的请求
-- 需要深度推理和分析的问题（如"比较一下 Spring Boot 和 Spring Cloud 的区别"）
 
 ## 使用到的工具
 
@@ -33,7 +32,6 @@ description: "智能对话助手，支持多轮对话、工具调用和深度思
 | `get_author_by_id(author_id)` | 博主详情 | `tools/author_tool.py` |
 | `get_category_list()` | 分类列表 | `tools/blog_tool.py` |
 | `get_hot_tag_list(limit=20)` | 热门标签 | `tools/blog_tool.py` |
-| `search_knowledge_base(query, top_k=5)` | 知识库检索 | `tools/vector_tool.py` |
 | `search_external_tech_blogs(query)` | 外部搜索 | `tools/article_tool.py` |
 | `get_the_time()` | 获取当前时间 | `tools/common_tool.py` |
 | `get_current_user_id()` | 当前用户 ID | `tools/user_tool.py` |
@@ -69,28 +67,6 @@ description: "智能对话助手，支持多轮对话、工具调用和深度思
 └──────────────────────────────────────────┘
 ```
 
-## 两种工作模式
-
-### 普通模式（默认）
-
-使用 LangChain ChatOpenAI + bind_tools 实现流式输出：
-
-1. LLM 分析用户意图，决定是否调用工具
-2. 如需调用工具，自动选择合适的工具并生成参数
-3. 并行执行所有工具调用（asyncio.gather）
-4. 将工具结果返回给 LLM 生成最终回答
-5. 支持流式输出 token
-
-### 深度思考模式（deep_thinking=True）
-
-适用于需要复杂推理的场景，如代码分析、技术比较、方案设计：
-
-1. 使用原生 OpenAI 客户端，手动控制消息格式
-2. **推理阶段**：输出 `reasoning` 事件，展示 LLM 的思考过程
-3. **工具调用阶段**：输出 `tool_call` 事件，展示工具选择和参数
-4. **生成阶段**：输出 `token` 事件，展示最终回答
-5. 思考过程保存在 Redis 中供前端回看
-
 ## 工具选择策略
 
 根据用户意图自动选择合适的工具组合：
@@ -102,7 +78,6 @@ description: "智能对话助手，支持多轮对话、工具调用和深度思
 | 查看文章详情 | `get_article_by_id` |
 | 搜索博主 | `search_authors_by_keyword` |
 | 获取时间 | `get_the_time` |
-| 知识问答 | `search_knowledge_base` |
 | 综合查询 | `smart_search_references` |
 | 平台功能查询 | `get_category_list` + `get_hot_tag_list` |
 
@@ -123,26 +98,6 @@ AI：你好！让我查一下博客的分类和标签情况...
 你可以根据这些分类浏览感兴趣的内容！
 ```
 
-### 深度思考模式
-
-```
-用户：比较一下 LangGraph 和 LangChain 的区别
-AI：让我思考一下这个问题...
-[推理过程展示]
-[调用 search_articles_by_keyword("LangGraph", limit=3)]
-[调用 search_articles_by_keyword("LangChain", limit=3)]
-[调用 search_knowledge_base("LangGraph vs LangChain", top_k=5)]
-
-根据我的分析，LangGraph 和 LangChain 的主要区别如下：
-
-| 维度 | LangGraph | LangChain |
-|------|-----------|-----------|
-| 定位 | 图编排运行时引擎 | 应用框架与组件库 |
-| 抽象层级 | 底层 | 上层 |
-| 核心模式 | StateGraph 节点边 | 链式调用 |
-...
-```
-
 ## 多轮对话管理
 
 - 使用 Redis 存储对话历史，支持上下文记忆
@@ -153,7 +108,6 @@ AI：让我思考一下这个问题...
 ## 注意事项
 
 - 对于明确的搜索类请求，优先使用对应的专业工具，而非依赖 LLM 自身知识
-- 深度思考模式会展示推理过程，适合复杂分析问题
 - 工具调用结果应整合后再回复用户，避免直接返回原始 JSON
 - 多轮对话中需关注上下文连贯性，避免重复介绍已提供的信息
 - 当用户提问不明确时，主动引导用户给出更具体的信息

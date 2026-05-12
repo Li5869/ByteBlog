@@ -45,6 +45,7 @@ dependencies = [
     "numpy<2.0.0",
     "datetime>=6.0",
     "langchain-community==0.4.1",
+    "nacos-sdk-python>=2.0.0,<3.0.0",
 ]
 
 [build-system]
