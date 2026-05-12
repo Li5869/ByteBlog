@@ -32,17 +32,17 @@ public class PersonBlogApplication {
                 return;
             }
             Files.lines(envPath)
-                .map(String::trim)
-                .filter(line -> !line.startsWith("#") && line.contains("="))
-                .forEach(line -> {
-                    int eqIndex = line.indexOf('=');
-                    String key = line.substring(0, eqIndex).trim();
-                    String value = line.substring(eqIndex + 1).trim();
-                    // 只在环境变量未设置时写入，避免覆盖已存在的环境变量
-                    if (System.getProperty(key) == null && System.getenv(key) == null) {
-                        System.setProperty(key, value);
-                    }
-                });
+                    .map(String::trim)
+                    .filter(line -> !line.startsWith("#") && line.contains("="))
+                    .forEach(line -> {
+                        int eqIndex = line.indexOf('=');
+                        String key = line.substring(0, eqIndex).trim();
+                        String value = line.substring(eqIndex + 1).trim();
+                        // 只在环境变量未设置时写入，避免覆盖已存在的环境变量
+                        if (System.getProperty(key) == null && System.getenv(key) == null) {
+                            System.setProperty(key, value);
+                        }
+                    });
             System.out.println("[INFO] Successfully loaded .env file: " + envPath.toAbsolutePath());
         } catch (IOException e) {
             System.err.println("[WARN] Failed to load .env file: " + e.getMessage());
