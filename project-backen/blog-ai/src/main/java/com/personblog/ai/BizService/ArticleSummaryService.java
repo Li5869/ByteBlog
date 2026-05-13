@@ -3,6 +3,7 @@ package com.personblog.ai.BizService;
 import com.personblog.ai.config.PromptManger;
 import com.personblog.ai.dto.ArticleSummaryDTO;
 import com.personblog.ai.vo.ArticleSummaryVO;
+import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +11,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import static com.personblog.ai.constants.AiPromptConstants.Summary;
 import static com.personblog.ai.constants.LlmPromptType.SUMMARY_TYPE;
 
 @Service
@@ -33,7 +35,9 @@ public class ArticleSummaryService {
                     .call()
                     .content();
 
-            log.info("文章摘要生成成功，摘要长度: {}", summary.length());
+            if (summary != null) {
+                log.info("文章摘要生成成功，摘要长度: {}", summary.length());
+            }
 
             return ArticleSummaryVO.builder()
                     .summary(summary)
@@ -41,21 +45,21 @@ public class ArticleSummaryService {
 
         } catch (Exception e) {
             log.error("文章摘要生成失败", e);
-            throw new BizException("文章摘要生成失败: " + e.getMessage());
+            throw new BizException(BizCodeEnum.AI_SUMMARY_ERROR);
         }
     }
     private String buildPrompt(String content, String title, Integer maxLength) {
         StringBuilder prompt = new StringBuilder();
-        prompt.append("请为以下文章生成一段简洁的摘要，控制在")
-                .append(maxLength != null ? maxLength : 100)
-                .append("字以内。\n\n");
+        prompt.append(Summary.PREFIX)
+                .append(maxLength != null ? maxLength : Summary.DEFAULT_MAX_LENGTH)
+                .append(Summary.SUFFIX);
 
         if (StringUtils.hasText(title)) {
-            prompt.append("文章标题：").append(title).append("\n\n");
+            prompt.append(Summary.TITLE_LABEL).append(title).append("\n\n");
         }
 
-        prompt.append("文章内容：\n").append(content).append("\n\n");
-        prompt.append("请直接输出摘要内容，不需要其他解释。");
+        prompt.append(Summary.CONTENT_LABEL).append(content).append("\n\n");
+        prompt.append(Summary.OUTPUT_INSTRUCTION);
 
         return prompt.toString();
     }
