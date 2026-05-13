@@ -103,6 +103,7 @@ const mdFileInputRef = ref(null)
 const isDragging = ref(false)
 const vditorRef = ref(null)
 const vditorInstance = ref(null)
+let vditorReady = false
 
 const toggleFormat = (prefix, suffix) => {
   if (!vditorInstance.value) return
@@ -265,6 +266,7 @@ const initVditor = () => {
       article.content = value
     },
     after: () => {
+      vditorReady = true
       if (article.content) {
         vditorInstance.value.setValue(article.content)
       }
@@ -452,7 +454,7 @@ const fillEditForm = (data) => {
   article.categoryId = data.categoryId || ''
   article.tags = data.tagIds || []
   customTags.value = []
-  if (vditorInstance.value) {
+  if (vditorReady && vditorInstance.value) {
     vditorInstance.value.setValue(article.content)
   }
 }

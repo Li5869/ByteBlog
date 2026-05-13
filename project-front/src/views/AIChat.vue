@@ -3,12 +3,15 @@ import {nextTick, onMounted, ref} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {marked} from 'marked'
 import {NButton, NEmpty, NSpin} from 'naive-ui'
-import {aiApi, isLoggedIn} from '@/utils/request'
+import {aiApi, isLoggedIn, userApi} from '@/utils/request'
 import {toast} from '@/utils/toast'
 import {modal} from '@/utils/modal'
+import {useUserStore} from '@/stores/user'
+import {AI_USER_ID, DEFAULT_AVATAR} from '@/utils/defaults'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 // Markdown 配置
 marked.setOptions({
@@ -29,6 +32,19 @@ const expandedThinking = ref({})
 const messagesContainer = ref(null)
 const currentReader = ref(null)
 const sidebarCollapsed = ref(false)
+
+/** AI 助手头像 */
+const aiAssistantAvatar = ref('')
+
+/** 获取 AI 助手用户信息 */
+const fetchAiAssistantInfo = async () => {
+  try {
+    const data = await userApi.getAuthorInfo(AI_USER_ID)
+    aiAssistantAvatar.value = data.avatar || ''
+  } catch (error) {
+    console.error('获取AI助手信息失败:', error)
+  }
+}
 
 // 分页配置
 const pagination = ref({
@@ -162,6 +178,11 @@ const fetchConversationDetail = async (conversationId) => {
 
 // 创建新会话
 const createNewConversation = async (initialMessage) => {
+  if (!isLoggedIn()) {
+    toast.warning('请先登录后再使用AI助手')
+    return
+  }
+
   let targetConv = conversations.value.find(c => c.messageCount === 0)
   
   if (!targetConv) {
@@ -431,6 +452,7 @@ const isActiveConversation = (conversation) => {
 
 onMounted(async () => {
   document.title = 'AI智能助手 - 个人博客'
+  fetchAiAssistantInfo()
   if (isLoggedIn()) {
     await fetchConversations()
     const searchQuery = route.query.q
@@ -595,9 +617,7 @@ onMounted(async () => {
             >
               <!-- 助手头像 -->
               <div v-if="message.role === 'assistant'" class="avatar assistant-avatar">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
+                <img :src="aiAssistantAvatar || DEFAULT_AVATAR" alt="AI 助手" class="avatar-img" />
               </div>
 
               <!-- 消息内容 -->
@@ -636,9 +656,7 @@ onMounted(async () => {
 
               <!-- 用户头像 -->
               <div v-if="message.role === 'user'" class="avatar user-avatar">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+                <img :src="userStore.state.userInfo?.avatar || DEFAULT_AVATAR" alt="用户头像" class="avatar-img" />
               </div>
             </div>
           </template>
@@ -1166,6 +1184,13 @@ onMounted(async () => {
 .avatar svg {
   width: 18px;
   height: 18px;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
 }
 
 .assistant-avatar {

@@ -27,8 +27,11 @@ public class ArticleStatsMessage implements Serializable {
     /** 文章ID */
     private Long articleId;
 
-    /** 标签ID集合（用于更新标签使用次数） */
+    /** 新标签ID集合（用于更新标签使用次数） */
     private Set<Long> tagIds;
+
+    /** 旧标签ID集合（更新文章时使用，用于计算标签差集，如 oldTagIds=[1,2] → tagIds=[2,3] 则标签1-1、标签3+1） */
+    private Set<Long> oldTagIds;
 
     /** 分类ID（用于更新分类文章数） */
     private Long categoryId;

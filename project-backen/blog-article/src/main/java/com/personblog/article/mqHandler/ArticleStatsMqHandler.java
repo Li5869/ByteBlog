@@ -16,6 +16,7 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -45,17 +46,17 @@ public class ArticleStatsMqHandler {
     private final ITagService tagService;
     private final ICategoryService categoryService;
     private final UseApi useApi;
-
     @RabbitHandler
     public void handleStatsUpdate(ArticleStatsMessage message, Message amqpMessage, Channel channel,
                                    @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {
         try {
             Long userId = message.getUserId();
             Set<Long> tagIds = message.getTagIds();
+            Set<Long> oldTagIds = message.getOldTagIds();
             Long categoryId = message.getCategoryId();
             Integer delta = message.getDelta();
 
-            log.info("处理文章统计更新: userId={}, tagIds={}, categoryId={}, delta={}", userId, tagIds, categoryId, delta);
+            log.info("处理文章统计更新: userId={}, tagIds={}, oldTagIds={}, categoryId={}, delta={}", userId, tagIds, oldTagIds, categoryId, delta);
 
             // 1. 更新用户文章数
             if (userId != null) {
@@ -63,7 +64,19 @@ public class ArticleStatsMqHandler {
             }
 
             // 2. 更新标签使用次数
-            updateTagUseCount(tagIds, delta);
+            if (oldTagIds != null) {
+                // 更新场景：通过差集计算新增和移除的标签
+                Set<Long> toSub = new HashSet<>(oldTagIds);
+                toSub.removeAll(tagIds);
+                updateTagUseCount(toSub, -1);
+
+                Set<Long> toAdd = new HashSet<>(tagIds);
+                toAdd.removeAll(oldTagIds);
+                updateTagUseCount(toAdd, 1);
+            } else {
+                // 创建/删除场景：所有标签统一 delta
+                updateTagUseCount(tagIds, delta);
+            }
 
             // 3. 更新分类文章数
             if (categoryId != null) {

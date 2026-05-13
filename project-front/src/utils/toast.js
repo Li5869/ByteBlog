@@ -11,6 +11,8 @@ const showToast = (message, type = 'error', duration = 3000) => {
       ? 'bg-red-500 text-white' 
       : type === 'success' 
       ? 'bg-green-500 text-white'
+      : type === 'warning'
+      ? 'bg-yellow-500 text-white'
       : 'bg-blue-500 text-white'
   }`
   toast.textContent = message
@@ -32,6 +34,7 @@ const showToast = (message, type = 'error', duration = 3000) => {
 export const toast = {
   error: (message) => showToast(message, 'error'),
   success: (message) => showToast(message, 'success'),
+  warning: (message) => showToast(message, 'warning'),
   info: (message) => showToast(message, 'info'),
 }
 

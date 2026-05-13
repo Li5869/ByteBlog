@@ -110,9 +110,10 @@ public class SecurityConfig {
                                 "/ws/**",
                                 "/interaction/sse/**",
                                 "/search/**",
-                                "/ai/**",
                                 "/article/columns/hot",
                                 "/article/columns/list",
+                                "/article/articles/{id}",
+                                "/article/articles/{id}/interaction",
                                 "/article/columns/{id}"
                         ).permitAll()
 

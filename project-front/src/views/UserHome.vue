@@ -5,7 +5,7 @@ import {articleApi, columnApi, interactionApi, isLoggedIn, userApi} from '@/util
 import {NPagination} from 'naive-ui'
 import {toast} from '@/utils/toast'
 import OnlineIndicator from '@/components/OnlineIndicator.vue'
-import {AI_AVATAR, AI_USER_ID, DEFAULT_AVATAR} from '@/utils/defaults'
+import {AI_USER_ID, DEFAULT_AVATAR} from '@/utils/defaults'
 
 const route = useRoute()
 const router = useRouter()
@@ -251,7 +251,7 @@ onMounted(() => {
           <div class="flex flex-col md:flex-row items-center md:items-start gap-6">
             <!-- 头像 -->
             <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden ring-4 ring-white/30 shadow-2xl ring-fuchsia-300">
-              <img :src="AI_AVATAR" alt="AI 助手" class="w-full h-full object-cover" />
+              <img :src="userInfo.avatar || DEFAULT_AVATAR" alt="AI 助手" class="w-full h-full object-cover" />
             </div>
 
             <!-- 用户信息 -->

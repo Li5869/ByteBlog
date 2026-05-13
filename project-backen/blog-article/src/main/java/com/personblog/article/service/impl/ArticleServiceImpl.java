@@ -140,8 +140,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
     @Resource(name = "ArticleCountExecutor")
     private Executor articleCountExecutor;
-    @Resource(name = "TagExecutor")
-    private Executor tagExecutor;
     /**
      * 获取Banner轮播图
      * 缓存策略：Caffeine 本地缓存，1小时
@@ -676,6 +674,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         article.setTitle(dto.getTitle().trim());
         article.setSummary(StrUtil.trim(dto.getSummary()));
         article.setContent(StrUtil.trim(dto.getContent()));
+        article.setAuthorId(userId);
         article.setCover(StrUtil.trim(dto.getCover()));
         article.setReview(PENDING);
         article.setCategoryId(dto.getCategoryId());
@@ -683,9 +682,37 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         article.setUpdatedAt(LocalDateTime.now());
         boolean b = updateById(article);
         if(b){
-            //异步处理
-            CompletableFuture.runAsync(()-> solveTag(articleId, tagIds),tagExecutor);
-            CompletableFuture.runAsync(()-> judgeDraftOrPublish(userId, article, oldArticle.getStatus()),articleCountExecutor);
+            // 同步处理标签关联变更（必须在事务内）
+            Set<Long> oldTagIds = articleTagService.lambdaQuery()
+                    .eq(ArticleTag::getArticleId, articleId)
+                    .list()
+                    .stream()
+                    .map(ArticleTag::getTagId)
+                    .collect(Collectors.toSet());
+            articleTagService.lambdaUpdate().eq(ArticleTag::getArticleId, articleId).remove();
+            saveArticleTags(articleId, tagIds);
+
+            // 计算发布状态变更偏移量
+            int delta = 0;
+            if ((article.getStatus() == 1 && oldArticle.getStatus() == 0)) {
+                delta = 1;
+                sendCreateMessage(articleId, article);
+            } else if (article.getStatus() == 0 && oldArticle.getStatus() == 1) {
+                delta = -1;
+            }
+
+            // 异步发送 MQ 消息更新统计（标签使用次数、用户文章数、分类文章数、标签缓存）
+            rabbitTemplate.convertAndSend(ARTICLE_STATS_EXCHANGE, ARTICLE_STATS_KEY,
+                    ArticleStatsMessage.builder()
+                            .articleId(articleId)
+                            .oldTagIds(oldTagIds)
+                            .tagIds(tagIds)
+                            .categoryId(article.getCategoryId())
+                            .userId(userId)
+                            .delta(delta)
+                            .build());
+
+            // 同步搜索引擎
             sendSearchSyncMessage(OPERATION_SYNC, articleId);
             // 清除相关缓存
             removeArticleCache(articleId, "更新文章后清除缓存: articleId={}");
@@ -694,37 +721,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         vo.setId(articleId);
         vo.setStatus(dto.getStatus());
         return vo;
-    }
-    //更新标签
-    private void solveTag(Long articleId, Set<Long> tagIds) {
-        Set<Long> oldTagIds = articleTagService.lambdaQuery()
-                .eq(ArticleTag::getArticleId, articleId)
-                .list()
-                .stream()
-                .map(ArticleTag::getTagId)
-                .collect(Collectors.toSet());
-
-        articleTagService.lambdaUpdate().eq(ArticleTag::getArticleId, articleId).remove();
-        saveArticleTags(articleId, tagIds);
-        adjustTagUseCount(oldTagIds, tagIds);
-        // 标签使用次数变化，清理标签列表缓存
-        tagService.invalidateTagCache();
-    }
-
-    private void judgeDraftOrPublish(Long userId, Article article, Integer oldStatue) {
-        //发布
-        if (article.getStatus()==1&&oldStatue==0){
-            useApi.updateArticlesCount(userId,1);
-            categoryService.updateCategoryCount(article.getCategoryId(),1);
-            categoryService.removeById(article.getCategoryId());
-            sendCreateMessage(article.getId(),article);
-        }
-        //草稿
-        if(article.getStatus()==0&&oldStatue==1){
-            useApi.updateArticlesCount(userId,-1);
-            categoryService.updateCategoryCount(article.getCategoryId(),-1);
-            categoryService.removeById(article.getCategoryId());
-        }
     }
 
     @Override
@@ -1057,34 +1053,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         articleTagService.saveBatch(relationList);
     }
 
-    private void updateTagUseCount(Set<Long> tagIds,int dealt) {
-        if (CollectionUtil.isEmpty(tagIds)) {
-            return;
-        }
-        List<Tag> tags = tagService.listByIds(tagIds);
-        List<Tag> updateList = tags.stream().map(tag -> {
-            Tag updateTag = new Tag();
-            updateTag.setId(tag.getId());
-            long current = tag.getUseCount() == null ? 0L : tag.getUseCount();
-            // 下限保护：使用次数不低于0
-            updateTag.setUseCount(Math.max(0L, current + dealt));
-            return updateTag;
-        }).collect(Collectors.toList());
-        tagService.updateBatchById(updateList);
-    }
-
-    private void adjustTagUseCount(Set<Long> oldTagIds, Set<Long> newTagIds) {
-        // 新增标签使用次数 +1
-        Set<Long> toAdd = new HashSet<>(newTagIds);
-        toAdd.removeAll(oldTagIds);
-        updateTagUseCount(toAdd, 1);
-
-        // 移除标签使用次数 -1
-        Set<Long> toSub = new HashSet<>(oldTagIds);
-        toSub.removeAll(newTagIds);
-        updateTagUseCount(toSub, -1);
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateLikeCount(List<LikeMessageDTO> dtoList) {
@@ -1221,6 +1189,14 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         articleMapper.refreshHotFlags(MAX_HOT_SIZE);
         hotArticleCache.invalidateAll();
         log.info("热门文章标记已刷新, Top {}", MAX_HOT_SIZE);
+    }
+
+    @Override
+    public void updateArticleState(Long articleId, Integer statue) {
+        lambdaUpdate()
+                .eq(Article::getAuthorId, articleId)
+                .set(Article::getStatus, statue)
+                .update();
     }
 
     // ==================== MQ 消息发送 ====================
