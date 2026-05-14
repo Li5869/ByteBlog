@@ -57,22 +57,6 @@ public class CollectionServiceImpl extends ServiceImpl<CollectionMapper, Collect
     @Resource(name = "ArticleCountExecutor")
     private Executor executor;
     @Override
-    public boolean isCollected(Long articleId, Long userId) {
-        String key = COLLECTION_USER_KEY_PREFIX+articleId;
-        if(!redisTemplate.hasKey(key)){
-            boolean exists = lambdaQuery()
-                    .eq(Collection::getArticleId, articleId)
-                    .eq(Collection::getUserId, userId).exists();
-            if(exists){
-                redisTemplate.opsForSet().add(key,userId.toString());
-                return true;
-            }
-            else return false;
-        }
-        return redisTemplate.opsForSet().isMember(key,userId.toString());
-    }
-
-    @Override
     public CollectionVO doCollection(CollectionDTO dto) {
         Boolean isCollection = dto.getIsCollection();
         boolean isSuccess = isCollection?unCollection(dto):didCollection(dto);

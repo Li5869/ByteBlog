@@ -226,7 +226,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateLikes(List<LikeMessageDTO> dtoList) {
+    public void updateLikeCount(List<LikeMessageDTO> dtoList) {
         List<Comment> list = new ArrayList<>(dtoList.size());
         for (LikeMessageDTO likeMessageDTO : dtoList) {
             Comment comment = new Comment();

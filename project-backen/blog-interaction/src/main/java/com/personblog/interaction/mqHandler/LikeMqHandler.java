@@ -2,9 +2,13 @@ package com.personblog.interaction.mqHandler;
 
 import com.personblog.api.articleAPI.ArticleInfoAPI;
 import com.personblog.api.interactionAPI.CommentApi;
+import com.personblog.api.interactionAPI.NotificationApi;
 import com.personblog.api.questionAPI.AnswerApi;
 import com.personblog.api.questionAPI.QuestionApi;
+import com.personblog.api.usrAPI.UseApi;
 import com.personblog.common.dto.Interaction.LikeMessageDTO;
+import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
+import com.personblog.common.dto.User.UserDTO;
 import com.personblog.interaction.bizService.BizLikeService;
 import com.personblog.interaction.dto.MqMessage.LikeSaveDBMessageDTO;
 import com.personblog.interaction.dto.MqMessage.SyncLikeCacheMessageDTO;
@@ -25,10 +29,13 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static com.personblog.common.config.mqConfig.InteractionMqConfig.*;
@@ -48,8 +55,12 @@ public class LikeMqHandler {
     private final QuestionLikeService questionLikeService;
     private final AnswerLikeService answerLikeService;
     private final RedissonClient redissonClient;
+    private final NotificationApi notificationApi;
+    private final UseApi useApi;
 
     private final Map<String, LikeStrategy> likeStrategyMap = new HashMap<>();
+
+    private final Map<String, Consumer<List<LikeMessageDTO>>> likeCountUpdaters = new HashMap<>(4);
 
     // 点赞缓存同步锁前缀
     private static final String LIKE_SYNC_LOCK_PREFIX = "like_sync_cache:";
@@ -60,30 +71,26 @@ public class LikeMqHandler {
         likeStrategyMap.put(COMMENT, commentLikeService);
         likeStrategyMap.put(QUESTION, questionLikeService);
         likeStrategyMap.put(ANSWER, answerLikeService);
+
+        likeCountUpdaters.put(ARTICLE, articleInfoAPI::updateLikeCount);
+        likeCountUpdaters.put(COMMENT, commentApi::updateLikeCount);
+        likeCountUpdaters.put(QUESTION, questionApi::updateLikeCount);
+        likeCountUpdaters.put(ANSWER, answerApi::updateLikeCount);
     }
     @RabbitListener(queues = LIKE_QUEUE, containerFactory = "rabbitListenerContainerFactory")
     public void handlerLikeMessage(List<LikeMessageDTO> dtos, Channel channel,
                                    @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
-            //将dtos按照dto.targetType分组，map<String,List<LikeMessageDTO>>
-            Map<String,List<LikeMessageDTO>> map = dtos.stream()
+            Map<String, List<LikeMessageDTO>> map = dtos.stream()
                     .collect(Collectors.groupingBy(LikeMessageDTO::getTargetType));
-            //更新文章点赞数
-            if(map.get(ARTICLE)!=null){
-                articleInfoAPI.updateLikeCount(map.get(ARTICLE));
-            }
-            //更新评论点赞数
-            if(map.get(COMMENT)!=null){
-                commentApi.updateLikes(map.get(COMMENT));
-            }
-            //更新问题点赞数
-            if(map.get(QUESTION)!=null){
-                questionApi.updateLikeCount(map.get(QUESTION));
-            }
-            //更新回答点赞数
-            if(map.get(ANSWER)!=null){
-                answerApi.updateLikeCount(map.get(ANSWER));
-            }
+
+            likeCountUpdaters.forEach((type, updater) -> {
+                List<LikeMessageDTO> list = map.get(type);
+                if (list != null) {
+                    updater.accept(list);
+                }
+            });
+
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
             log.error("点赞消息处理失败，消息将转入死信队列: {}", e.getMessage(), e);
@@ -98,9 +105,49 @@ public class LikeMqHandler {
             log.info("开始存库点赞记录");
             likeService.save2DB(dto);
             channel.basicAck(deliveryTag, false);
+
+            // 存库成功后，异步发点赞通知
+            if (dto.getIsLike() && !dto.getAuthorId().equals(dto.getUserId())) {
+                sendLikeNotification(dto);
+            }
         } catch (Exception e) {
-            log.error("点赞存库失败: {}", e.getMessage(), e);
+            log.error("点赞存储失败: {}", e.getMessage(), e);
             channel.basicNack(deliveryTag, false, false);
+        }
+    }
+
+    /** 发送点赞通知 */
+    private void sendLikeNotification(LikeSaveDBMessageDTO dto) {
+        try {
+            List<UserDTO> users = useApi.getUserInfo(Collections.singletonList(dto.getUserId()));
+            UserDTO sender = users.isEmpty() ? null : users.getFirst();
+
+            String notifyTitle = dto.getTargetTitle();
+            String notifyContent = dto.getTargetContent();
+            if (COMMENT.equalsIgnoreCase(dto.getTargetType()) || ANSWER.equalsIgnoreCase(dto.getTargetType())) {
+                notifyTitle = dto.getTargetContent();
+                notifyContent = null;
+            }
+
+            NotificationMessageDTO messageDTO = NotificationMessageDTO.builder()
+                    .userId(dto.getAuthorId())
+                    .actionType("like")
+                    .targetType(dto.getTargetType().toLowerCase())
+                    .targetId(dto.getTargetId())
+                    .senderId(dto.getUserId())
+                    .targetTitle(notifyTitle)
+                    .content(notifyContent)
+                    .relatedId(dto.getRelatedId())
+                    .senderNickname(sender != null ? sender.getNickname() : "用户")
+                    .senderAvatar(sender != null ? sender.getAvatar() : "")
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            notificationApi.saveNotification(messageDTO);
+            log.debug("发送点赞通知成功: targetId={}, userId={}", dto.getTargetId(), dto.getUserId());
+        } catch (Exception e) {
+            log.error("发送点赞通知失败, targetId={}, targetType={}, userId={}",
+                    dto.getTargetId(), dto.getTargetType(), dto.getUserId(), e);
         }
     }
 

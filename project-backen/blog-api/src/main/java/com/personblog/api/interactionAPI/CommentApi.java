@@ -5,7 +5,7 @@ import com.personblog.common.dto.Interaction.LikeMessageDTO;
 import java.util.List;
 
 public interface CommentApi {
-    void updateLikes(List<LikeMessageDTO> dtoList);
+    void updateLikeCount(List<LikeMessageDTO> dtoList);
     
     Long getCommentAuthorId(Long commentId);
 

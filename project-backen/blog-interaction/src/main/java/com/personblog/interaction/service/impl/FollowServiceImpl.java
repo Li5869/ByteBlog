@@ -34,14 +34,6 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
     private final MultiLevelCacheUtil cacheUtil;
     private final StringRedisTemplate redisTemplate;
     @Override
-    public boolean isFollowed(Long followerId, Long followingId) {
-        return lambdaQuery()
-                .eq(Follow::getFollowerId, followerId)
-                .eq(Follow::getFollowingId, followingId)
-                .exists();
-    }
-
-    @Override
     public List<Long> getFollowingIds(Long userId) {
         List<Follow> list = lambdaQuery()
                 .eq(Follow::getFollowerId, userId)

@@ -1198,19 +1198,6 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
         return vo;
     }
-
-    @Override
-    public Long getQuestionAuthorId(Long questionId) {
-        Question question = getById(questionId);
-        return question != null ? question.getAuthorId() : null;
-    }
-
-    @Override
-    public String getQuestionTitle(Long questionId) {
-        Question question = getById(questionId);
-        return question != null ? question.getTitle() : null;
-    }
-
     // ==================== 管理端接口实现 ====================
 
     @Override
