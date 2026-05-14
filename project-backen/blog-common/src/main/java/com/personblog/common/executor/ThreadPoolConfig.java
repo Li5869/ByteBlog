@@ -6,7 +6,6 @@ import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 /**
@@ -14,9 +13,9 @@ import java.util.concurrent.ThreadPoolExecutor;
  * <p>
  * 按业务场景划分线程池，参数根据任务特征差异化配置：
  * <ul>
- *   <li>轻量任务（标签/分类/关注）：低并发，小队列</li>
  *   <li>普通任务（文章计数/评论/问答/消息）：中等并发</li>
  *   <li>IO密集任务（AI调用）：较高并发，大队列</li>
+ *   <li>特殊任务（死信队列重试）：低并发，小队列</li>
  * </ul>
  *
  * @author LSH
@@ -49,32 +48,6 @@ public class ThreadPoolConfig {
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.initialize();
         return executor;
-    }
-
-    // ==================== 轻量任务线程池（标签/分类/关注） ====================
-
-    /**
-     * 标签操作线程池（更新标签计数等轻量任务）
-     */
-    @Bean(name = "TagExecutor")
-    public Executor tagExecutor() {
-        return createExecutor("tag-", 2, 4, 128);
-    }
-
-    /**
-     * 分类操作线程池（更新分类计数等轻量任务）
-     */
-    @Bean(name = "CategoryExecutor")
-    public Executor categoryExecutor() {
-        return createExecutor("category-", 2, 4, 128);
-    }
-
-    /**
-     * 关注操作线程池（关注/取关后的异步计数更新）
-     */
-    @Bean(name = "FollowExecutor")
-    public Executor followExecutor() {
-        return createExecutor("follow-", 2, 4, 128);
     }
 
     // ==================== 普通任务线程池（文章/评论/问答/消息） ====================
@@ -124,14 +97,6 @@ public class ThreadPoolConfig {
     }
 
     // ==================== 特殊线程池 ====================
-
-    /**
-     * 虚拟线程池（JDK 21，适合高并发短任务）
-     */
-    @Bean(name = "VirtualThreadExecutor")
-    public Executor virtualThreadExecutor() {
-        return Executors.newVirtualThreadPerTaskExecutor();
-    }
 
     /**
      * 死信队列重试线程池（RabbitMQ DLQ 重试，低并发后台任务）
