@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollectionUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.personblog.api.interactionAPI.FollowApi;
+import com.personblog.common.api.FollowerApi;
 import com.personblog.common.exception.BizException;
 import com.personblog.common.utils.MultiLevelCacheUtil;
 import com.personblog.common.utils.UserContextHolder;
@@ -29,7 +30,7 @@ import static com.personblog.common.enums.BizCodeEnum.FOLLOW_ERROR;
 
 @Service
 @RequiredArgsConstructor
-public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> implements FollowService, FollowApi {
+public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> implements FollowService, FollowApi, FollowerApi {
     private final RabbitTemplate rabbitTemplate;
     private final MultiLevelCacheUtil cacheUtil;
     private final StringRedisTemplate redisTemplate;
@@ -43,6 +44,19 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
         }
         return list.stream()
                 .map(Follow::getFollowingId)
+                .toList();
+    }
+
+    @Override
+    public List<Long> getFollowerIds(Long userId) {
+        List<Follow> list = lambdaQuery()
+                .eq(Follow::getFollowingId, userId)
+                .list();
+        if (CollectionUtil.isEmpty(list)) {
+            return List.of();
+        }
+        return list.stream()
+                .map(Follow::getFollowerId)
                 .toList();
     }
 
@@ -87,9 +101,10 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
         }
         
         String key = USER_FOLLOW + userId;
-        
+        // 从缓存中获取当前用户的全部关注列表
         Set<String> cachedMembers = redisTemplate.opsForSet().members(key);
         if (CollectionUtil.isNotEmpty(cachedMembers)) {
+            // 缓存命中：从中筛选出入参中已关注的用户 ID
             Set<String> followingIdStrSet = followingIds.stream()
                     .map(String::valueOf)
                     .collect(Collectors.toSet());
@@ -98,25 +113,25 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
                     .map(Long::valueOf)
                     .toList();
         }
-        
+        // 缓存未命中：查库获取当前用户的所有关注记录
         List<Follow> allFollows = lambdaQuery()
                 .eq(Follow::getFollowerId, userId)
                 .list();
-        
+
         if (CollectionUtil.isEmpty(allFollows)) {
             return List.of();
         }
-        
+        // 将关注者 ID 写入缓存，设置 30 分钟过期
         List<String> allFollowingIds = allFollows.stream()
                 .map(s -> s.getFollowingId().toString())
                 .toList();
         redisTemplate.opsForSet().add(key, allFollowingIds.toArray(new String[0]));
         redisTemplate.expire(key, 30, TimeUnit.MINUTES);
-        
+        // 从全量关注列表中筛选入参中已关注的 ID 并返回
         Set<Long> allFollowingIdSet = allFollows.stream()
                 .map(Follow::getFollowingId)
                 .collect(Collectors.toSet());
-        
+
         return followingIds.stream()
                 .filter(allFollowingIdSet::contains)
                 .toList();

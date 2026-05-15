@@ -1,4 +1,4 @@
-package com.personblog.common.websocket;
+package com.personblog.common.api;
 
 /**
  * Token 验证接口

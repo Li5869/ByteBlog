@@ -361,8 +361,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         
         // Pipeline 批量查询实时互动状态（isCollected、isLiked、浏览量增量、点赞数）
         InteractionQueryResult interaction = queryArticleInteractions(id, userId);
-        
-        // 从数据库获取文章的评论数和收藏数（单表主键查询，性能极高）
+
         Article article = getById(id);
         if (article == null) {
             throw new BizException(NOT_ARTICLE);
@@ -377,7 +376,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         // 浏览量 = 数据库基础值 + Redis 实时增量
         long baseViews = article.getViews() != null ? article.getViews() : 0L;
         if (interaction.browseCount() != null) {
-            vo.setViews(baseViews + Long.parseLong(interaction.browseCount().toString()));
+            vo.setViews(baseViews + interaction.browseCount);
         } else {
             vo.setViews(baseViews);
         }
@@ -394,42 +393,46 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private record InteractionQueryResult(
             boolean isCollected,
             boolean isLiked,
-            Object browseCount,
+            Long browseCount,
             long likeCount
     ) {}
 
     /**
      * 使用 Redis Pipeline 批量查询文章互动数据
-     * 将 4 次 Redis 网络请求合并为 1 次，消除串行 IO 开销
+     * 已登录：查询收藏状态 + 浏览量增量 + 点赞数（3 条命令合并）
+     * 未登录：仅查询浏览量增量 + 点赞数（2 条命令合并），跳过用户相关状态
      *
-     * Pipeline 命令顺序：
-     * 1. SISMEMBER collections:set:articleId:{id} {userId}  - 是否已收藏
-     * 2. SISMEMBER likes:set:article:{id} {userId}          - 是否已点赞
-     * 3. HGET browse:count {id}                             - 浏览量增量
-     * 4. SCARD likes:set:article:{id}                       - 实时点赞数
+     * Pipeline 命令顺序（已登录）：
+     *   0. SISMEMBER collections:set:articleId:{id} {userId}  - 是否已收藏
+     *   1. HGET browse:count {id}                             - 浏览量增量
+     *   2. SCARD likes:set:article:{id}                       - 实时点赞数
+     *
+     * Pipeline 命令顺序（未登录）：
+     *   0. HGET browse:count {id}                             - 浏览量增量
+     *   1. SCARD likes:set:article:{id}                       - 实时点赞数
      */
     private InteractionQueryResult queryArticleInteractions(Long articleId, Long userId) {
-        // 未登录用户直接返回默认值，无需查 Redis
-        if (userId == -1) {
-            return new InteractionQueryResult(false, false, null, 0L);
-        }
-
         String collectionKey = COLLECTION_USER_KEY_PREFIX + articleId;
         String likeKey = LIKE_BIZ_KEY_PREFIX(ARTICLE, articleId);
-        String userIdStr = String.valueOf(userId);
+        boolean loggedIn = userId != -1;
 
         List<Object> results = redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
             StringRedisConnection src = new DefaultStringRedisConnection(connection);
-            src.sIsMember(collectionKey, userIdStr);
+            if (loggedIn) {
+                src.sIsMember(collectionKey, String.valueOf(userId));
+            }
             src.hGet(BROWSE_COUNT_KEY, articleId.toString());
             src.sCard(likeKey);
             return null;
         });
 
-        boolean isCollected = (boolean) results.get(0);
-        boolean isLiked = likeApi.isLiked(articleId,userId,ARTICLE);
-        Object browseCount = results.get(1);
-        long likeCount = (long) results.get(2);
+        // Pipeline 返回原生类型：SISMEMBER→Boolean, HGET→String, SCARD→Long
+        int offset = loggedIn ? 1 : 0;
+        boolean isCollected = loggedIn ? (Boolean) results.get(0) : false;
+        boolean isLiked = loggedIn ? likeApi.isLiked(articleId, userId, ARTICLE) : false;
+        String browseCountStr = (String) results.get(offset);
+        Long browseCount = browseCountStr != null ? Long.parseLong(browseCountStr) : null;
+        long likeCount = (Long) results.get(offset + 1);
 
         return new InteractionQueryResult(isCollected, isLiked, browseCount, likeCount);
     }

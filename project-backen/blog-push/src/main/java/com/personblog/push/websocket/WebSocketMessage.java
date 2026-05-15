@@ -1,4 +1,4 @@
-package com.personblog.common.websocket;
+package com.personblog.push.websocket;
 
 import com.personblog.common.utils.MessageUtil;
 import lombok.AllArgsConstructor;
@@ -32,7 +32,6 @@ public class WebSocketMessage {
     public static final String TYPE_WELCOME = "welcome";
     public static final String TYPE_USER_ONLINE = "user_online";
     public static final String TYPE_ONLINE_STATUS = "online_status";
-    public static final String TYPE_PONG = "pong";
     public static final String TYPE_ERROR = "error";
     public static final String TYPE_QUERY_ONLINE = "query_online";
     // 在类中添加新的消息类型常量
@@ -105,17 +104,8 @@ public class WebSocketMessage {
     public static WebSocketMessage onlineStatus(Map<Long, Boolean> status) {
         // 将所有 Long 类型的 key 转为 String，避免JS精度丢失
         Map<String, Boolean> stringKeyStatus = new HashMap<>();
-        status.forEach((key, value) -> {
-            stringKeyStatus.put(String.valueOf(key), value);
-        });
+        status.forEach((key, value) -> stringKeyStatus.put(String.valueOf(key), value));
         return new WebSocketMessage(TYPE_ONLINE_STATUS, stringKeyStatus);
-    }
-
-    /**
-     * 心跳响应
-     */
-    public static WebSocketMessage pong() {
-        return new WebSocketMessage(TYPE_PONG, null);
     }
 
     /**

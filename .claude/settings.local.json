@@ -10,7 +10,12 @@
       "Bash(.venv/Scripts/python -c ' *)",
       "Bash(.venv/Scripts/pip list *)",
       "Bash(findstr /i nacos)",
-      "Bash(.venv/Scripts/python -c \"import importlib.metadata; print\\([\\(d.metadata['Name'], d.version\\) for d in importlib.metadata.distributions\\(\\) if 'nacos' in d.metadata['Name'].lower\\(\\)]\\)\")"
+      "Bash(.venv/Scripts/python -c \"import importlib.metadata; print\\([\\(d.metadata['Name'], d.version\\) for d in importlib.metadata.distributions\\(\\) if 'nacos' in d.metadata['Name'].lower\\(\\)]\\)\")",
+      "Bash(rm -f websocket/WebSocketConfig.java websocket/WebSocketHandler.java websocket/WebSocketInterceptor.java websocket/WebSocketMessage.java websocket/TokenValidationApi.java websocket/FollowerApi.java)",
+      "Bash(rmdir websocket *)",
+      "Bash(rm -f sse/SseEmitterManager.java)",
+      "Bash(rmdir sse *)",
+      "Bash(rm -f service/OnlineStateService.java service/MessagePushService.java)"
     ]
   }
 }

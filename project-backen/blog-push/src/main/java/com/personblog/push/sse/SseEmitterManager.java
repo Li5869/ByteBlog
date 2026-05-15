@@ -1,4 +1,4 @@
-package com.personblog.common.sse;
+package com.personblog.push.sse;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;

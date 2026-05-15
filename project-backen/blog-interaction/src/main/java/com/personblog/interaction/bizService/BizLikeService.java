@@ -120,8 +120,7 @@ public class BizLikeService implements LikeApi {
                 if (obj instanceof Number) {
                     result.put(targetId, ((Number) obj).longValue());
                 } else {
-                    // 理论上不会走到这里，但保留防御性代码
-                    // 可以根据需要记录日志
+                    // 记录日志
                     log.info("获取点赞个数失败");
                 }
             }
