@@ -8,16 +8,11 @@ import {toast} from '@/utils/toast'
 import {modal} from '@/utils/modal'
 import {useUserStore} from '@/stores/user'
 import {AI_USER_ID, DEFAULT_AVATAR} from '@/utils/defaults'
+import {formatRelativeTime} from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
-
-// Markdown 配置
-marked.setOptions({
-  breaks: true,
-  gfm: true
-})
 
 // ==================== 响应式数据 ====================
 const conversations = ref([])
@@ -97,23 +92,6 @@ const addCopyButtons = () => {
       wrapper.appendChild(btn)
     })
   })
-}
-
-// 格式化相对时间
-const formatRelativeTime = (date) => {
-  if (!date) return ''
-  const d = new Date(date)
-  const now = new Date()
-  const diff = now - d
-  const minutes = Math.floor(diff / (1000 * 60))
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
-  if (minutes < 1) return '刚刚'
-  if (minutes < 60) return `${minutes}分钟前`
-  if (hours < 24) return `${hours}小时前`
-  if (days < 7) return `${days}天前`
-  return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
 }
 
 // 格式化完整时间

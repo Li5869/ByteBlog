@@ -5,6 +5,7 @@ import {NInput, NModal, NSwitch} from 'naive-ui'
 import {toast} from '@/utils/toast'
 import {modal} from '@/utils/modal'
 import {columnApi, uploadApi} from '@/utils/request'
+import {formatAbsoluteDate, formatNumber} from '@/utils/format'
 
 const router = useRouter()
 
@@ -173,24 +174,6 @@ const manageArticles = (columnId, event) => {
   router.push({ name: 'ColumnArticleManage', params: { id: columnId } })
 }
 
-const formatNumber = (num) => {
-  if (!num) return '0'
-  if (num >= 10000) {
-    return (num / 10000).toFixed(1) + 'w'
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'k'
-  }
-  return num.toString()
-}
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
 
 const getStatusText = (status) => {
   return status === 1 ? '已发布' : '草稿'
@@ -312,7 +295,7 @@ onMounted(() => {
                 </svg>
                 {{ formatNumber(column.views) }}
               </span>
-              <span>{{ formatDate(column.createdAt) }}</span>
+              <span>{{ formatAbsoluteDate(column.createdAt) }}</span>
             </div>
 
             <div class="flex items-center gap-2">

@@ -2,6 +2,7 @@
 import {computed, onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {columnApi} from '../utils/request.js'
+import {formatAbsoluteDate} from '@/utils/format'
 
 const router = useRouter()
 
@@ -39,17 +40,6 @@ const getStatusClass = (status) => {
 
 const getStatusText = (status) => {
   return status === 1 ? '已发布' : '草稿'
-}
-
-const formatDate = (date) => {
-  if (!date) return '-'
-  return new Date(date).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 const fetchColumns = async () => {
@@ -269,7 +259,7 @@ onMounted(() => {
                   {{ column.views || 0 }}
                 </td>
                 <td class="px-4 py-4 text-sm text-gray-500 dark:text-gray-400 hidden sm:table-cell">
-                  {{ formatDate(column.createdAt) }}
+                  {{ formatAbsoluteDate(column.createdAt) }}
                 </td>
                 <td class="px-4 py-4">
                   <div class="flex items-center gap-1">

@@ -2,6 +2,7 @@
 import {computed, onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {adminArticleApi, adminCategoryApi} from '@/utils/request'
+import {formatAbsoluteDate} from '@/utils/format'
 
 const router = useRouter()
 
@@ -98,14 +99,6 @@ const getReviewStatusText = (status) => {
     rejected: '已拒绝'
   }
   return texts[status] || status
-}
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
 }
 
 const getStatusClass = (status) => {
@@ -323,7 +316,7 @@ const handleFilterChange = () => {
                   </button>
                 </td>
                 <td class="px-4 py-4 text-sm text-gray-500 dark:text-gray-400 hidden xl:table-cell">{{ article.views }}</td>
-                <td class="px-4 py-4 text-sm text-gray-500 dark:text-gray-400 hidden sm:table-cell">{{ formatDate(article.createdAt) }}</td>
+                <td class="px-4 py-4 text-sm text-gray-500 dark:text-gray-400 hidden sm:table-cell">{{ formatAbsoluteDate(article.createdAt) }}</td>
                 <td class="px-4 py-4">
                   <div class="flex items-center gap-1">
                     <button

@@ -3,6 +3,7 @@ import {computed, onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {aiApi} from '@/utils/request'
 import {toast} from '@/utils/toast'
+import {formatRelativeTime} from '@/utils/format'
 
 const router = useRouter()
 
@@ -44,32 +45,6 @@ const getStepText = (step) => {
   return stepMap[step] || step || '-'
 }
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return date.toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-const formatRelativeTime = (dateStr) => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diff = now - date
-  const minutes = Math.floor(diff / (1000 * 60))
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
-  if (minutes < 1) return '刚刚'
-  if (minutes < 60) return `${minutes}分钟前`
-  if (hours < 24) return `${hours}小时前`
-  if (days < 7) return `${days}天前`
-  return formatDate(dateStr)
-}
 
 // 获取任务列表
 const fetchTasks = async () => {

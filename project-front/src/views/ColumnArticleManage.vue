@@ -4,6 +4,7 @@ import {useRoute, useRouter} from 'vue-router'
 import {NCheckbox} from 'naive-ui'
 import {toast} from '@/utils/toast'
 import {columnApi} from '@/utils/request'
+import {formatAbsoluteDate, formatNumber} from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -95,24 +96,6 @@ const goBack = () => {
   router.back()
 }
 
-const formatNumber = (num) => {
-  if (!num) return '0'
-  if (num >= 10000) {
-    return (num / 10000).toFixed(1) + 'w'
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'k'
-  }
-  return num.toString()
-}
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
 
 onMounted(() => {
   fetchColumnDetail()
@@ -253,7 +236,7 @@ onMounted(() => {
                     </svg>
                     {{ formatNumber(article.comments) }}
                   </span>
-                  <span>{{ formatDate(article.createdAt) }}</span>
+                  <span>{{ formatAbsoluteDate(article.createdAt) }}</span>
                 </div>
               </div>
               <div v-if="article.cover" class="flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden hidden sm:block">

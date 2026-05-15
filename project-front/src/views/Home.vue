@@ -5,6 +5,7 @@ import {articleApi, columnApi, interactionApi, isLoggedIn, userApi} from '@/util
 import {useUserStore} from '@/stores/user'
 import {DEFAULT_AVATAR, DEFAULT_COVER, getAvatar} from '@/utils/defaults'
 import {toast} from '@/utils/toast'
+import {formatNumber} from '@/utils/format'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -117,23 +118,6 @@ const goToSlide = (index) => {
   currentSlide.value = index
 }
 
-const formatDate = (date) => {
-  const d = new Date(date)
-  const now = new Date()
-  const diff = now - d
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
-  if (days === 0) return '今天'
-  if (days === 1) return '昨天'
-  if (days < 7) return `${days}天前`
-  return d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })
-}
-
-const formatNumber = (num) => {
-  if (num >= 10000) return (num / 10000).toFixed(1) + 'w'
-  if (num >= 1000) return (num / 1000).toFixed(1) + 'k'
-  return num.toString()
-}
 
 const toggleFollow = async (user) => {
   if (!isLoggedIn()) {

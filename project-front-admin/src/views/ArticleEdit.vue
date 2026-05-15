@@ -81,7 +81,6 @@ const handleCreateColumn = async () => {
 
 const handleSave = (status) => {
   form.value.status = status
-  console.log('保存文章:', form.value)
   router.push('/articles')
 }
 

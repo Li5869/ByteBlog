@@ -4,6 +4,7 @@ import {useRouter} from 'vue-router'
 import {NPagination, NSelect} from 'naive-ui'
 import {DEFAULT_AVATAR} from '@/utils/defaults'
 import {columnApi} from '@/utils/request'
+import {formatNumber} from '@/utils/format'
 
 const router = useRouter()
 
@@ -52,24 +53,6 @@ const goToAuthor = (authorId, event) => {
   router.push({ name: 'UserHome', params: { id: authorId } })
 }
 
-const formatNumber = (num) => {
-  if (!num) return '0'
-  if (num >= 10000) {
-    return (num / 10000).toFixed(1) + 'w'
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'k'
-  }
-  return num.toString()
-}
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
 
 onMounted(() => {
   fetchColumns()

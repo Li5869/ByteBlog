@@ -6,6 +6,7 @@ import {NPagination} from 'naive-ui'
 import {toast} from '@/utils/toast'
 import OnlineIndicator from '@/components/OnlineIndicator.vue'
 import {AI_USER_ID, DEFAULT_AVATAR} from '@/utils/defaults'
+import {formatAbsoluteDate, formatNumber, formatRelativeDate} from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -145,39 +146,6 @@ watch(activeTab, (newTab) => {
   }
 })
 
-const formatNumber = (num) => {
-  if (!num) return '0'
-  if (num >= 10000) {
-    return (num / 10000).toFixed(1) + 'w'
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'k'
-  }
-  return num.toString()
-}
-
-const formatDate = (date) => {
-  if (!date) return ''
-  return new Date(date).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
-
-const formatRelativeDate = (date) => {
-  if (!date) return ''
-  const d = new Date(date)
-  const now = new Date()
-  const diff = now - d
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
-  if (hours < 1) return '刚刚'
-  if (hours < 24) return `${hours}小时前`
-  if (days < 7) return `${days}天前`
-  return d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })
-}
 
 const getGenderIcon = (gender) => {
   if (gender === 1) return { icon: '♂', color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-900/30' }
@@ -343,7 +311,7 @@ onMounted(() => {
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <span>{{ formatDate(userInfo.createdAt) }} 加入</span>
+                  <span>{{ formatAbsoluteDate(userInfo.createdAt) }} 加入</span>
                 </div>
               </div>
 

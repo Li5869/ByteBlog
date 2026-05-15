@@ -65,8 +65,13 @@ export const getRefreshToken = () => {
  * 获取存储的用户信息
  */
 export const getAdminInfo = () => {
-  const info = localStorage.getItem('admin-info')
-  return info ? JSON.parse(info) : null
+  try {
+    const info = localStorage.getItem('admin-info')
+    return info ? JSONbigString.parse(info) : null
+  } catch {
+    localStorage.removeItem('admin-info')
+    return null
+  }
 }
 
 /**
@@ -205,30 +210,33 @@ const request = async (url, options = {}) => {
         })
       }
 
-      // 开始刷新 Token
+      // 开始刷新 Token，使用 try/finally 确保锁一定释放
       isRefreshing = true
-      const newToken = await refreshAccessToken()
-      isRefreshing = false
+      try {
+        const newToken = await refreshAccessToken()
 
-      if (newToken) {
-        // 刷新成功，更新请求头并重新发起请求
-        config.headers['token'] = newToken
-        // 通知等待队列中的请求
-        onRefreshed(newToken)
-        
-        // 重新发起当前请求
-        const retryResponse = await fetch(`${BASE_URL}${url}`, config)
-        const retryData = await safeParseJson(retryResponse)
-        
-        if (retryData.code !== 0) {
-          return Promise.reject(new Error(retryData.msg || '请求失败'))
+        if (newToken) {
+          // 刷新成功，更新请求头并重新发起请求
+          config.headers['token'] = newToken
+          // 通知等待队列中的请求
+          onRefreshed(newToken)
+
+          // 重新发起当前请求
+          const retryResponse = await fetch(`${BASE_URL}${url}`, config)
+          const retryData = await safeParseJson(retryResponse)
+
+          if (retryData.code !== 0) {
+            return Promise.reject(new Error(retryData.msg || '请求失败'))
+          }
+
+          return retryData.data
+        } else {
+          // 刷新失败，清除认证信息并跳转登录
+          onRefreshFailed()
+          return Promise.reject(new Error('登录状态已过期，请重新登录'))
         }
-        
-        return retryData.data
-      } else {
-        // 刷新失败，清除认证信息并跳转登录
-        onRefreshFailed()
-        return Promise.reject(new Error('登录状态已过期，请重新登录'))
+      } finally {
+        isRefreshing = false
       }
     }
     

@@ -28,12 +28,10 @@ export const useNotificationStore = defineStore('notification', () => {
   
   const setCurrentChatUser = (userId) => {
     currentChatUserId.value = userId ? String(userId) : null
-    console.log('[NotificationStore] 设置当前聊天用户:', userId)
   }
   
   const clearCurrentChatUser = () => {
     currentChatUserId.value = null
-    console.log('[NotificationStore] 清除当前聊天用户')
   }
   
   return {

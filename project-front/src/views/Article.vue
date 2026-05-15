@@ -7,15 +7,11 @@ import {useUserStore} from '../stores/user.js'
 import {toast} from '@/utils/toast'
 import {modal} from '@/utils/modal'
 import {DEFAULT_AVATAR, DEFAULT_COVER} from '@/utils/defaults'
+import {formatAbsoluteDate, formatNumber} from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
-
-marked.setOptions({
-  breaks: true,
-  gfm: true
-})
 
 const articleId = computed(() => route.params.id)
 
@@ -633,25 +629,6 @@ const goToUserHome = (userId) => {
   }
 }
 
-const formatDate = (date) => {
-  if (!date) return ''
-  return new Date(date).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
-
-const formatNumber = (num) => {
-  if (!num) return 0
-  if (num >= 10000) {
-    return (num / 10000).toFixed(1) + 'w'
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'k'
-  }
-  return num
-}
 
 watch(articleId, async () => {
   if (articleId.value) {
@@ -901,7 +878,7 @@ onUnmounted(() => {
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    {{ formatDate(article.createdAt) }}
+                    {{ formatAbsoluteDate(article.createdAt) }}
                   </span>
                   <span class="text-gray-300 dark:text-gray-600">·</span>
                   <span class="flex items-center gap-1.5">
@@ -1151,7 +1128,7 @@ onUnmounted(() => {
                           v-if="comment.author?.id === article.authorId"
                           class="px-1.5 py-0.5 bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-medium rounded"
                         >UP主</span>
-                        <span class="text-xs text-gray-400">{{ formatDate(comment.createdAt) }}</span>
+                        <span class="text-xs text-gray-400">{{ formatAbsoluteDate(comment.createdAt) }}</span>
                       </div>
                       <p class="text-gray-700 dark:text-gray-300 mb-3 text-sm leading-relaxed">{{ comment.content }}</p>
                       <div class="flex items-center gap-4">
@@ -1252,7 +1229,7 @@ onUnmounted(() => {
                                 v-if="reply.author?.id === article.authorId"
                                 class="px-1.5 py-0.5 bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-medium rounded"
                               >UP主</span>
-                              <span class="text-xs text-gray-400">{{ formatDate(reply.createdAt) }}</span>
+                              <span class="text-xs text-gray-400">{{ formatAbsoluteDate(reply.createdAt) }}</span>
                             </div>
                             <p class="text-gray-700 dark:text-gray-300 mb-2 text-sm leading-relaxed">{{ reply.content }}</p>
                             <button 

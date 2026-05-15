@@ -11,24 +11,19 @@ export const on = (event, handler) => {
     handlers[event] = []
   }
   handlers[event].push(handler)
-  console.log(`[EventBus] 订阅事件: ${event}, 当前监听器数: ${handlers[event].length}`)
 }
 
 // 取消订阅
 export const off = (event, handler) => {
   if (!handlers[event]) return
   handlers[event] = handlers[event].filter(h => h !== handler)
-  console.log(`[EventBus] 取消订阅: ${event}`)
 }
 
 // 触发事件
 export const emit = (event, data) => {
-  console.log(`[EventBus] 触发事件: ${event}, 数据:`, data)
   if (!handlers[event]) {
-    console.log(`[EventBus] 警告: 没有监听器订阅事件 ${event}`)
     return
   }
-  console.log(`[EventBus] 找到 ${handlers[event].length} 个监听器`)
   handlers[event].forEach(handler => handler(data))
 }
 

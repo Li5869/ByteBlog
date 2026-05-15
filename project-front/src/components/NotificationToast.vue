@@ -126,7 +126,6 @@ const formatTime = (time) => {
 }
 
 const showNotification = (data) => {
-  console.log('[NotificationToast] 收到通知:', data)
   notification.value = data
   visible.value = true
   

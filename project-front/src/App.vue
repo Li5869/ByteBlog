@@ -1,5 +1,5 @@
 <script setup>
-import {onMounted, onUnmounted, ref} from 'vue'
+import {onErrorCaptured, onMounted, onUnmounted, ref} from 'vue'
 import {darkTheme, NConfigProvider, NMessageProvider} from 'naive-ui'
 import Navbar from './components/Navbar.vue'
 import MessageNotification from './components/MessageNotification.vue'
@@ -10,6 +10,14 @@ import sseManager from './utils/sse'
 import {isLoggedIn} from './utils/request'
 
 const isDark = ref(false)
+const error = ref(null)
+
+// 组件级错误边界：捕获子组件渲染异常，防止白屏
+onErrorCaptured((err) => {
+  console.error('[组件异常]', err)
+  error.value = { message: err.message }
+  return false // 阻止错误向上传播
+})
 
 const toggleDark = () => {
   isDark.value = !isDark.value
@@ -63,7 +71,20 @@ onUnmounted(() => {
 <template>
   <n-config-provider :theme="isDark ? darkTheme : null">
     <n-message-provider>
-      <div class="min-h-screen flex flex-col">
+      <!-- 错误回退 UI：组件渲染异常时展示，防止白屏 -->
+      <div v-if="error" class="min-h-screen flex items-center justify-center">
+        <div class="text-center p-8">
+          <h2 class="text-xl font-bold mb-4 dark:text-white">页面出错了</h2>
+          <p class="text-gray-500 mb-4">{{ error.message }}</p>
+          <button
+            @click="error = null; $router.go(0)"
+            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          >
+            刷新页面
+          </button>
+        </div>
+      </div>
+      <div v-else class="min-h-screen flex flex-col">
         <Navbar :isDark="isDark" @toggleDark="toggleDark" />
         <main class="flex-1">
           <router-view v-slot="{ Component }">
@@ -72,12 +93,11 @@ onUnmounted(() => {
             </transition>
           </router-view>
         </main>
-        <!-- <Footer /> 已移除全局Footer -->
       </div>
-      
+
       <!-- 消息通知组件 -->
       <MessageNotification />
-      
+
       <!-- SSE 通知弹窗组件 -->
       <NotificationToast />
     </n-message-provider>

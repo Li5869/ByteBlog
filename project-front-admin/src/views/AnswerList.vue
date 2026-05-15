@@ -1,6 +1,7 @@
 <script setup>
 import {ref} from 'vue'
 import {adminQuestionApi} from '../utils/request'
+import {formatAbsoluteDate} from '@/utils/format'
 
 const props = defineProps({
   question: {
@@ -30,17 +31,6 @@ const deleteAnswer = async (answer) => {
   }
 }
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
 const closeModal = () => {
   emit('close')
 }
@@ -68,7 +58,7 @@ const closeModal = () => {
               />
               <span>{{ question.authorName }}</span>
               <span>·</span>
-              <span>{{ formatDate(question.createdAt) }}</span>
+              <span>{{ formatAbsoluteDate(question.createdAt) }}</span>
             </div>
           </div>
           <button
@@ -115,7 +105,7 @@ const closeModal = () => {
                       </svg>
                       最佳答案
                     </span>
-                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(answer.createdAt) }}</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatAbsoluteDate(answer.createdAt) }}</span>
                   </div>
 
                   <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-3">

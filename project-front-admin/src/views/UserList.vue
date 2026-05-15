@@ -3,6 +3,7 @@ import {onMounted, ref} from 'vue'
 import UserDetail from '../components/UserDetail.vue'
 import UserEditModal from '../components/UserEditModal.vue'
 import {adminUserApi} from '../utils/request'
+import {formatAbsoluteDate} from '@/utils/format'
 
 const searchQuery = ref('')
 const statusFilter = ref('all')
@@ -71,15 +72,6 @@ const getStatusClass = (status) => {
     banned: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
   }
   return map[status] || ''
-}
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
 }
 
 const viewDetail = async (user) => {
@@ -262,7 +254,7 @@ onMounted(() => {
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 hidden lg:table-cell">{{ user.articleCount }}</td>
                 <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 hidden lg:table-cell">{{ user.fansCount }}</td>
-                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 hidden xl:table-cell">{{ formatDate(user.createdAt) }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 hidden xl:table-cell">{{ formatAbsoluteDate(user.createdAt) }}</td>
                 <td class="px-4 py-4 whitespace-nowrap text-sm">
                   <div class="flex items-center gap-2">
                     <button

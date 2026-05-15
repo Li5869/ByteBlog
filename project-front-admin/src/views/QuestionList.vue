@@ -2,6 +2,7 @@
 import {onMounted, ref} from 'vue'
 import AnswerList from './AnswerList.vue'
 import {adminQuestionApi} from '../utils/request'
+import {formatAbsoluteDate} from '@/utils/format'
 
 const searchQuery = ref('')
 const statusFilter = ref('all')
@@ -67,15 +68,6 @@ const getStatusClass = (status) => {
     solved: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
   }
   return map[status] || ''
-}
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
 }
 
 const viewAnswers = async (question) => {
@@ -238,7 +230,7 @@ onMounted(() => {
                     {{ getStatusText(question.status) }}
                   </span>
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 hidden xl:table-cell">{{ formatDate(question.createdAt) }}</td>
+                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 hidden xl:table-cell">{{ formatAbsoluteDate(question.createdAt) }}</td>
                 <td class="px-4 py-4 whitespace-nowrap text-sm">
                   <div class="flex items-center gap-2">
                     <button

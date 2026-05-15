@@ -139,9 +139,6 @@ const initVditor = () => {
     // 使用自定义上传处理函数
     upload: {
       handler: async (files) => {
-        console.log('=== Vditor Upload Handler ===')
-        console.log('文件:', files)
-        
         const file = files[0]
         if (!file) {
           toast.error('没有选择文件')
@@ -161,9 +158,7 @@ const initVditor = () => {
             body: formData
           })
           
-          console.log('响应状态:', response.status)
           const data = await response.json()
-          console.log('响应数据:', data)
           
           if (data.code === 0 && data.data) {
             // 直接插入图片 Markdown 到编辑器
@@ -192,7 +187,6 @@ const initVditor = () => {
         toast.error(msg || '图片上传失败')
       },
       success(editor, msg) {
-        console.log('上传成功回调:', msg)
       }
     },
     toolbar: [

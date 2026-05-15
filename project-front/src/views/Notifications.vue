@@ -9,6 +9,7 @@ import OnlineIndicator from '@/components/OnlineIndicator.vue'
 import wsManager from '@/utils/websocket'
 import sseManager from '@/utils/sse'
 import {useNotificationStore} from '@/stores/notification'
+import {formatAbsoluteDate} from '@/utils/format'
 
 const router = useRouter()
 const route = useRoute()
@@ -648,29 +649,23 @@ const sendMessage = async () => {
     
     // 上传图片
     if (hasImages) {
-      console.log('开始上传图片，共', pendingImages.value.length, '张')
       for (const image of pendingImages.value) {
         try {
-          console.log('上传图片:', image.name)
           const result = await uploadApi.uploadFile(image.file)
-          console.log('上传结果:', result)
           if (result) {
             uploadedImageUrls.push(result)
-            console.log('图片上传成功:', result)
           }
         } catch (error) {
           console.error('图片上传失败:', error)
           toast.error(`图片 ${image.name} 上传失败: ${error.message}`)
         }
       }
-      console.log('所有图片上传完成，URLs:', uploadedImageUrls)
     }
     
     // 构建消息内容
     if (uploadedImageUrls.length > 0) {
       const imageMarkdown = uploadedImageUrls.map(url => `![image](${url})`).join('\n')
       messageContent = messageContent ? `${messageContent}\n${imageMarkdown}` : imageMarkdown
-      console.log('构建的消息内容:', messageContent)
     }
     
     if (!messageContent) {
@@ -679,9 +674,7 @@ const sendMessage = async () => {
     }
     
     // 发送消息
-    console.log('发送消息到:', receiverId, '内容:', messageContent)
     const result = await interactionApi.sendMessage(receiverId, messageContent)
-    console.log('发送结果:', result)
     
     if (result) {
       messageHistory.value.push({
@@ -916,19 +909,6 @@ const formatTime = (date) => {
   return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 }
 
-const formatDate = (date) => {
-  if (!date) return ''
-  const d = new Date(date)
-  const now = new Date()
-  const diff = now - d
-  const hours = Math.floor(diff / 3600000)
-  const days = Math.floor(diff / 86400000)
-
-  if (hours < 1) return '刚刚'
-  if (hours < 24) return `${hours}小时前`
-  if (days < 7) return `${days}天前`
-  return d.toLocaleDateString('MM-DD')
-}
 
 // 获取行为类型配置
 const getActionConfig = (actionType, targetType) => {
@@ -1094,8 +1074,6 @@ const openConversationWithUser = async (userId) => {
 
 // ========== WebSocket 实时消息处理 ==========
 const handleRealtimeMessage = async (data) => {
-  console.log('[Notifications] 收到实时消息:', data)
-  
   // 检查是否正在查看与发送者的对话
   if (selectedConversation.value && 
       String(selectedConversation.value.user?.id) === String(data.senderId)) {
@@ -1116,8 +1094,6 @@ const handleRealtimeMessage = async (data) => {
     await nextTick()
     scrollToBottom()
     
-    console.log('[Notifications] 消息已添加到当前对话')
-    
     // 标记消息为已读
     try {
       await interactionApi.markMessagesRead(data.senderId)
@@ -1129,7 +1105,6 @@ const handleRealtimeMessage = async (data) => {
       console.error('[Notifications] 标记已读失败:', error)
     }
   } else {
-    console.log('[Notifications] 消息发送者不是当前对话对象，不添加到历史记录')
   }
   
   // 更新会话列表中的最后一条消息
@@ -1194,8 +1169,6 @@ const handleKeydown = (e) => {
 
 // 处理 SSE 通知
 const handleSseNotification = (notification) => {
-  console.log('[Notifications] 收到 SSE 通知:', notification)
-  
   // 将新通知添加到列表顶部
   bizNotifications.value.unshift({
     ...notification,
@@ -1485,7 +1458,7 @@ const handleSseNotification = (notification) => {
                             {{ group.notifications[0].sender?.name }}、{{ group.notifications[1].sender?.name }}<span class="text-gray-500 dark:text-gray-400">...等{{ group.notifications.length }}人</span>
                           </template>
                         </span>
-                        <span class="text-xs text-gray-400">{{ formatDate(group.latestTime) }}</span>
+                        <span class="text-xs text-gray-400">{{ formatAbsoluteDate(group.latestTime) }}</span>
                       </div>
                       <p class="text-xs text-gray-600 dark:text-gray-300">
                         {{ getActionText(group.actionType, group.targetType) }}
@@ -1561,7 +1534,7 @@ const handleSseNotification = (notification) => {
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center justify-between mb-1">
                         <span class="text-sm font-medium text-gray-800 dark:text-white">{{ notification.title }}</span>
-                        <span class="text-xs text-gray-400">{{ formatDate(notification.createdAt) }}</span>
+                        <span class="text-xs text-gray-400">{{ formatAbsoluteDate(notification.createdAt) }}</span>
                       </div>
                       <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{{ notification.content }}</p>
                     </div>
@@ -1637,7 +1610,7 @@ const handleSseNotification = (notification) => {
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center justify-between mb-1">
                       <span class="text-sm font-medium text-gray-800 dark:text-white">{{ conversation.user?.name }}</span>
-                      <span class="text-xs text-gray-400">{{ formatDate(conversation.updatedAt) }}</span>
+                      <span class="text-xs text-gray-400">{{ formatAbsoluteDate(conversation.updatedAt) }}</span>
                     </div>
                     <p class="text-xs truncate" :class="conversation.unreadCount > 0 ? 'text-gray-700 dark:text-gray-200 font-medium' : 'text-gray-500 dark:text-gray-400'">
                       {{ formatLastMessage(conversation.lastMessage) }}
@@ -1704,7 +1677,7 @@ const handleSseNotification = (notification) => {
                       <div class="flex-1 min-w-0">
                         <div class="flex items-center justify-between mb-1">
                           <span class="text-sm font-medium text-gray-800 dark:text-white">{{ notification.sender?.name }}</span>
-                          <span class="text-xs text-gray-400">{{ formatDate(notification.createdAt) }}</span>
+                          <span class="text-xs text-gray-400">{{ formatAbsoluteDate(notification.createdAt) }}</span>
                         </div>
                         <p v-if="notification.content" class="text-sm text-gray-600 dark:text-gray-300 mb-3">
                           {{ notification.content }}
@@ -1741,7 +1714,7 @@ const handleSseNotification = (notification) => {
               <div class="text-center mb-6">
                 <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-4xl">📢</div>
                 <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">{{ selectedSystemNotification.title }}</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400">{{ formatDate(selectedSystemNotification.createdAt) }}</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ formatAbsoluteDate(selectedSystemNotification.createdAt) }}</p>
               </div>
 
               <!-- 内容 -->

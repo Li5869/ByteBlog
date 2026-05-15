@@ -1,6 +1,7 @@
 <script setup>
 import {onMounted, ref, watch} from 'vue'
 import {adminLogApi} from '../utils/request.js'
+import {formatAbsoluteDate} from '@/utils/format'
 
 const searchQuery = ref('')
 const actionTypeFilter = ref('all')
@@ -119,17 +120,6 @@ const getTargetTypeText = (type) => {
   return map[type] || type
 }
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
 const handlePageChange = (page) => {
   currentPage.value = page
   fetchLogs()
@@ -150,7 +140,6 @@ const nextPage = () => {
 }
 
 const exportLogs = () => {
-  console.log('导出日志')
 }
 
 onMounted(() => {
@@ -267,7 +256,7 @@ onMounted(() => {
                   <span class="font-mono text-xs">{{ log.ipAddress || '-' }}</span>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 hidden xl:table-cell">
-                  {{ formatDate(log.createdAt) }}
+                  {{ formatAbsoluteDate(log.createdAt) }}
                 </td>
               </tr>
             </tbody>

@@ -1,6 +1,7 @@
 <script setup>
 import {onMounted, ref} from 'vue'
 import {adminTagApi} from '@/utils/request'
+import {formatAbsoluteDate} from '@/utils/format'
 
 const tags = ref([])
 const loading = ref(false)
@@ -163,15 +164,6 @@ const nextPage = () => {
   }
 }
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
-}
-
 onMounted(() => {
   fetchTags()
 })
@@ -257,7 +249,7 @@ onMounted(() => {
                   {{ tag.usageCount }} 次
                 </span>
               </td>
-              <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 hidden md:table-cell">{{ formatDate(tag.createdAt) }}</td>
+              <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 hidden md:table-cell">{{ formatAbsoluteDate(tag.createdAt) }}</td>
               <td class="px-6 py-4 text-right">
                 <div class="flex items-center justify-end gap-2">
                   <button

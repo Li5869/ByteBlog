@@ -1,6 +1,7 @@
 <script setup>
 import {onMounted, ref} from 'vue'
 import {adminCategoryApi} from '@/utils/request'
+import {formatAbsoluteDate} from '@/utils/format'
 
 const categories = ref([])
 const loading = ref(false)
@@ -94,14 +95,6 @@ const deleteCategory = async (category) => {
   }
 }
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
-}
 </script>
 
 <template>
@@ -146,7 +139,7 @@ const formatDate = (dateStr) => {
                   {{ category.articleCount }} 篇
                 </span>
               </td>
-              <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 hidden md:table-cell">{{ formatDate(category.createdAt) }}</td>
+              <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 hidden md:table-cell">{{ formatAbsoluteDate(category.createdAt) }}</td>
               <td class="px-6 py-4 text-right">
                 <div class="flex items-center justify-end gap-2">
                   <button

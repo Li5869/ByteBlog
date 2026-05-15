@@ -3,6 +3,7 @@ import {computed, onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {interactionApi, isLoggedIn} from '@/utils/request'
 import {toast} from '@/utils/toast'
+import {formatAbsoluteDate} from '@/utils/format'
 
 const router = useRouter()
 
@@ -19,18 +20,6 @@ const hasMore = computed(() => {
   return pagination.value.current < pagination.value.pages
 })
 
-const formatDate = (date) => {
-  const d = new Date(date)
-  const now = new Date()
-  const diff = now - d
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
-  if (hours < 1) return '刚刚'
-  if (hours < 24) return `${hours}小时前`
-  if (days < 7) return `${days}天前`
-  return d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })
-}
 
 const fetchBrowseHistory = async (isLoadMore = false) => {
   if (!isLoggedIn()) {
@@ -181,7 +170,7 @@ onMounted(() => {
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span>{{ formatDate(item.browseTime) }}</span>
+                  <span>{{ formatAbsoluteDate(item.browseTime) }}</span>
                 </div>
               </div>
             </div>

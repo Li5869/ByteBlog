@@ -134,8 +134,6 @@ const loadCategoriesAndTags = async () => {
 // ==================== SSE 事件处理 ====================
 
 const handleSSEEvent = (event) => {
-  console.log('[SSE] 收到事件:', event)
-
   switch (event.type) {
     case 'phase':
       handlePhaseEvent(event.data)
@@ -238,13 +236,10 @@ const readSSEStream = async (stream) => {
     while (true) {
       const { done, value } = await reader.read()
       if (done) {
-        console.log('[SSE] 流结束')
         break
       }
 
       const text = decoder.decode(value, { stream: true })
-      console.log('[SSE] 收到原始数据:', text)
-      
       buffer += text
       const lines = buffer.split('\n')
       buffer = lines.pop() || ''
@@ -258,7 +253,6 @@ const readSSEStream = async (stream) => {
             const jsonStr = trimmed.substring(5).trim()
             if (jsonStr) {
               const event = JSON.parse(jsonStr)
-              console.log('[SSE] 解析事件:', event)
               handleSSEEvent(event)
             }
           } catch (e) {
@@ -275,7 +269,6 @@ const readSSEStream = async (stream) => {
   } finally {
     reader.releaseLock()
     currentStreamReader = null
-    console.log('[SSE] 流读取结束')
   }
 }
 
@@ -532,8 +525,6 @@ const goBack = () => {
 }
 
 // ==================== Markdown 渲染 ====================
-marked.setOptions({ breaks: true, gfm: true })
-
 const renderMarkdown = (content) => {
   if (!content) return ''
   return marked.parse(unescapeHtml(content))

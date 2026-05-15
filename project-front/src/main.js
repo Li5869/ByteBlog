@@ -3,7 +3,11 @@ import {createRouter, createWebHistory} from 'vue-router'
 import {createPinia} from 'pinia'
 import App from './App.vue'
 import './style.css'
-import {isLoggedIn} from './utils/request.js'
+import {clearAuth, isLoggedIn} from './utils/request.js'
+import {marked} from 'marked'
+
+// 全局 Markdown 配置（仅设置一次，避免多组件重复调用）
+marked.setOptions({ breaks: true, gfm: true })
 
 const routes = [
   {
@@ -136,16 +140,43 @@ const router = createRouter({
   }
 })
 
+/**
+ * 路由守卫：校验登录状态 + JWT 过期时间
+ */
 router.beforeEach((to, from, next) => {
-  if (to.meta.requiresAuth && !isLoggedIn()) {
-    next({ name: 'Home', query: { login: 'true', redirect: to.fullPath } })
-  } else {
-    next()
+  if (to.meta.requiresAuth) {
+    if (!isLoggedIn()) {
+      next({ name: 'Home', query: { login: 'true', redirect: to.fullPath } })
+      return
+    }
+    // 轻量级 JWT 过期校验（无需请求后端）
+    const token = localStorage.getItem('token')
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          clearAuth()
+          next({ name: 'Home', query: { login: 'true', redirect: to.fullPath } })
+          return
+        }
+      } catch {
+        // Token 格式异常，视为过期
+        clearAuth()
+        next({ name: 'Home', query: { login: 'true', redirect: to.fullPath } })
+        return
+      }
+    }
   }
+  next()
 })
 
 const app = createApp(App)
 app.use(createPinia())
 app.use(router)
+
+// 全局错误处理：捕获未被组件处理的异常
+app.config.errorHandler = (err, instance, info) => {
+  console.error('[全局异常]', err, info)
+}
 
 app.mount('#app')

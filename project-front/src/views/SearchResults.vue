@@ -6,6 +6,7 @@ import {interactionApi, searchApi} from '@/utils/request'
 import {useUserStore} from '@/stores/user'
 import {toast} from '@/utils/toast'
 import {DEFAULT_AVATAR, getAvatar} from '@/utils/defaults'
+import {formatAbsoluteDate, formatNumber} from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -215,32 +216,6 @@ const toggleFollow = async (user) => {
   }
 }
 
-const formatNumber = (num) => {
-  if (!num) return 0
-  if (num >= 10000) return (num / 10000).toFixed(1) + 'w'
-  if (num >= 1000) return (num / 1000).toFixed(1) + 'k'
-  return num
-}
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diff = now - date
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  if (days === 0) {
-    const hours = Math.floor(diff / (1000 * 60 * 60))
-    if (hours === 0) {
-      const minutes = Math.floor(diff / (1000 * 60))
-      return minutes <= 0 ? '刚刚' : `${minutes}分钟前`
-    }
-    return `${hours}小时前`
-  } else if (days === 1) return '昨天'
-  else if (days < 7) return `${days}天前`
-  else if (days < 30) return `${Math.floor(days / 7)}周前`
-  else if (days < 365) return `${Math.floor(days / 30)}个月前`
-  return `${Math.floor(days / 365)}年前`
-}
 
 const highlightText = (text, keyword) => {
   if (!text || !keyword) return text
@@ -489,7 +464,7 @@ watch(() => route.query, (newQuery) => {
                           <img :src="article.authorAvatar || DEFAULT_AVATAR" class="w-5 h-5 rounded-full" />
                           <span class="text-gray-600 dark:text-gray-400">{{ article.authorName }}</span>
                         </div>
-                        <span>{{ formatDate(article.createdAt) }}</span>
+                        <span>{{ formatAbsoluteDate(article.createdAt) }}</span>
                         <span class="flex items-center gap-1">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -550,7 +525,7 @@ watch(() => route.query, (newQuery) => {
                           <img :src="question.authorAvatar || DEFAULT_AVATAR" class="w-5 h-5 rounded-full" />
                           <span class="text-gray-600 dark:text-gray-400">{{ question.authorName }}</span>
                         </div>
-                        <span>{{ formatDate(question.createdAt) }}</span>
+                        <span>{{ formatAbsoluteDate(question.createdAt) }}</span>
                         <span class="flex items-center gap-1">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -618,7 +593,7 @@ watch(() => route.query, (newQuery) => {
                           <img :src="column.authorAvatar || DEFAULT_AVATAR" class="w-5 h-5 rounded-full" />
                           <span class="text-gray-600 dark:text-gray-400">{{ column.authorName }}</span>
                         </div>
-                        <span>{{ formatDate(column.createdAt) }}</span>
+                        <span>{{ formatAbsoluteDate(column.createdAt) }}</span>
                         <span class="flex items-center gap-1">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />

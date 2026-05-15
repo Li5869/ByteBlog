@@ -4,6 +4,7 @@ import {useRoute, useRouter} from 'vue-router'
 import {DEFAULT_AVATAR} from '@/utils/defaults'
 import {columnApi, isLoggedIn} from '@/utils/request'
 import {toast} from '@/utils/toast'
+import {formatAbsoluteDate, formatNumber} from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -62,24 +63,6 @@ const goToAuthor = () => {
   router.push({ name: 'UserHome', params: { id: column.value.authorId } })
 }
 
-const formatNumber = (num) => {
-  if (!num) return '0'
-  if (num >= 10000) {
-    return (num / 10000).toFixed(1) + 'w'
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'k'
-  }
-  return num.toString()
-}
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
 
 onMounted(() => {
   fetchColumnDetail()
@@ -215,7 +198,7 @@ onMounted(() => {
                           </svg>
                           {{ formatNumber(article.comments) }}
                         </span>
-                        <span>{{ formatDate(article.createdAt) }}</span>
+                        <span>{{ formatAbsoluteDate(article.createdAt) }}</span>
                       </div>
                     </div>
                     <div v-if="article.cover" class="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden hidden sm:block">
@@ -297,11 +280,11 @@ onMounted(() => {
                 <div class="p-5 space-y-3">
                   <div class="flex items-center justify-between text-sm">
                     <span class="text-gray-500 dark:text-gray-400">创建时间</span>
-                    <span class="text-gray-900 dark:text-white">{{ formatDate(column.createdAt) }}</span>
+                    <span class="text-gray-900 dark:text-white">{{ formatAbsoluteDate(column.createdAt) }}</span>
                   </div>
                   <div class="flex items-center justify-between text-sm">
                     <span class="text-gray-500 dark:text-gray-400">更新时间</span>
-                    <span class="text-gray-900 dark:text-white">{{ formatDate(column.updatedAt) }}</span>
+                    <span class="text-gray-900 dark:text-white">{{ formatAbsoluteDate(column.updatedAt) }}</span>
                   </div>
                   <div class="flex items-center justify-between text-sm">
                     <span class="text-gray-500 dark:text-gray-400">文章数量</span>

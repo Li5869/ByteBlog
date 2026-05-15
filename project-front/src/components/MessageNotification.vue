@@ -136,19 +136,12 @@ const isInChatWithSender = (senderId) => {
 }
 
 const handlePrivateMessage = (data) => {
-  console.log('[MessageNotification] 收到私信推送:', data)
-  console.log('[MessageNotification] 当前登录用户:', getUserInfo()?.id)
-  console.log('[MessageNotification] 发送者ID:', data.senderId)
-  console.log('[MessageNotification] Store中的当前聊天用户ID:', notificationStore.currentChatUserId)
-  
   const currentUserId = getUserInfo()?.id
   if (currentUserId && String(currentUserId) === String(data.senderId)) {
-    console.log('[MessageNotification] 这是自己发送的消息，不显示通知')
     return
   }
   
   if (isInChatWithSender(data.senderId)) {
-    console.log('[MessageNotification] 用户正在与发送者聊天，不显示弹窗通知')
     return
   }
   

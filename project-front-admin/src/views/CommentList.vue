@@ -2,6 +2,7 @@
 import {onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {adminCommentApi} from '../utils/request'
+import {formatAbsoluteDate} from '@/utils/format'
 
 const router = useRouter()
 
@@ -87,17 +88,6 @@ const truncateContent = (content, maxLength = 30) => {
   if (!content) return ''
   if (content.length <= maxLength) return content
   return content.slice(0, maxLength) + '...'
-}
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 const handleApprove = async (comment) => {
@@ -284,7 +274,7 @@ onMounted(() => {
                   </div>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 hidden xl:table-cell">
-                  {{ formatDate(comment.createdAt) }}
+                  {{ formatAbsoluteDate(comment.createdAt) }}
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-sm">
                   <div class="flex items-center gap-2">
