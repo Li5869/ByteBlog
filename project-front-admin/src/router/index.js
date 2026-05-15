@@ -1,6 +1,6 @@
 import {createRouter, createWebHistory} from 'vue-router'
 import AdminLayout from '../components/AdminLayout.vue'
-import {isLoggedIn} from '../utils/request.js'
+import {clearAuth, isLoggedIn} from '../utils/request.js'
 
 const routes = [
   {
@@ -99,16 +99,41 @@ const router = createRouter({
   routes
 })
 
+/**
+ * 路由守卫：校验登录状态 + JWT 过期时间
+ */
 router.beforeEach((to, from, next) => {
   const loggedIn = isLoggedIn()
-  
-  if (to.meta.requiresAuth && !loggedIn) {
-    next('/login')
-  } else if (to.path === '/login' && loggedIn) {
-    next('/dashboard')
-  } else {
-    next()
+
+  if (to.meta.requiresAuth) {
+    if (!loggedIn) {
+      next('/login')
+      return
+    }
+    // 轻量级 JWT 过期校验
+    const token = localStorage.getItem('admin-token')
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          clearAuth()
+          next('/login')
+          return
+        }
+      } catch {
+        clearAuth()
+        next('/login')
+        return
+      }
+    }
   }
+
+  if (to.path === '/login' && loggedIn) {
+    next('/dashboard')
+    return
+  }
+
+  next()
 })
 
 export default router

@@ -188,12 +188,29 @@ public class ArticleServiceImpl {
 
 | 接口 | 提供方模块 | 用途 |
 |------|-----------|------|
-| `UserInfoApi` | blog-security | 获取用户信息 |
-| `LikeApi` | blog-interaction | 获取点赞数和点赞状态 |
-| `FollowApi` | blog-interaction | 获取关注状态 |
+| `ArticleInfoAPI` | blog-article | 文章信息查询、计数更新（点赞/评论/收藏/浏览） |
+| `UseApi` | blog-security | 用户信息查询、用户计数更新（粉丝/关注/文章/收藏） |
+| `LikeApi` | blog-interaction | 点赞数查询、点赞状态检查 |
+| `FollowApi` | blog-interaction | 关注状态检查、粉丝列表查询 |
+| `CollectedApi` | blog-interaction | 收藏数查询、收藏状态检查 |
+| `BrowseHistoryApi` | blog-interaction | 浏览历史记录 |
+| `CommentApi` | blog-comment | 评论计数更新 |
+| `CategoryCacheApi` | blog-common | 分类信息查询 |
+| `ColumnApi` | blog-article | 专栏信息查询 |
+| `NotificationApi` | blog-interaction | 业务通知保存（点赞/评论/关注/收藏） |
+| `SystemNotificationApi` | blog-interaction | 系统通知保存（审核结果） |
 | `SearchSyncApi` | blog-search | 同步数据到 ES 索引 |
 | `DeleteSearchAPI` | blog-search | 删除 ES 索引 |
-| `NotificationApi` | blog-interaction | 发送通知 |
+| `QuestionApi` | blog-question | 问答信息查询 |
+| `AnswerApi` | blog-question | 回答信息查询 |
+| `TokenValidationApi` | blog-security | Token 验证（供 blog-push 使用） |
+| `FollowerApi` | blog-interaction | 粉丝列表查询（供 WebSocket 广播使用） |
+| `WritingTaskApi` | blog-ai | 写作任务查询 |
+| `AICommentApi` | blog-ai | AI 评论生成 |
+| `ArticleSearchDataApi` | blog-article | 文章搜索数据源（供 ES 同步拉取） |
+| `AuthorSearchDataApi` | blog-security | 作者搜索数据源 |
+| `ColumnSearchDataApi` | blog-article | 专栏搜索数据源 |
+| `QuestionSearchDataApi` | blog-question | 问答搜索数据源 |
 
 ---
 

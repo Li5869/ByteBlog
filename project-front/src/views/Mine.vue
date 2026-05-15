@@ -7,6 +7,7 @@ import {toast} from '@/utils/toast'
 import {modal} from '@/utils/modal'
 import OnlineIndicator from '@/components/OnlineIndicator.vue'
 import {DEFAULT_AVATAR} from '@/utils/defaults'
+import {formatAbsoluteDate, formatNumber, formatRelativeDate} from '@/utils/format'
 
 const router = useRouter()
 
@@ -99,37 +100,6 @@ const answersSortOptions = [
   { label: '按赞同数排序', value: 'likes' }
 ]
 
-const formatNumber = (num) => {
-  if (!num) return '0'
-  if (num >= 10000) {
-    return (num / 10000).toFixed(1) + 'w'
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'k'
-  }
-  return num.toString()
-}
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
-
-const formatRelativeDate = (date) => {
-  const d = new Date(date)
-  const now = new Date()
-  const diff = now - d
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
-  if (hours < 1) return '刚刚'
-  if (hours < 24) return `${hours}小时前`
-  if (days < 7) return `${days}天前`
-  return d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })
-}
 
 const getGenderText = (gender) => {
   if (gender === 1) return '男'
@@ -711,7 +681,7 @@ onMounted(() => {
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            {{ formatDate(article.createdAt) }}
+                            {{ formatAbsoluteDate(article.createdAt) }}
                           </span>
                           <span class="flex items-center gap-1">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -927,7 +897,7 @@ onMounted(() => {
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                          {{ formatDate(sub.subscribedAt) }}
+                          {{ formatAbsoluteDate(sub.subscribedAt) }}
                         </span>
                       </div>
                     </div>
@@ -1014,7 +984,7 @@ onMounted(() => {
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                          {{ formatDate(question.createdAt) }}
+                          {{ formatAbsoluteDate(question.createdAt) }}
                         </span>
                         <span class="flex items-center gap-1">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1154,7 +1124,7 @@ onMounted(() => {
                   </div>
                   <p class="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 mb-3 leading-relaxed">{{ answer.content }}</p>
                   <div class="flex items-center justify-between text-xs text-gray-400">
-                    <span>{{ formatDate(answer.createdAt) }}</span>
+                    <span>{{ formatAbsoluteDate(answer.createdAt) }}</span>
                     <span class="flex items-center gap-1">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -1246,7 +1216,7 @@ onMounted(() => {
                           </span>
                         </div>
                         <div class="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-                          <span v-if="!item.isDeleted">{{ formatDate(item.createdAt) }}</span>
+                          <span v-if="!item.isDeleted">{{ formatAbsoluteDate(item.createdAt) }}</span>
                           <span v-if="!item.isDeleted">·</span>
                           <span>收藏于 {{ formatRelativeDate(item.collectedAt) }}</span>
                         </div>
@@ -1333,7 +1303,7 @@ onMounted(() => {
                           </span>
                         </div>
                         <div class="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-                          <span v-if="!item.isDeleted">{{ formatDate(item.createdAt) }}</span>
+                          <span v-if="!item.isDeleted">{{ formatAbsoluteDate(item.createdAt) }}</span>
                           <span v-if="!item.isDeleted">·</span>
                           <span>点赞于 {{ formatRelativeDate(item.likedAt) }}</span>
                         </div>
@@ -1420,7 +1390,7 @@ onMounted(() => {
                           </span>
                         </div>
                         <div class="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-                          <span v-if="!item.isDeleted">{{ formatDate(item.createdAt) }}</span>
+                          <span v-if="!item.isDeleted">{{ formatAbsoluteDate(item.createdAt) }}</span>
                           <span v-if="!item.isDeleted">·</span>
                           <span>浏览于 {{ formatRelativeDate(item.browseTime) }}</span>
                         </div>

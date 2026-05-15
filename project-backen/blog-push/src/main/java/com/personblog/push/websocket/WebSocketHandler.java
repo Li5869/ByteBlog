@@ -1,7 +1,8 @@
-package com.personblog.common.websocket;
+package com.personblog.push.websocket;
 
 import cn.hutool.json.JSONUtil;
-import com.personblog.common.service.OnlineStateService;
+import com.personblog.common.api.FollowerApi;
+import com.personblog.push.service.OnlineStateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -27,11 +28,13 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WebSocketHandler extends TextWebSocketHandler {
     // 处理用户连接建立
     private final OnlineStateService onlineStatusApi;
+    // 粉丝查询接口，由 blog-interaction 模块实现
+    private final FollowerApi followerApi;
     // 存储用户会话
     private static final Map<Long, WebSocketSession> USER_SESSIONS = new ConcurrentHashMap<>();
     // 存储会话与用户ID的映射关系
     private static final Map<String, Long> SESSION_USERS = new ConcurrentHashMap<>();
-    
+
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         Long userId = (Long) session.getAttributes().get("userId");
@@ -62,8 +65,8 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
         // 发送欢迎消息
         sendMessage(session, WebSocketMessage.welcome(userId));
-        // 广播该用户上线通知给所有在线用户（方便其他用户刷新显示）
-        broadcast(WebSocketMessage.userOnline(userId));
+        // 通知该用户的粉丝：该用户上线了
+        broadcastToFollowers(userId, WebSocketMessage.userOnline(userId));
     }
     // 处理用户消息
     @Override
@@ -101,8 +104,8 @@ public class WebSocketHandler extends TextWebSocketHandler {
         if (userId != null) {
             USER_SESSIONS.remove(userId);
             onlineStatusApi.userOffline(userId);
-            // 广播该用户下线通知给所有在线用户
-            broadcast(WebSocketMessage.userOffline(userId));
+            // 通知该用户的粉丝：该用户下线了
+            broadcastToFollowers(userId, WebSocketMessage.userOffline(userId));
             log.info("[WebSocket] 连接关闭: userId={}, status={}", userId, status);
         }
     }
@@ -127,31 +130,25 @@ public class WebSocketHandler extends TextWebSocketHandler {
             }
         }
     }
-    // 广播消息给所有在线用户
-    public void broadcast(WebSocketMessage message) {
+    // 通知用户的粉丝（只发给在线的粉丝）
+    private void broadcastToFollowers(Long userId, WebSocketMessage message) {
+        // 查询该用户的粉丝列表
+        List<Long> followerIds = followerApi.getFollowerIds(userId);
+        if (followerIds.isEmpty()) {
+            return;
+        }
         String json = JSONUtil.toJsonStr(message);
-
-        USER_SESSIONS.values().forEach(session -> {
-            if (session.isOpen()) {
+        // 只通知当前在线的粉丝
+        followerIds.forEach(followerId -> {
+            WebSocketSession session = USER_SESSIONS.get(followerId);
+            if (session != null && session.isOpen()) {
                 try {
                     session.sendMessage(new TextMessage(json));
                 } catch (IOException e) {
-                    log.error("[WebSocket] 广播失败: sessionId={}", session.getId(), e);
+                    log.error("[WebSocket] 通知粉丝失败: userId={}, followerId={}", userId, followerId, e);
                 }
             }
         });
-    }
-    // 发送消息给指定用户列表
-    public void sendToUsers(List<Long> userIds, WebSocketMessage message) {
-        userIds.forEach(userId -> sendToUser(userId, message));
-    }
-    // 检查用户是否在线
-    public boolean isUserOnline(Long userId) {
-        return USER_SESSIONS.containsKey(userId);
-    }
-    // 获取在线用户数量 （包含当前用户）
-    public int getOnlineCount() {
-        return USER_SESSIONS.size();
     }
     // 发送消息给指定会话
     private void sendMessage(WebSocketSession session, WebSocketMessage message) {
@@ -167,7 +164,6 @@ public class WebSocketHandler extends TextWebSocketHandler {
         }
     }
     // 查询在线用户状态
-    @SuppressWarnings("unchecked")
     private void handleMessageByType(WebSocketSession session, Long userId, WebSocketMessage msg) {
         String type = msg.getType();
         // 处理查询在线用户状态消息

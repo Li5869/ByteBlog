@@ -33,12 +33,10 @@ class WebSocketManager {
     }
 
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.log('[WebSocket] 已连接，跳过重复连接')
       return
     }
 
     if (this.isConnecting) {
-      console.log('[WebSocket] 正在连接中，跳过')
       return
     }
 
@@ -57,7 +55,6 @@ class WebSocketManager {
 
   setupEventHandlers() {
     this.ws.onopen = () => {
-      console.log('[WebSocket] 连接成功')
       this.isConnected = true
       this.isConnecting = false
       this.reconnectAttempts = 0
@@ -70,7 +67,6 @@ class WebSocketManager {
     }
 
     this.ws.onclose = (event) => {
-      console.log('[WebSocket] 连接关闭:', event.code, event.reason)
       this.isConnected = false
       this.isConnecting = false
       this.stopHeartbeat()
@@ -99,7 +95,6 @@ class WebSocketManager {
       
       switch (message.type) {
         case 'welcome':
-          console.log('[WebSocket] 欢迎消息:', message.data)
           this.emit('welcome', message.data)
           break
 
@@ -113,12 +108,10 @@ class WebSocketManager {
           break
 
         case 'private_message':
-          console.log('[WebSocket] 收到私信:', message.data)
           this.emit('private_message', message.data)
           break
 
         case 'unread_update':
-          console.log('[WebSocket] 未读数更新:', message.data)
           this.emit('unread_update', message.data)
           break
 
@@ -128,7 +121,6 @@ class WebSocketManager {
           break
 
         default:
-          console.log('[WebSocket] 未知消息类型:', message.type)
       }
     } catch (error) {
       console.error('[WebSocket] 消息解析失败:', error)
@@ -207,9 +199,7 @@ class WebSocketManager {
 
     this.reconnectAttempts++
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
-    
-    console.log(`[WebSocket] ${delay / 1000}秒后尝试第${this.reconnectAttempts}次重连`)
-    
+
     setTimeout(() => {
       this.connect()
     }, delay)

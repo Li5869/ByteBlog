@@ -4,6 +4,7 @@ package com.personblog.ai.BizService;
 import com.personblog.ai.config.PromptManger;
 import com.personblog.ai.dto.ArticleTitleDTO;
 import com.personblog.ai.vo.ArticleTitleVO;
+import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.Arrays;
 import java.util.List;
 
+import static com.personblog.ai.constants.AiPromptConstants.TitleGeneration;
 import static com.personblog.ai.constants.LlmPromptType.TITLE_TYPE;
 import static com.personblog.ai.constants.LlmPromptType.TITLE_USER_TYPE;
 
@@ -51,20 +53,20 @@ public class ArticleTitleService{
 
         } catch (Exception e) {
             log.error("文章标题生成失败", e);
-            throw new BizException("文章标题生成失败: " + e.getMessage());
+            throw new BizException(BizCodeEnum.AI_TITLE_ERROR);
         }
     }
 
     private String buildPrompt(String content, Integer maxLength, String style) {
         String template = promptManger.getPrompt(TITLE_USER_TYPE);
-        return String.format(template, style, maxLength != null ? maxLength : 30, content);
+        return String.format(template, style, maxLength != null ? maxLength : TitleGeneration.DEFAULT_MAX_LENGTH, content);
     }
 
     private String truncateContent(String content) {
-        if (content.length() <= 3000) {
+        if (content.length() <= TitleGeneration.MAX_CONTENT_LENGTH) {
             return content;
         }
-        return content.substring(0, 3000) + "...";
+        return content.substring(0, TitleGeneration.MAX_CONTENT_LENGTH) + TitleGeneration.TRUNCATION_SUFFIX;
     }
 
     private List<String> parseTitles(String result) {
@@ -75,7 +77,7 @@ public class ArticleTitleService{
         return Arrays.stream(result.split("\n"))
                 .map(String::trim)
                 .filter(s -> !s.isBlank())
-                .map(s -> s.replaceAll("^[0-9]+[.、)）]\\s*", ""))
+                .map(s -> s.replaceAll(TitleGeneration.TITLE_NUMBER_REGEX, ""))
                 .toList();
     }
 }

@@ -2,11 +2,7 @@ package com.personblog.interaction.bizService;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.personblog.api.interactionAPI.LikeApi;
-import com.personblog.api.interactionAPI.NotificationApi;
-import com.personblog.api.usrAPI.UseApi;
 import com.personblog.common.dto.Interaction.LikeMessageDTO;
-import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
-import com.personblog.common.dto.User.UserDTO;
 import com.personblog.common.exception.BizException;
 import com.personblog.common.utils.UserContextHolder;
 import com.personblog.interaction.dto.LikedDTO;
@@ -21,11 +17,9 @@ import com.personblog.interaction.strategy.LikeStrategy;
 import com.personblog.interaction.vo.LikedVO;
 import com.personblog.interaction.vo.MyLikeVO;
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
-import org.redisson.api.RedissonClient;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.redis.connection.DefaultStringRedisConnection;
 import org.springframework.data.redis.connection.StringRedisConnection;
@@ -34,10 +28,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -58,11 +49,6 @@ public class BizLikeService implements LikeApi {
     private final QuestionLikeService questionLikeService;
     private final AnswerLikeService answerLikeService;
     private final ArticleLikeMapper articleLikeMapper;
-    private final NotificationApi notificationApi;
-    private final RedissonClient redissonClient;
-    private final UseApi useApi;
-    @Resource(name = "ArticleCountExecutor")
-    private Executor executor;
     private static final Map<String, LikeStrategy> likeStrategyMap = new HashMap<>();
 
     @PostConstruct
@@ -134,8 +120,7 @@ public class BizLikeService implements LikeApi {
                 if (obj instanceof Number) {
                     result.put(targetId, ((Number) obj).longValue());
                 } else {
-                    // 理论上不会走到这里，但保留防御性代码
-                    // 可以根据需要记录日志
+                    // 记录日志
                     log.info("获取点赞个数失败");
                 }
             }
@@ -176,56 +161,12 @@ public class BizLikeService implements LikeApi {
                 .userId(UserContextHolder.getUserId())
                 .targetType(dto.getTargetType())
                 .isLike(dto.getIsLike())
+                .authorId(dto.getAuthorId())
+                .targetTitle(dto.getTargetTitle())
+                .targetContent(dto.getTargetContent())
+                .relatedId(dto.getRelatedId())
                 .build();
         rabbitTemplate.convertAndSend(INTERACTION_EXCHANGE,LIKE_DB_KEY,dbMessageDTO);
-        
-        // 点赞时异步发送通知（取消点赞不通知）
-        if (dto.getIsLike()) {
-            Long userId = UserContextHolder.getUserId();
-            Long targetId = dto.getTargetId();
-            String targetType = dto.getTargetType();
-            CompletableFuture.runAsync(() -> {
-                try {
-                    // 获取目标作者ID
-                    Long authorId = dto.getAuthorId();
-                    if (authorId.equals(userId)) {
-                        return;
-                    }
-                    
-                    // 获取点赞者信息
-                    List<UserDTO> users = useApi.getUserInfo(Collections.singleton(userId));
-                    UserDTO sender = users.isEmpty() ? null : users.getFirst();
-                    
-                    // 评论/回答类型：标题显示内容本身，列表中不重复显示内容
-                    String notifyTitle = dto.getTargetTitle();
-                    String notifyContent = dto.getTargetContent();
-                    if ("comment".equalsIgnoreCase(targetType) || "answer".equalsIgnoreCase(targetType)) {
-                        notifyTitle = dto.getTargetContent();
-                        notifyContent = null;
-                    }
-                    
-                    // 构建通知消息
-                    NotificationMessageDTO messageDTO = NotificationMessageDTO.builder()
-                            .userId(authorId)
-                            .actionType("like")
-                            .targetType(targetType.toLowerCase())
-                            .targetId(targetId)
-                            .senderId(userId)
-                            .targetTitle(notifyTitle)
-                            .content(notifyContent)
-                            .relatedId(dto.getRelatedId())
-                            .senderNickname(sender != null ? sender.getNickname() : "用户")
-                            .senderAvatar(sender != null ? sender.getAvatar() : "")
-                            .createdAt(LocalDateTime.now())
-                            .build();
-                    
-                    // 保存通知到数据库
-                    notificationApi.saveNotification(messageDTO);
-                } catch (Exception e) {
-                    log.error("保存点赞通知失败, targetId={}, targetType={}, userId={}", targetId, targetType, userId, e);
-                }
-            }, executor);
-        }
         
         return LikedVO.builder().likes(size).build();
     }

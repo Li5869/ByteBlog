@@ -6,6 +6,7 @@ import {articleApi, categoryApi, interactionApi, isLoggedIn, userApi} from '@/ut
 import {toast} from '@/utils/toast'
 import {DEFAULT_COVER, getAvatar} from '@/utils/defaults'
 import {useUserStore} from '@/stores/user'
+import {formatNumber, formatRelativeDate} from '@/utils/format'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -177,23 +178,6 @@ const handlePageChange = (page) => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-const formatDate = (date) => {
-  const d = new Date(date)
-  const now = new Date()
-  const diff = now - d
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
-  if (days === 0) return '今天'
-  if (days === 1) return '昨天'
-  if (days < 7) return `${days}天前`
-  return d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })
-}
-
-const formatNumber = (num) => {
-  if (num >= 10000) return (num / 10000).toFixed(1) + 'w'
-  if (num >= 1000) return (num / 1000).toFixed(1) + 'k'
-  return num.toString()
-}
 
 onMounted(() => {
   fetchCategories()
@@ -332,7 +316,7 @@ onMounted(() => {
                         />
                         <span class="text-sm text-gray-600 dark:text-gray-400 font-medium">{{ article.author.name }}</span>
                       </div>
-                      <span class="text-xs text-gray-400">{{ formatDate(article.createdAt) }}</span>
+                      <span class="text-xs text-gray-400">{{ formatRelativeDate(article.createdAt) }}</span>
                     </div>
                     
                     <div class="flex items-center gap-4 text-xs text-gray-400">

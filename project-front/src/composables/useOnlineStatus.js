@@ -13,29 +13,24 @@ export function useOnlineStatus() {
   const isConnected = ref(false)
 
   const handleStatusChange = (userId, isOnline) => {
-    console.log(`[useOnlineStatus] 状态变更: 用户 ${userId} -> ${isOnline}`)
     onlineStatus.value = { ...onlineStatus.value, [userId]: isOnline }
   }
 
   const handleConnected = () => {
-    console.log('[useOnlineStatus] WebSocket 已连接')
     isConnected.value = true
   }
 
   const handleDisconnected = () => {
-    console.log('[useOnlineStatus] WebSocket 已断开')
     isConnected.value = false
   }
 
   onMounted(() => {
-    console.log('[useOnlineStatus] 注册事件监听')
     // 监听统一的 status_change 事件（所有状态变更都通过此事件广播）
     wsManager.on('status_change', handleStatusChange)
     wsManager.on('connected', handleConnected)
     wsManager.on('disconnected', handleDisconnected)
 
     isConnected.value = wsManager.isConnected
-    console.log('[useOnlineStatus] 当前连接状态:', isConnected.value)
   })
 
   onUnmounted(() => {
@@ -45,7 +40,6 @@ export function useOnlineStatus() {
   })
 
   const queryOnlineStatus = (userIds) => {
-    console.log('[useOnlineStatus] 查询在线状态:', userIds)
     wsManager.queryOnlineStatus(userIds)
   }
 
@@ -53,7 +47,6 @@ export function useOnlineStatus() {
     // userId 保持字符串
     const id = String(userId)
     const status = onlineStatus.value[id] ?? wsManager.getCachedStatus(id) ?? false
-    console.log(`[useOnlineStatus] 查询用户 ${id} 在线状态:`, status)
     return status
   }
 

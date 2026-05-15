@@ -30,13 +30,6 @@ public class AnswerServiceImpl extends ServiceImpl<AnswerMapper, Answer> impleme
     public void updateLikeCount(List<LikeMessageDTO> likeMessageDTOS) {
 
     }
-
-    @Override
-    public Long getAnswerAuthorId(Long answerId) {
-        Answer answer = getById(answerId);
-        return answer != null ? answer.getAuthorId() : null;
-    }
-
     // ==================== 管理端接口实现 ====================
 
     @Override

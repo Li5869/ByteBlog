@@ -22,4 +22,14 @@ public class LikeSaveDBMessageDTO {
     private String targetType;
 
     private Boolean isLike;
+
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long authorId;
+
+    private String targetTitle;
+
+    private String targetContent;
+
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long relatedId;
 }

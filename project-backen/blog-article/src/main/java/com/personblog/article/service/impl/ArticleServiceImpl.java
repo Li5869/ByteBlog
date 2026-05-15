@@ -27,6 +27,7 @@ import com.personblog.article.service.ICategoryService;
 import com.personblog.article.service.IColumnArticleService;
 import com.personblog.article.vo.*;
 import com.personblog.common.dto.Article.ArticleQueryDTO;
+import com.personblog.common.dto.Article.ArticleStatsMessage;
 import com.personblog.common.dto.Interaction.BrowseHistoryMessageDTO;
 import com.personblog.common.dto.Interaction.CollectionMessageDTO;
 import com.personblog.common.dto.Interaction.LikeMessageDTO;
@@ -64,6 +65,8 @@ import java.util.stream.Collectors;
 
 import static com.personblog.common.config.mqConfig.AiMqConfig.AI_EXCHANGE;
 import static com.personblog.common.config.mqConfig.AiMqConfig.AI_MODERATE_KEY;
+import static com.personblog.common.config.mqConfig.ArticleStatsMqConfig.ARTICLE_STATS_EXCHANGE;
+import static com.personblog.common.config.mqConfig.ArticleStatsMqConfig.ARTICLE_STATS_KEY;
 import static com.personblog.common.config.mqConfig.InteractionMqConfig.INTERACTION_EXCHANGE;
 import static com.personblog.common.config.mqConfig.InteractionMqConfig.USER_LIKE_KEY;
 import static com.personblog.common.config.mqConfig.SearchMqConfig.*;
@@ -137,10 +140,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
     @Resource(name = "ArticleCountExecutor")
     private Executor articleCountExecutor;
-    @Resource(name = "CategoryExecutor")
-    private Executor categoryExecutor;
-    @Resource(name = "TagExecutor")
-    private Executor tagExecutor;
     /**
      * 获取Banner轮播图
      * 缓存策略：Caffeine 本地缓存，1小时
@@ -312,7 +311,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                     vo.setId(article.getId());
                     vo.setTitle(article.getTitle());
                     // 实时浏览量 = DB基础值 + Redis未刷新增量
-                    Long view = article.getViews() != null ? article.getViews() : 0L;
+                    long view = article.getViews() != null ? article.getViews() : 0L;
                     Object browseCount = redisTemplate.opsForHash().get(BROWSE_COUNT_KEY, article.getId().toString());
                     if (browseCount != null) {
                         view += Long.parseLong(browseCount.toString());
@@ -362,8 +361,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         
         // Pipeline 批量查询实时互动状态（isCollected、isLiked、浏览量增量、点赞数）
         InteractionQueryResult interaction = queryArticleInteractions(id, userId);
-        
-        // 从数据库获取文章的评论数和收藏数（单表主键查询，性能极高）
+
         Article article = getById(id);
         if (article == null) {
             throw new BizException(NOT_ARTICLE);
@@ -378,7 +376,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         // 浏览量 = 数据库基础值 + Redis 实时增量
         long baseViews = article.getViews() != null ? article.getViews() : 0L;
         if (interaction.browseCount() != null) {
-            vo.setViews(baseViews + Long.parseLong(interaction.browseCount().toString()));
+            vo.setViews(baseViews + interaction.browseCount);
         } else {
             vo.setViews(baseViews);
         }
@@ -395,42 +393,46 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private record InteractionQueryResult(
             boolean isCollected,
             boolean isLiked,
-            Object browseCount,
+            Long browseCount,
             long likeCount
     ) {}
 
     /**
      * 使用 Redis Pipeline 批量查询文章互动数据
-     * 将 4 次 Redis 网络请求合并为 1 次，消除串行 IO 开销
+     * 已登录：查询收藏状态 + 浏览量增量 + 点赞数（3 条命令合并）
+     * 未登录：仅查询浏览量增量 + 点赞数（2 条命令合并），跳过用户相关状态
      *
-     * Pipeline 命令顺序：
-     * 1. SISMEMBER collections:set:articleId:{id} {userId}  - 是否已收藏
-     * 2. SISMEMBER likes:set:article:{id} {userId}          - 是否已点赞
-     * 3. HGET browse:count {id}                             - 浏览量增量
-     * 4. SCARD likes:set:article:{id}                       - 实时点赞数
+     * Pipeline 命令顺序（已登录）：
+     *   0. SISMEMBER collections:set:articleId:{id} {userId}  - 是否已收藏
+     *   1. HGET browse:count {id}                             - 浏览量增量
+     *   2. SCARD likes:set:article:{id}                       - 实时点赞数
+     *
+     * Pipeline 命令顺序（未登录）：
+     *   0. HGET browse:count {id}                             - 浏览量增量
+     *   1. SCARD likes:set:article:{id}                       - 实时点赞数
      */
     private InteractionQueryResult queryArticleInteractions(Long articleId, Long userId) {
-        // 未登录用户直接返回默认值，无需查 Redis
-        if (userId == -1) {
-            return new InteractionQueryResult(false, false, null, 0L);
-        }
-
         String collectionKey = COLLECTION_USER_KEY_PREFIX + articleId;
         String likeKey = LIKE_BIZ_KEY_PREFIX(ARTICLE, articleId);
-        String userIdStr = String.valueOf(userId);
+        boolean loggedIn = userId != -1;
 
         List<Object> results = redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
             StringRedisConnection src = new DefaultStringRedisConnection(connection);
-            src.sIsMember(collectionKey, userIdStr);
+            if (loggedIn) {
+                src.sIsMember(collectionKey, String.valueOf(userId));
+            }
             src.hGet(BROWSE_COUNT_KEY, articleId.toString());
             src.sCard(likeKey);
             return null;
         });
 
-        boolean isCollected = (boolean) results.get(0);
-        boolean isLiked = likeApi.isLiked(articleId,userId,ARTICLE);
-        Object browseCount = results.get(1);
-        long likeCount = (long) results.get(2);
+        // Pipeline 返回原生类型：SISMEMBER→Boolean, HGET→String, SCARD→Long
+        int offset = loggedIn ? 1 : 0;
+        boolean isCollected = loggedIn ? (Boolean) results.get(0) : false;
+        boolean isLiked = loggedIn ? likeApi.isLiked(articleId, userId, ARTICLE) : false;
+        String browseCountStr = (String) results.get(offset);
+        Long browseCount = browseCountStr != null ? Long.parseLong(browseCountStr) : null;
+        long likeCount = (Long) results.get(offset + 1);
 
         return new InteractionQueryResult(isCollected, isLiked, browseCount, likeCount);
     }
@@ -620,41 +622,19 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         saveArticleTags(articleId, tagIds);
 
         if (save && status == 1) {
-            CompletableFuture.runAsync(() -> useApi.updateArticlesCount(userId, 1), articleCountExecutor)
-                    .exceptionally(e -> {
-                        log.error("更新用户文章数失败, userId={}", userId, e);
-                        return null;
-                    });
+            // 异步发送 MQ 消息更新统计（用户文章数、标签次数、分类文章数、标签缓存）
+            rabbitTemplate.convertAndSend(ARTICLE_STATS_EXCHANGE, ARTICLE_STATS_KEY,
+                    ArticleStatsMessage.builder()
+                            .articleId(articleId)
+                            .tagIds(tagIds)
+                            .categoryId(dto.getCategoryId())
+                            .userId(userId)
+                            .delta(1)
+                            .build());
             //更新es索引
             sendSearchSyncMessage(OPERATION_SYNC, articleId);
-
-            CompletableFuture.runAsync(() -> updateTagUseCount(tagIds,1), tagExecutor)
-                    .exceptionally(e -> {
-                        log.error("更新标签使用次数失败, tagIds={}", tagIds, e);
-                        return null;
-                    });
-            CompletableFuture.runAsync(tagService::invalidateTagCache, tagExecutor)
-                    .exceptionally(e -> {
-                        log.error("清理标签缓存失败", e);
-                        return null;
-                    });
-            CompletableFuture.runAsync(()->categoryService.updateCategoryCount(dto.getCategoryId(),1),categoryExecutor)
-                    .exceptionally(e->{
-                        log.error("更新分类缓存失败",e);
-                        return null;
-                    });
-            hotArticleCache.invalidateAll();
-            cacheUtil.evict( ARTICLE_DETAIL + article.getId());
             removeArticleCache(articleId,"创建文章后删除缓存");
             sendCreateMessage(articleId, article);
-            //TODO
-//            AICommentDTO commentMessage = AICommentDTO.builder()
-//                    .articleContent(article.getContent())
-//                    .articleId(articleId)
-//                    .articleTitle(article.getTitle())
-//                    .build();
-//            //AI评论
-//            rabbitTemplate.convertAndSend(COMMENT_EXCHANGE,COMMENT_ROUTING_KEY,commentMessage);
         }
 
         // 关联写作任务（AI写作时传入taskId）
@@ -697,6 +677,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         article.setTitle(dto.getTitle().trim());
         article.setSummary(StrUtil.trim(dto.getSummary()));
         article.setContent(StrUtil.trim(dto.getContent()));
+        article.setAuthorId(userId);
         article.setCover(StrUtil.trim(dto.getCover()));
         article.setReview(PENDING);
         article.setCategoryId(dto.getCategoryId());
@@ -704,9 +685,37 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         article.setUpdatedAt(LocalDateTime.now());
         boolean b = updateById(article);
         if(b){
-            //异步处理
-            CompletableFuture.runAsync(()-> solveTag(articleId, tagIds),tagExecutor);
-            CompletableFuture.runAsync(()-> judgeDraftOrPublish(userId, article, oldArticle.getStatus()),articleCountExecutor);
+            // 同步处理标签关联变更（必须在事务内）
+            Set<Long> oldTagIds = articleTagService.lambdaQuery()
+                    .eq(ArticleTag::getArticleId, articleId)
+                    .list()
+                    .stream()
+                    .map(ArticleTag::getTagId)
+                    .collect(Collectors.toSet());
+            articleTagService.lambdaUpdate().eq(ArticleTag::getArticleId, articleId).remove();
+            saveArticleTags(articleId, tagIds);
+
+            // 计算发布状态变更偏移量
+            int delta = 0;
+            if ((article.getStatus() == 1 && oldArticle.getStatus() == 0)) {
+                delta = 1;
+                sendCreateMessage(articleId, article);
+            } else if (article.getStatus() == 0 && oldArticle.getStatus() == 1) {
+                delta = -1;
+            }
+
+            // 异步发送 MQ 消息更新统计（标签使用次数、用户文章数、分类文章数、标签缓存）
+            rabbitTemplate.convertAndSend(ARTICLE_STATS_EXCHANGE, ARTICLE_STATS_KEY,
+                    ArticleStatsMessage.builder()
+                            .articleId(articleId)
+                            .oldTagIds(oldTagIds)
+                            .tagIds(tagIds)
+                            .categoryId(article.getCategoryId())
+                            .userId(userId)
+                            .delta(delta)
+                            .build());
+
+            // 同步搜索引擎
             sendSearchSyncMessage(OPERATION_SYNC, articleId);
             // 清除相关缓存
             removeArticleCache(articleId, "更新文章后清除缓存: articleId={}");
@@ -716,37 +725,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         vo.setStatus(dto.getStatus());
         return vo;
     }
-    //更新标签
-    private void solveTag(Long articleId, Set<Long> tagIds) {
-        Set<Long> oldTagIds = articleTagService.lambdaQuery()
-                .eq(ArticleTag::getArticleId, articleId)
-                .list()
-                .stream()
-                .map(ArticleTag::getTagId)
-                .collect(Collectors.toSet());
-
-        articleTagService.lambdaUpdate().eq(ArticleTag::getArticleId, articleId).remove();
-        saveArticleTags(articleId, tagIds);
-        adjustTagUseCount(oldTagIds, tagIds);
-        // 标签使用次数变化，清理标签列表缓存
-        tagService.invalidateTagCache();
-    }
-
-    private void judgeDraftOrPublish(Long userId, Article article, Integer oldStatue) {
-        //发布
-        if (article.getStatus()==1&&oldStatue==0){
-            useApi.updateArticlesCount(userId,1);
-            categoryService.updateCategoryCount(article.getCategoryId(),1);
-            categoryService.removeById(article.getCategoryId());
-            sendCreateMessage(article.getId(),article);
-        }
-        //草稿
-        if(article.getStatus()==0&&oldStatue==1){
-            useApi.updateArticlesCount(userId,-1);
-            categoryService.updateCategoryCount(article.getCategoryId(),-1);
-            categoryService.removeById(article.getCategoryId());
-        }
-    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -755,14 +733,16 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         Set<Long> tagIds = getTagIdsByArticleId(articleId);
         boolean removeById = removeById(articleId);
         if (removeById&&article.getStatus()==1){
-            CompletableFuture.runAsync(()->useApi.updateArticlesCount(userId,-1),articleCountExecutor);
-            CompletableFuture.runAsync(()->updateTagUseCount(tagIds,-1),tagExecutor);
+            // 异步发送 MQ 消息更新统计（用户文章数、标签次数、分类文章数）
+            rabbitTemplate.convertAndSend(ARTICLE_STATS_EXCHANGE, ARTICLE_STATS_KEY,
+                    ArticleStatsMessage.builder()
+                            .articleId(articleId)
+                            .tagIds(tagIds)
+                            .categoryId(article.getCategoryId())
+                            .userId(userId)
+                            .delta(-1)
+                            .build());
             sendSearchSyncMessage(OPERATION_DELETE, articleId);
-            CompletableFuture.runAsync(()->categoryService.updateCategoryCount(article.getCategoryId(),-1),categoryExecutor)
-                    .exceptionally(e->{
-                        log.error("更新分类缓存失败",e);
-                        return null;
-                    });
             CompletableFuture.runAsync(()->columnArticleService.removeArticleFromAllColumns(articleId),articleCountExecutor);
             removeArticleCache(articleId, "删除文章后清除缓存: articleId={}");
         }
@@ -1076,34 +1056,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         articleTagService.saveBatch(relationList);
     }
 
-    private void updateTagUseCount(Set<Long> tagIds,int dealt) {
-        if (CollectionUtil.isEmpty(tagIds)) {
-            return;
-        }
-        List<Tag> tags = tagService.listByIds(tagIds);
-        List<Tag> updateList = tags.stream().map(tag -> {
-            Tag updateTag = new Tag();
-            updateTag.setId(tag.getId());
-            long current = tag.getUseCount() == null ? 0L : tag.getUseCount();
-            // 下限保护：使用次数不低于0
-            updateTag.setUseCount(Math.max(0L, current + dealt));
-            return updateTag;
-        }).collect(Collectors.toList());
-        tagService.updateBatchById(updateList);
-    }
-
-    private void adjustTagUseCount(Set<Long> oldTagIds, Set<Long> newTagIds) {
-        // 新增标签使用次数 +1
-        Set<Long> toAdd = new HashSet<>(newTagIds);
-        toAdd.removeAll(oldTagIds);
-        updateTagUseCount(toAdd, 1);
-
-        // 移除标签使用次数 -1
-        Set<Long> toSub = new HashSet<>(oldTagIds);
-        toSub.removeAll(newTagIds);
-        updateTagUseCount(toSub, -1);
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateLikeCount(List<LikeMessageDTO> dtoList) {
@@ -1240,6 +1192,14 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         articleMapper.refreshHotFlags(MAX_HOT_SIZE);
         hotArticleCache.invalidateAll();
         log.info("热门文章标记已刷新, Top {}", MAX_HOT_SIZE);
+    }
+
+    @Override
+    public void updateArticleState(Long articleId, Integer statue) {
+        lambdaUpdate()
+                .eq(Article::getAuthorId, articleId)
+                .set(Article::getStatus, statue)
+                .update();
     }
 
     // ==================== MQ 消息发送 ====================
@@ -1593,9 +1553,15 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         // 如果是已发布文章，更新相关计数
         if (article.getStatus() == 1) {
             Set<Long> tagIds = getTagIdsByArticleId(id);
-            CompletableFuture.runAsync(() -> useApi.updateArticlesCount(article.getAuthorId(), -1), articleCountExecutor);
-            CompletableFuture.runAsync(() -> updateTagUseCount(tagIds, -1), tagExecutor);
-            CompletableFuture.runAsync(() -> categoryService.updateCategoryCount(article.getCategoryId(), -1), categoryExecutor);
+            // 异步发送 MQ 消息更新统计（用户文章数、标签次数、分类文章数）
+            rabbitTemplate.convertAndSend(ARTICLE_STATS_EXCHANGE, ARTICLE_STATS_KEY,
+                    ArticleStatsMessage.builder()
+                            .articleId(id)
+                            .tagIds(tagIds)
+                            .categoryId(article.getCategoryId())
+                            .userId(article.getAuthorId())
+                            .delta(-1)
+                            .build());
             sendSearchSyncMessage(OPERATION_DELETE, id);
         }
 

@@ -6,8 +6,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.common.dto.User.UserDTO;
-import com.personblog.common.service.MessagePushService;
-import com.personblog.common.vo.PushMessageVO;
 import com.personblog.interaction.dto.MessageQueryDTO;
 import com.personblog.interaction.entity.Message;
 import com.personblog.interaction.mapper.MessageMapper;
@@ -15,6 +13,8 @@ import com.personblog.interaction.service.IConversationService;
 import com.personblog.interaction.service.MessageService;
 import com.personblog.interaction.vo.MessageVO;
 import com.personblog.interaction.vo.UnreadCountVO;
+import com.personblog.push.service.MessagePushService;
+import com.personblog.push.vo.PushMessageVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

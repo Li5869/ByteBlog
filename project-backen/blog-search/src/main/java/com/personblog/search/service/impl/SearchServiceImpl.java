@@ -15,6 +15,7 @@ import com.personblog.search.vo.AuthorSearchVO;
 import com.personblog.search.vo.ColumnSearchVO;
 import com.personblog.search.vo.QuestionSearchVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -34,6 +35,7 @@ import static com.personblog.common.enums.BizCodeEnum.ERROR_SEARCH;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @ConditionalOnProperty(name = "search.enabled", havingValue = "true", matchIfMissing = true)
 public class SearchServiceImpl implements SearchService{
     private final ElasticsearchOperations esOperation;
@@ -75,6 +77,7 @@ public class SearchServiceImpl implements SearchService{
             resultDTO.setArticleTotal(search.getTotalHits());
         }
         catch (Exception e){
+            log.error("搜索文章失败, keyword={}, categoryId={}", queryDTO.getKeyword(), queryDTO.getCategoryId(), e);
             throw new BizException(ERROR_SEARCH);
         }
     }

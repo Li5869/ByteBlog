@@ -1,5 +1,6 @@
 <script setup>
 import {computed} from 'vue'
+import {formatDateTime} from '@/utils/format'
 
 const props = defineProps({
   user: {
@@ -25,16 +26,6 @@ const statusClass = computed(() => {
   }
   return map[props.user.status] || ''
 })
-
-const formatDateTime = (dateStr) => {
-  return new Date(dateStr).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 const handleClose = () => {
   emit('close')

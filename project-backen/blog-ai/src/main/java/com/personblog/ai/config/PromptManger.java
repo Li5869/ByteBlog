@@ -1,69 +1,63 @@
 package com.personblog.ai.config;
 
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.ResourceLoader;
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.personblog.ai.constants.LlmPromptType.*;
 
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class PromptManger {
 
+    private final NacosPromptProperties nacosPromptProperties;
     private final Map<String, String> promptMap = new ConcurrentHashMap<>();
 
-    public PromptManger(ResourceLoader resourceLoader) {
-        Resource summaryResource = resourceLoader.getResource("classpath:summaryPrompt.txt");
-        String summaryPrompt = readPrompt(summaryResource);
-        promptMap.put(SUMMARY_TYPE, summaryPrompt);
+    @PostConstruct
+    public void init() {
+        refreshPrompts();
+        log.info("[PromptManger] 提示词初始化完成，共加载 {} 个提示词", promptMap.size());
+    }
 
-        Resource titleResource = resourceLoader.getResource("classpath:titlePrompt.txt");
-        String titlePrompt = readPrompt(titleResource);
-        promptMap.put(TITLE_TYPE, titlePrompt);
-
-        Resource moderationResource = resourceLoader.getResource("classpath:moderationPrompt.txt");
-        String moderationPrompt = readPrompt(moderationResource);
-        promptMap.put(MODERATION_TYPE, moderationPrompt);
-
-        Resource commentResource = resourceLoader.getResource("classpath:commentPrompt.txt");
-        String commentPrompt = readPrompt(commentResource);
-        promptMap.put(COMMENT_TYPE, commentPrompt);
-
-        Resource polishResource = resourceLoader.getResource("classpath:polishPrompt.txt");
-        String polishPrompt = readPrompt(polishResource);
-        promptMap.put(POLISH_TYPE, polishPrompt);
+    public void refreshPrompts() {
+        promptMap.clear();
         
-        Resource blogDefaultResource = resourceLoader.getResource("classpath:blogDefaultPrompt.txt");
-        String blogDefaultPrompt = readPrompt(blogDefaultResource);
-        promptMap.put(BLOG_DEFAULT_TYPE, blogDefaultPrompt);
+        putIfNotNull(SUMMARY_TYPE, nacosPromptProperties.getSummary(), "摘要生成");
+        putIfNotNull(TITLE_TYPE, nacosPromptProperties.getTitle(), "标题生成");
+        putIfNotNull(MODERATION_TYPE, nacosPromptProperties.getModeration(), "内容审核");
+        putIfNotNull(COMMENT_TYPE, nacosPromptProperties.getComment(), "评论生成");
+        putIfNotNull(POLISH_TYPE, nacosPromptProperties.getPolish(), "内容润色");
+        putIfNotNull(BLOG_DEFAULT_TYPE, nacosPromptProperties.getBlogDefault(), "博客默认");
+        putIfNotNull(BLOG_CHAT_TYPE, nacosPromptProperties.getChat(), "聊天助手");
+        putIfNotNull(MODERATION_USER_TYPE, nacosPromptProperties.getModerationUser(), "审核用户提示");
+        putIfNotNull(TITLE_USER_TYPE, nacosPromptProperties.getTitleUser(), "标题用户提示");
+        
+        log.info("[PromptManger] 提示词已刷新，成功加载 {} 个", promptMap.size());
+        
+        if (promptMap.isEmpty()) {
+            log.warn("[PromptManger] 未加载任何提示词，请检查 Nacos 配置是否正确");
+        }
+    }
 
-        Resource chatResource = resourceLoader.getResource("classpath:chatPrompt.txt");
-        String chatPrompt = readPrompt(chatResource);
-        promptMap.put(BLOG_CHAT_TYPE, chatPrompt);
-
-        Resource moderationUserResource = resourceLoader.getResource("classpath:moderationUserPrompt.txt");
-        String moderationUserPrompt = readPrompt(moderationUserResource);
-        promptMap.put(MODERATION_USER_TYPE, moderationUserPrompt);
-
-        Resource titleUserResource = resourceLoader.getResource("classpath:titleUserPrompt.txt");
-        String titleUserPrompt = readPrompt(titleUserResource);
-        promptMap.put(TITLE_USER_TYPE, titleUserPrompt);
+    private void putIfNotNull(String key, String value, String description) {
+        if (value != null && !value.isBlank()) {
+            promptMap.put(key, value);
+            log.debug("[PromptManger] 加载提示词: {}", description);
+        } else {
+            log.warn("[PromptManger] 提示词配置为空: {} ({})", description, key);
+        }
     }
 
     public String getPrompt(String type) {
-        return promptMap.get(type);
-    }
-
-    private String readPrompt(Resource resource) {
-        try (InputStream inputStream = resource.getInputStream()) {
-            return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        String prompt = promptMap.get(type);
+        if (prompt == null) {
+            log.warn("[PromptManger] 未找到类型为 {} 的提示词，请检查 Nacos 配置", type);
         }
+        return prompt;
     }
 }

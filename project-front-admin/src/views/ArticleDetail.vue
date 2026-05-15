@@ -2,6 +2,7 @@
 import {computed, onMounted, ref} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {adminArticleApi} from '@/utils/request'
+import {formatAbsoluteDate} from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -47,14 +48,6 @@ const getReviewStatusClass = (status) => {
     rejected: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
   }
   return classes[status] || ''
-}
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString('zh-CN', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit'
-  })
 }
 
 const goBack = () => router.back()
@@ -139,7 +132,7 @@ onMounted(() => {
                   <span>{{ article.authorName }}</span>
                 </div>
                 <span>{{ article.categoryName }}</span>
-                <span>创建于 {{ formatDate(article.createdAt) }}</span>
+                <span>创建于 {{ formatAbsoluteDate(article.createdAt) }}</span>
               </div>
             </div>
           </div>
@@ -200,7 +193,7 @@ onMounted(() => {
         <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700">
           <div class="flex items-center justify-between">
             <span class="text-sm text-gray-500 dark:text-gray-400">
-              最后更新：{{ formatDate(article.updatedAt) }}
+              最后更新：{{ formatAbsoluteDate(article.updatedAt) }}
             </span>
             <div class="flex items-center gap-2">
               <button

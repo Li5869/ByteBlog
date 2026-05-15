@@ -1,10 +1,20 @@
 /**
  * API 请求封装 - 管理端
- * 
+ *
  * 基于 fetch 封装，提供统一的请求和响应处理
  * 自动携带 Token，处理认证失败等场景
  * 支持 Refresh Token 自动刷新机制
+ * 使用 json-bigint 防止雪花 ID 精度丢失
  */
+
+import JSONbig from 'json-bigint'
+
+const JSONbigString = JSONbig({ storeAsString: true })
+
+const safeParseJson = async (response) => {
+  const text = await response.text()
+  return JSONbigString.parse(text)
+}
 
 const BASE_URL = '/api'
 
@@ -55,8 +65,13 @@ export const getRefreshToken = () => {
  * 获取存储的用户信息
  */
 export const getAdminInfo = () => {
-  const info = localStorage.getItem('admin-info')
-  return info ? JSON.parse(info) : null
+  try {
+    const info = localStorage.getItem('admin-info')
+    return info ? JSONbigString.parse(info) : null
+  } catch {
+    localStorage.removeItem('admin-info')
+    return null
+  }
 }
 
 /**
@@ -110,7 +125,7 @@ const refreshAccessToken = async () => {
       },
       body: JSON.stringify({ refreshToken }),
     })
-    const data = await response.json()
+    const data = await safeParseJson(response)
 
     if (data.code !== 0) {
       console.error('Token 刷新失败:', data.msg)
@@ -155,8 +170,8 @@ const request = async (url, options = {}) => {
   
   try {
     const response = await fetch(`${BASE_URL}${url}`, config)
-    const data = await response.json()
-    
+    const data = await safeParseJson(response)
+
     // 处理 401 未授权错误
     if (response.status === 401) {
       // 如果是刷新接口本身返回 401，说明 Refresh Token 也过期了
@@ -182,7 +197,7 @@ const request = async (url, options = {}) => {
             // 使用新 Token 重新发起请求
             config.headers['token'] = newToken
             fetch(`${BASE_URL}${url}`, config)
-              .then(res => res.json())
+              .then(res => safeParseJson(res))
               .then(retryData => {
                 if (retryData.code !== 0) {
                   reject(new Error(retryData.msg || '请求失败'))
@@ -195,30 +210,33 @@ const request = async (url, options = {}) => {
         })
       }
 
-      // 开始刷新 Token
+      // 开始刷新 Token，使用 try/finally 确保锁一定释放
       isRefreshing = true
-      const newToken = await refreshAccessToken()
-      isRefreshing = false
+      try {
+        const newToken = await refreshAccessToken()
 
-      if (newToken) {
-        // 刷新成功，更新请求头并重新发起请求
-        config.headers['token'] = newToken
-        // 通知等待队列中的请求
-        onRefreshed(newToken)
-        
-        // 重新发起当前请求
-        const retryResponse = await fetch(`${BASE_URL}${url}`, config)
-        const retryData = await retryResponse.json()
-        
-        if (retryData.code !== 0) {
-          return Promise.reject(new Error(retryData.msg || '请求失败'))
+        if (newToken) {
+          // 刷新成功，更新请求头并重新发起请求
+          config.headers['token'] = newToken
+          // 通知等待队列中的请求
+          onRefreshed(newToken)
+
+          // 重新发起当前请求
+          const retryResponse = await fetch(`${BASE_URL}${url}`, config)
+          const retryData = await safeParseJson(retryResponse)
+
+          if (retryData.code !== 0) {
+            return Promise.reject(new Error(retryData.msg || '请求失败'))
+          }
+
+          return retryData.data
+        } else {
+          // 刷新失败，清除认证信息并跳转登录
+          onRefreshFailed()
+          return Promise.reject(new Error('登录状态已过期，请重新登录'))
         }
-        
-        return retryData.data
-      } else {
-        // 刷新失败，清除认证信息并跳转登录
-        onRefreshFailed()
-        return Promise.reject(new Error('登录状态已过期，请重新登录'))
+      } finally {
+        isRefreshing = false
       }
     }
     
@@ -316,18 +334,18 @@ export const uploadApi = {
       body: formData
     })
     
-    const data = await response.json()
-    
+    const data = await safeParseJson(response)
+
     if (response.status === 401) {
       clearAuth()
       window.location.href = '/login'
       return Promise.reject(new Error('未登录或登录已过期'))
     }
-    
+
     if (data.code !== 0) {
       return Promise.reject(new Error(data.msg || '上传失败'))
     }
-    
+
     return data.data
   }
 }
@@ -451,18 +469,18 @@ export const knowledgeApi = {
       body: formData
     })
     
-    const data = await response.json()
-    
+    const data = await safeParseJson(response)
+
     if (response.status === 401) {
       clearAuth()
       window.location.href = '/login'
       return Promise.reject(new Error('未登录或登录已过期'))
     }
-    
+
     if (data.code !== 0) {
       return Promise.reject(new Error(data.msg || '上传失败'))
     }
-    
+
     return data.data
   }
 }

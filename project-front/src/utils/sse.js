@@ -23,7 +23,6 @@ class SseManager {
    */
   connect() {
     if (this.isConnecting || (this.eventSource && this.eventSource.readyState === EventSource.OPEN)) {
-      console.log('[SSE] 连接已存在或正在连接中')
       return
     }
 
@@ -34,7 +33,6 @@ class SseManager {
     }
 
     this.isConnecting = true
-    console.log('[SSE] 开始建立连接...')
 
     // 关闭旧连接
     this.disconnect()
@@ -48,14 +46,12 @@ class SseManager {
 
       // 连接成功
       this.eventSource.addEventListener('connect', (event) => {
-        console.log('[SSE] 连接成功:', event.data)
         this.reconnectAttempts = 0
         this.isConnecting = false
       })
 
       // 接收通知
       this.eventSource.addEventListener('notification', (event) => {
-        console.log('[SSE] 收到通知:', event.data)
         try {
           const notification = JSONbigString.parse(event.data)
           this.emit('notification', notification)
@@ -73,7 +69,6 @@ class SseManager {
 
       // 连接关闭
       this.eventSource.onclose = () => {
-        console.log('[SSE] 连接关闭')
         this.isConnecting = false
       }
     } catch (error) {
@@ -97,7 +92,6 @@ class SseManager {
     }
     this.reconnectAttempts = 0
     this.isConnecting = false
-    console.log('[SSE] 连接已断开')
   }
 
   /**
@@ -110,7 +104,6 @@ class SseManager {
     }
 
     this.reconnectAttempts++
-    console.log(`[SSE] ${this.reconnectDelay / 1000}秒后尝试第${this.reconnectAttempts}次重连`)
 
     this.reconnectTimer = setTimeout(() => {
       this.connect()

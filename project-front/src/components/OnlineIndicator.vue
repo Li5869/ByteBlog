@@ -97,11 +97,8 @@ const queryStatus = () => {
   if (!normalizedUserId.value) return
   
   if (isConnected.value) {
-    console.log('[OnlineIndicator] 查询用户在线状态:', normalizedUserId.value)
     queryOnlineStatus([normalizedUserId.value])
     hasQueried.value = true
-  } else {
-    console.log('[OnlineIndicator] WebSocket 未连接，等待连接...')
   }
 }
 

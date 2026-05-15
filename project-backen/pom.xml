@@ -23,6 +23,7 @@
         <module>blog-question</module>
         <module>blog-application</module>
         <module>blog-api</module>
+        <module>blog-push</module>
     </modules>
 
     <properties>

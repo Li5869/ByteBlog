@@ -10,9 +10,8 @@
   },
   "dependencies": {
     "@vicons/ionicons5": "^0.13.0",
-    "@vicons/utils": "^0.1.4",
     "@vueuse/core": "^12.8.2",
-    "json-bigint": "^1.0.0",
+    "json-bigint": "1.0.0",
     "marked": "^17.0.5",
     "naive-ui": "^2.44.1",
     "pinia": "^3.0.4",

@@ -22,9 +22,9 @@ import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
 import com.personblog.common.dto.User.UserDTO;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
-import com.personblog.common.sse.SseEmitterManager;
 import com.personblog.common.utils.MultiLevelCacheUtil;
 import com.personblog.common.utils.UserContextHolder;
+import com.personblog.push.sse.SseEmitterManager;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
@@ -226,7 +226,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateLikes(List<LikeMessageDTO> dtoList) {
+    public void updateLikeCount(List<LikeMessageDTO> dtoList) {
         List<Comment> list = new ArrayList<>(dtoList.size());
         for (LikeMessageDTO likeMessageDTO : dtoList) {
             Comment comment = new Comment();

@@ -1,4 +1,4 @@
-package com.personblog.common.service;
+package com.personblog.push.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

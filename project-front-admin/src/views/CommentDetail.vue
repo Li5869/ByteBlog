@@ -2,6 +2,7 @@
 import {computed, onMounted, ref} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {adminCommentApi} from '../utils/request'
+import {formatAbsoluteDate} from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -36,17 +37,6 @@ const getStatusClass = (status) => {
     rejected: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
   }
   return classes[status] || ''
-}
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 const goBack = () => {
@@ -134,7 +124,7 @@ onMounted(() => {
             </div>
             <div class="text-right text-sm text-gray-500 dark:text-gray-400">
               <div>评论ID: {{ comment.id }}</div>
-              <div>{{ formatDate(comment.createdAt) }}</div>
+              <div>{{ formatAbsoluteDate(comment.createdAt) }}</div>
             </div>
           </div>
         </div>
@@ -173,7 +163,7 @@ onMounted(() => {
               <div class="text-xs text-gray-500 dark:text-gray-400">回复数</div>
             </div>
             <div class="text-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <div class="text-sm font-medium text-gray-900 dark:text-white">{{ comment.reviewedAt ? formatDate(comment.reviewedAt) : '-' }}</div>
+              <div class="text-sm font-medium text-gray-900 dark:text-white">{{ comment.reviewedAt ? formatAbsoluteDate(comment.reviewedAt) : '-' }}</div>
               <div class="text-xs text-gray-500 dark:text-gray-400">审核时间</div>
             </div>
           </div>
@@ -195,7 +185,7 @@ onMounted(() => {
               <div class="flex-1">
                 <div class="flex items-center gap-2 mb-1">
                   <span class="font-medium text-gray-900 dark:text-white text-sm">{{ reply.authorName }}</span>
-                  <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(reply.createdAt) }}</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatAbsoluteDate(reply.createdAt) }}</span>
                 </div>
                 <p class="text-sm text-gray-600 dark:text-gray-300">{{ reply.content }}</p>
               </div>
@@ -209,7 +199,7 @@ onMounted(() => {
         <div class="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700">
           <div class="flex items-center justify-between">
             <div class="text-sm text-gray-500 dark:text-gray-400">
-              <span v-if="comment.reviewedAt">审核时间：{{ formatDate(comment.reviewedAt) }}</span>
+              <span v-if="comment.reviewedAt">审核时间：{{ formatAbsoluteDate(comment.reviewedAt) }}</span>
             </div>
             <div class="flex items-center gap-2">
               <button

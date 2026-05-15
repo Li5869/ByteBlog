@@ -1,5 +1,6 @@
 <script setup>
 import {DEFAULT_COVER, getAvatar} from '@/utils/defaults'
+import {formatRelativeDate} from '@/utils/format'
 
 defineProps({
   article: {
@@ -8,17 +9,6 @@ defineProps({
   }
 })
 
-const formatDate = (date) => {
-  const d = new Date(date)
-  const now = new Date()
-  const diff = now - d
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
-  if (days === 0) return '今天'
-  if (days === 1) return '昨天'
-  if (days < 7) return `${days}天前`
-  return d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })
-}
 </script>
 
 <template>
@@ -59,7 +49,7 @@ const formatDate = (date) => {
             />
             <span>{{ article.author.name }}</span>
           </div>
-          <span>{{ formatDate(article.createdAt) }}</span>
+          <span>{{ formatRelativeDate(article.createdAt) }}</span>
         </div>
         
         <div class="flex items-center gap-4 text-xs text-gray-400">

@@ -181,7 +181,24 @@ public enum BizCodeEnum {
     /** 问题不存在 */
     QUESTION_NOT_EXIST(4059, "问题不存在"),
     /** 回答不存在 */
-    ANSWER_NOT_EXIST(4060, "回答不存在");
+    ANSWER_NOT_EXIST(4060, "回答不存在"),
+
+    // ==================== AI 服务 (4061-4070) ====================
+
+    /** AI 文章润色服务调用异常 */
+    AI_POLISH_ERROR(4061, "AI文章润色失败"),
+    /** AI 文章摘要生成服务调用异常 */
+    AI_SUMMARY_ERROR(4062, "AI文章摘要生成失败"),
+    /** AI 文章标题生成服务调用异常 */
+    AI_TITLE_ERROR(4063, "AI文章标题生成失败"),
+    /** AI 服务返回数据为空（响应中缺少 data 字段或 data 为 null） */
+    AI_RESPONSE_EMPTY(4064, "AI服务返回数据为空"),
+    /** Python AI 服务调用异常（网络异常、服务不可用等） */
+    AI_PYTHON_SERVICE_ERROR(4065, "Python AI服务调用异常"),
+    /** 文件上传至知识库失败 */
+    AI_FILE_UPLOAD_ERROR(4066, "文件上传至知识库失败"),
+    /** Python 服务返回了业务错误（响应 code 不为 0） */
+    AI_PYTHON_BUSINESS_ERROR(4067, "Python服务返回业务错误");
 
     private final String message;
 

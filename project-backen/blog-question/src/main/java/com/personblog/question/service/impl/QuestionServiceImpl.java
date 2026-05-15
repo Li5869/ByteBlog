@@ -20,9 +20,9 @@ import com.personblog.common.entity.Tag;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
 import com.personblog.common.service.ITagService;
-import com.personblog.common.sse.SseEmitterManager;
 import com.personblog.common.utils.MultiLevelCacheUtil;
 import com.personblog.common.utils.UserContextHolder;
+import com.personblog.push.sse.SseEmitterManager;
 import com.personblog.question.dto.*;
 import com.personblog.question.entity.Answer;
 import com.personblog.question.entity.Question;
@@ -1198,19 +1198,6 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
         return vo;
     }
-
-    @Override
-    public Long getQuestionAuthorId(Long questionId) {
-        Question question = getById(questionId);
-        return question != null ? question.getAuthorId() : null;
-    }
-
-    @Override
-    public String getQuestionTitle(Long questionId) {
-        Question question = getById(questionId);
-        return question != null ? question.getTitle() : null;
-    }
-
     // ==================== 管理端接口实现 ====================
 
     @Override

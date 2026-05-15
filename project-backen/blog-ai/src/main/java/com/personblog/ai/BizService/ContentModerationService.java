@@ -10,7 +10,7 @@ import com.personblog.api.articleAPI.ArticleInfoAPI;
 import com.personblog.api.interactionAPI.CommentApi;
 import com.personblog.api.interactionAPI.SystemNotificationApi;
 import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
-import com.personblog.common.sse.SseEmitterManager;
+import com.personblog.push.sse.SseEmitterManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 
+import static com.personblog.ai.constants.AiPromptConstants.Moderation;
 import static com.personblog.ai.constants.LlmPromptType.MODERATION_TYPE;
 import static com.personblog.ai.constants.LlmPromptType.MODERATION_USER_TYPE;
 import static com.personblog.common.constant.StatusConstant.APPROVED;
@@ -41,7 +42,13 @@ public class ContentModerationService{
     private final SystemNotificationApi systemNotificationApi;
     private final SseEmitterManager sseEmitterManager;
 
-    public void moderate(ContentModerationDTO dto) {
+    /**
+     * 执行内容审核
+     *
+     * @param dto 审核请求 DTO
+     * @return 审核状态：approved（通过）/ rejected（拒绝）/ null（审核异常）
+     */
+    public String moderate(ContentModerationDTO dto) {
 
         String prompt = buildPrompt(dto);
 
@@ -63,9 +70,12 @@ public class ContentModerationService{
             // 发送审核结果通知
             sendModerationNotification(dto, vo, reviewStatus);
 
+            return reviewStatus;
+
         } catch (Exception e) {
             log.error("内容审核失败", e);
             // 审核失败时，不作处理，留给人工审核
+            return null;
         }
     }
 
@@ -90,12 +100,12 @@ public class ContentModerationService{
             return;
         }
 
-        String title = dto.getTitle() != null ? dto.getTitle() : "内容";
+        String title = dto.getTitle() != null ? dto.getTitle() : Moderation.DEFAULT_TITLE;
 
         // 1. SSE 实时推送
         try {
             ModerationNotificationDTO sseMessage = ModerationNotificationDTO.builder()
-                    .type("moderation")
+                    .type(Moderation.SSE_TYPE)
                     .bizType(dto.getContentType())
                     .bizId(dto.getBizId())
                     .reviewStatus(reviewStatus)
@@ -112,7 +122,7 @@ public class ContentModerationService{
 
         // 2. 写入系统通知表
         try {
-            String actionType = APPROVED.equals(reviewStatus) ? "moderation_approved" : "moderation_rejected";
+            String actionType = APPROVED.equals(reviewStatus) ? Moderation.ACTION_APPROVED : Moderation.ACTION_REJECTED;
             
             NotificationMessageDTO notificationDTO = NotificationMessageDTO.builder()
                     .userId(dto.getAuthorId())
@@ -134,15 +144,15 @@ public class ContentModerationService{
     private String buildPrompt(ContentModerationDTO dto) {
         String template = promptManger.getPrompt(MODERATION_USER_TYPE);
         String contentTypeDesc = getContentTypeDesc(dto.getContentType());
-        String title = dto.getTitle() != null ? dto.getTitle() : "内容";
+        String title = dto.getTitle() != null ? dto.getTitle() : Moderation.DEFAULT_TITLE;
         return String.format(template, contentTypeDesc, title, dto.getContent());
     }
 
     private String getContentTypeDesc(String contentType) {
         return switch (contentType) {
-            case COMMENT -> "评论";
-            case QUESTION -> "问题";
-            default -> "文章";
+            case COMMENT -> Moderation.TYPE_COMMENT;
+            case QUESTION -> Moderation.TYPE_QUESTION;
+            default -> Moderation.TYPE_ARTICLE;
         };
     }
 

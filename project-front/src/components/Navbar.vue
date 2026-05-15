@@ -237,19 +237,15 @@ const handleNotificationRead = (count = 1) => {
 
 // 处理 WebSocket 未读数更新
 const handleUnreadUpdate = (data) => {
-  console.log('[Navbar] 收到未读数更新:', data)
   if (data && data.delta !== undefined) {
     unreadCount.value = Math.max(0, unreadCount.value + data.delta)
-    console.log('[Navbar] 未读数已更新为:', unreadCount.value)
   }
 }
 
 // 处理 SSE 通知
 const handleSseNotification = (notification) => {
-  console.log('[Navbar] 收到 SSE 通知:', notification)
   // 收到新通知，未读数 +1
   unreadCount.value++
-  console.log('[Navbar] 未读数已更新为:', unreadCount.value)
 }
 
 // 监听事件（需要在onMounted中绑定）

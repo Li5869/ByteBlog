@@ -28,10 +28,13 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
+import static com.personblog.ai.constants.AiBusinessConstants.Defaults;
 import static com.personblog.ai.constants.ChatEventTypeEnum.DATA;
 import static com.personblog.ai.constants.ChatEventTypeEnum.PARAM;
 import static com.personblog.ai.constants.LLMType.ASSISTANT;
 import static com.personblog.ai.constants.LLMType.USER;
+import static com.personblog.ai.constants.PythonAiApiConstants.Chat.STREAM;
+import static com.personblog.ai.constants.PythonAiApiConstants.*;
 import static com.personblog.common.config.mqConfig.AiMqConfig.AI_EXCHANGE;
 import static com.personblog.common.config.mqConfig.AiMqConfig.AI_TITLE_KEY;
 import static com.personblog.common.constant.RedisKeys.REDIS_MEMORY_PREFIX;
@@ -79,7 +82,7 @@ public class PythonAiChatService {
         StringBuilder thinking = new StringBuilder();
 
         return pythonAiWebClient.post()
-                .uri("/api/v1/chat/stream")
+                .uri(STREAM)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
                 .retrieve()
@@ -124,7 +127,7 @@ public class PythonAiChatService {
                 .doOnError(e -> log.error("调用 Python AI 服务失败: {}", e.getMessage()))
                 .onErrorResume(e -> Flux.just(ChatEventVO.builder()
                         .eventType(ChatEventTypeEnum.STOP.getValue())
-                        .eventData("服务异常: " + e.getMessage())
+                        .eventData(Msg.SERVICE_ERROR + e.getMessage())
                         .build()));
     }
 
@@ -170,10 +173,10 @@ public class PythonAiChatService {
                 return null;
             }
 
-            String type = (String) dataMap.get("type");
-            String content = (String) dataMap.get("content");
-            String conversationId = dataMap.get("conversation_id") != null
-                    ? dataMap.get("conversation_id").toString()
+            String type = (String) dataMap.get(Fields.TYPE);
+            String content = (String) dataMap.get(Fields.CONTENT);
+            String conversationId = dataMap.get(Fields.CONVERSATION_ID) != null
+                    ? dataMap.get(Fields.CONVERSATION_ID).toString()
                     : null;
 
             PythonStreamEvent streamEvent = new PythonStreamEvent();
@@ -194,36 +197,29 @@ public class PythonAiChatService {
         }
 
         return switch (event.getType()) {
-            // thinking → 模型思考分析内容（前端展示在"思考过程"面板），映射为 PARAM 事件
-            case "thinking" -> ChatEventVO.builder()
+            case SseEvent.THINKING, SseEvent.TOOL_CALL -> ChatEventVO.builder()
                     .eventType(PARAM.getValue())
                     .eventData(event.getContent())
                     .build();
-            // chunk → 回答文本片段（打字机效果），映射为 DATA 事件
-            case "chunk" -> ChatEventVO.builder()
+            case SseEvent.CHUNK -> ChatEventVO.builder()
                     .eventType(DATA.getValue())
                     .eventData(event.getContent())
                     .build();
-            // tool_call → ReAct 循环中的工具调用（前端展示在"思考过程"面板），映射为 PARAM 事件
-            case "tool_call" -> ChatEventVO.builder()
-                    .eventType(PARAM.getValue())
-                    .eventData(event.getContent())
-                    .build();
-            case "tool_result" -> {
+            case SseEvent.TOOL_RESULT -> {
                 log.debug("工具执行结果: {}", event.getContent());
                 yield null;
             }
-            case "done" -> ChatEventVO.STOP_EVENT;
-            case "error" -> {
+            case SseEvent.DONE -> ChatEventVO.STOP_EVENT;
+            case SseEvent.ERROR -> {
                 log.error("Python AI 返回错误: {}", event.getContent());
                 yield ChatEventVO.builder()
                         .eventType(ChatEventTypeEnum.STOP.getValue())
-                        .eventData("错误: " + event.getContent())
+                        .eventData(Msg.ERROR_PREFIX + event.getContent())
                         .build();
             }
             default -> ChatEventVO.builder()
                     .eventType(DATA.getValue())
-                    .eventData(event.getContent() != null ? event.getContent() : "")
+                    .eventData(event.getContent() != null ? event.getContent() : Defaults.EMPTY)
                     .build();
         };
     }

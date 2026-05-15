@@ -2,6 +2,7 @@
 import {computed, onMounted, ref} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {columnApi} from '../utils/request.js'
+import {formatAbsoluteDate} from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,17 +20,6 @@ const getStatusClass = (status) => {
   return status === 1
     ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
     : 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400'
-}
-
-const formatDate = (date) => {
-  if (!date) return '-'
-  return new Date(date).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 const fetchColumnDetail = async () => {
@@ -249,7 +239,7 @@ onMounted(() => {
                       </svg>
                       {{ article.comments || 0 }}
                     </span>
-                    <span>{{ formatDate(article.createdAt) }}</span>
+                    <span>{{ formatAbsoluteDate(article.createdAt) }}</span>
                   </div>
                 </div>
               </div>
@@ -266,11 +256,11 @@ onMounted(() => {
             </div>
             <div>
               <div class="text-gray-500 dark:text-gray-400">创建时间</div>
-              <div class="text-gray-900 dark:text-white">{{ formatDate(column.createdAt) }}</div>
+              <div class="text-gray-900 dark:text-white">{{ formatAbsoluteDate(column.createdAt) }}</div>
             </div>
             <div>
               <div class="text-gray-500 dark:text-gray-400">更新时间</div>
-              <div class="text-gray-900 dark:text-white">{{ formatDate(column.updatedAt) }}</div>
+              <div class="text-gray-900 dark:text-white">{{ formatAbsoluteDate(column.updatedAt) }}</div>
             </div>
             <div>
               <div class="text-gray-500 dark:text-gray-400">作者ID</div>

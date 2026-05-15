@@ -6,6 +6,7 @@ import {toast} from '@/utils/toast'
 import {modal} from '@/utils/modal'
 import {useUserStore} from '@/stores/user'
 import {DEFAULT_AVATAR} from '@/utils/defaults'
+import {formatAbsoluteDate, formatNumber, formatRelativeTime} from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -286,39 +287,6 @@ const goToUserHome = (userId) => {
   }
 }
 
-const formatDate = (date) => {
-  if (!date) return ''
-  return new Date(date).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
-
-const formatTime = (dateStr) => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diff = now - date
-  const minutes = Math.floor(diff / 60000)
-  const hours = Math.floor(diff / 3600000)
-  const days = Math.floor(diff / 86400000)
-
-  if (minutes < 1) return '刚刚'
-  if (minutes < 60) return `${minutes}分钟前`
-  if (hours < 24) return `${hours}小时前`
-  if (days < 30) return `${days}天前`
-  
-  return date.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })
-}
-
-const formatNumber = (num) => {
-  const n = Number(num)
-  if (!n) return 0
-  if (n >= 10000) return (n / 10000).toFixed(1) + 'w'
-  if (n >= 1000) return (n / 1000).toFixed(1) + 'k'
-  return n
-}
 
 watch(questionId, () => {
   if (questionId.value) {
@@ -497,7 +465,7 @@ onMounted(() => {
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    {{ formatDate(question.createdAt) }}
+                    {{ formatAbsoluteDate(question.createdAt) }}
                   </span>
                   <span 
                     v-if="question.isSolved"
@@ -684,7 +652,7 @@ onMounted(() => {
                             class="font-semibold text-gray-900 dark:text-white text-sm cursor-pointer hover:text-blue-500 transition-colors"
                             @click="goToUserHome(answer.author?.id)"
                           >{{ answer.author?.name || '匿名用户' }}</span>
-                          <span class="text-xs text-gray-400">{{ formatTime(answer.createdAt) }}</span>
+                          <span class="text-xs text-gray-400">{{ formatRelativeTime(answer.createdAt) }}</span>
                           <span 
                             v-if="answer.isBest"
                             class="flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs font-medium rounded-lg"

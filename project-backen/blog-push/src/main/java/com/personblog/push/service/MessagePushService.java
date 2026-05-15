@@ -1,8 +1,8 @@
-package com.personblog.common.service;
+package com.personblog.push.service;
 
-import com.personblog.common.vo.PushMessageVO;
-import com.personblog.common.websocket.WebSocketHandler;
-import com.personblog.common.websocket.WebSocketMessage;
+import com.personblog.push.vo.PushMessageVO;
+import com.personblog.push.websocket.WebSocketHandler;
+import com.personblog.push.websocket.WebSocketMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

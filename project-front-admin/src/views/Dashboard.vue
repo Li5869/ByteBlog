@@ -2,6 +2,7 @@
 import {onMounted, onUnmounted, ref} from 'vue'
 import * as echarts from 'echarts'
 import {dashboardApi} from '@/utils/request'
+import {formatAbsoluteDate, formatNumber} from '@/utils/format'
 
 const stats = ref([
   { name: '文章总数', value: '0', icon: 'Document', color: 'blue', change: '0%' },
@@ -27,19 +28,6 @@ const chartData = ref({
   comments: [],
   questions: []
 })
-
-const formatNumber = (num) => {
-  if (!num) return '0'
-  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-}
-
-const formatDate = (date) => {
-  if (!date) return ''
-  return new Date(date).toLocaleDateString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit'
-  })
-}
 
 const fetchStatistics = async () => {
   try {
@@ -81,7 +69,7 @@ const fetchRecentArticles = async () => {
       title: article.title,
       status: article.status,
       views: article.views,
-      date: formatDate(article.createdAt)
+      date: formatAbsoluteDate(article.createdAt)
     }))
   } catch (error) {
     console.error('获取最近文章失败:', error)

@@ -4,7 +4,9 @@ spring:
       simple:
         acknowledge-mode: manual
   config:
-    import: classpath:application-ai.yml
+    import:
+      - classpath:application-ai.yml
+      - optional:nacos:${spring.application.name}.yaml?refreshEnabled=true
   threads:
     virtual:
       enabled: true
@@ -22,6 +24,15 @@ spring:
         heart-beat-interval: ${NACOS_HEART_BEAT_INTERVAL:5}
         heart-beat-timeout: ${NACOS_HEART_BEAT_TIMEOUT:15}
         ip-delete-timeout: ${NACOS_IP_DELETE_TIMEOUT:30}
+      config:
+        enabled: true
+        server-addr: ${NACOS_SERVER:}
+        namespace: ${NACOS_NAMESPACE:}
+        group: ${NACOS_GROUP:}
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
+        file-extension: yaml
+        refresh-enabled: true
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
   jackson:
@@ -102,3 +113,4 @@ logging:
   level:
     root: info
     com.lishuaihao.personblog: info
+    com.alibaba.nacos.client.config.impl: warn

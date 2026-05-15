@@ -1,6 +1,8 @@
 package com.personblog.ai.BizService;
 
 import com.personblog.ai.dto.KnowledgeUploadVO;
+import com.personblog.common.enums.BizCodeEnum;
+import com.personblog.common.exception.BizException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
@@ -16,6 +18,8 @@ import reactor.core.publisher.Flux;
 
 import java.util.Map;
 import java.util.Objects;
+
+import static com.personblog.ai.constants.PythonAiApiConstants.*;
 
 @Slf4j
 @Service
@@ -41,7 +45,7 @@ public class KnowledgeService {
                     .contentType(MediaType.parseMediaType(Objects.requireNonNull(file.getContentType())));
             
             Map<String, Object> response = pythonAiWebClient.post()
-                    .uri("/api/v1/knowledge/file")
+                    .uri(Knowledge.FILE_UPLOAD)
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .bodyValue(builder.build())
                     .retrieve()
@@ -51,34 +55,35 @@ public class KnowledgeService {
             return parseResponse(response);
         } catch (Exception e) {
             log.error("上传文件失败", e);
-            throw new RuntimeException("上传文件失败: " + e.getMessage());
+            throw new BizException(BizCodeEnum.AI_FILE_UPLOAD_ERROR);
         }
     }
 
     @SuppressWarnings("unchecked")
     private KnowledgeUploadVO parseResponse(Map<String, Object> response) {
-        if (response == null || !"success".equals(response.get("msg"))) {
-            String errorMsg = response != null ? (String) response.get("msg") : "未知错误";
-            throw new RuntimeException("上传失败: " + errorMsg);
+        if (response == null || !Msg.SUCCESS.equals(response.get(Fields.MSG))) {
+            String errorMsg = response != null ? (String) response.get(Fields.MSG) : "未知错误";
+            log.error("上传失败: {}", errorMsg);
+            throw new BizException(BizCodeEnum.AI_FILE_UPLOAD_ERROR);
         }
         
-        Map<String, Object> data = (Map<String, Object>) response.get("data");
+        Map<String, Object> data = (Map<String, Object>) response.get(Fields.DATA);
         if (data == null) {
-            throw new RuntimeException("响应数据为空");
+            throw new BizException(BizCodeEnum.AI_RESPONSE_EMPTY);
         }
         
         KnowledgeUploadVO vo = new KnowledgeUploadVO();
         
-        if (data.containsKey("chunk_count")) {
-            vo.setChunkCount((Integer) data.get("chunk_count"));
+        if (data.containsKey(Fields.CHUNK_COUNT)) {
+            vo.setChunkCount((Integer) data.get(Fields.CHUNK_COUNT));
         }
         
-        if (data.containsKey("filename")) {
-            vo.setFilename((String) data.get("filename"));
+        if (data.containsKey(Fields.FILENAME)) {
+            vo.setFilename((String) data.get(Fields.FILENAME));
         }
         
-        if (data.containsKey("ids")) {
-            vo.setIds((java.util.List<String>) data.get("ids"));
+        if (data.containsKey(Fields.IDS)) {
+            vo.setIds((java.util.List<String>) data.get(Fields.IDS));
         }
         
         return vo;

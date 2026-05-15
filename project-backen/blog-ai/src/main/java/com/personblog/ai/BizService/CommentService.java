@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
+import static com.personblog.ai.constants.AiBusinessConstants.Defaults;
 import static com.personblog.ai.constants.LlmPromptType.COMMENT_TYPE;
 
 @Service
@@ -22,6 +23,6 @@ public class CommentService implements AICommentApi {
                     .call()
                     .content();
         }
-        return "";
+        return Defaults.EMPTY;
     }
 }

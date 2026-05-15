@@ -1,4 +1,4 @@
-package com.personblog.common.websocket;
+package com.personblog.push.websocket;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;

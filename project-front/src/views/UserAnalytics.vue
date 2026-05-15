@@ -32,6 +32,7 @@ import {
 } from '@vicons/ionicons5'
 import {isLoggedIn} from '@/utils/request'
 import {toast} from '@/utils/toast'
+import {formatNumber} from '@/utils/format'
 
 const router = useRouter()
 const loading = ref(true)
@@ -129,16 +130,6 @@ watch(timeRange, (newRange) => {
   }, 300)
 })
 
-const formatNumber = (num) => {
-  if (!num) return '0'
-  if (num >= 10000) {
-    return (num / 10000).toFixed(1) + 'w'
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'k'
-  }
-  return num.toString()
-}
 
 const getGrowthType = (value) => {
   return value >= 0 ? 'success' : 'error'

@@ -16,6 +16,6 @@ public interface LikeApi {
     Set<Long> batchIsLike(List<Long> targetIds,String targetType);
     //批量获取点赞总数
     Map<Long,Long> getLikesTime(List<Long> targetIds,String targetType);
-
+    //同步点赞数据到数据库
     void readLikesTimesAnd2DB(String TargetType,int maxSize);
 }
