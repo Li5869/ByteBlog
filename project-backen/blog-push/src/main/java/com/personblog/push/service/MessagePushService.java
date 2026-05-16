@@ -37,7 +37,6 @@ public class MessagePushService {
         if (!onlineStateService.isOnline(receiverId)) {
             return;
         }
-
         WebSocketMessage message = WebSocketMessage.unreadUpdate(receiverId, unreadCount);
         webSocketHandler.sendToUser(receiverId, message);
     }

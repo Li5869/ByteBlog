@@ -60,6 +60,16 @@ class SseManager {
         }
       })
 
+      // 接收在线状态变更（用户上下线广播）
+      this.eventSource.addEventListener('user_online', (event) => {
+        try {
+          const data = JSONbigString.parse(event.data)
+          this.emit('user_online', data)
+        } catch (e) {
+          console.error('[SSE] 解析在线状态失败:', e)
+        }
+      })
+
       // 连接错误
       this.eventSource.onerror = (error) => {
         console.error('[SSE] 连接错误:', error)

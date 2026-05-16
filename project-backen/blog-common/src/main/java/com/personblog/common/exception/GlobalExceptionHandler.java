@@ -1,6 +1,7 @@
 package com.personblog.common.exception;
 
 import com.personblog.common.result.JsonData;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindException;
@@ -9,6 +10,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.WebRequest;
 
 import java.util.stream.Collectors;
 
@@ -71,7 +74,16 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public JsonData<Void> handleException(Exception e) {
+    public JsonData<Void> handleException(Exception e, WebRequest request) {
+        // SSE 连接断开等异步异常到达时，响应已提交或 Content-Type 为 text/event-stream，
+        // 此时写入 JSON 会二次报错，直接跳过
+        if (request instanceof ServletWebRequest servletRequest) {
+            HttpServletResponse response = servletRequest.getResponse();
+            if (response != null && response.isCommitted()) {
+                log.debug("响应已提交，跳过异常响应: {}", e.getMessage());
+                return null;
+            }
+        }
         log.error("系统异常: ", e);
         return JsonData.buildError("系统繁忙，请稍后重试");
     }
