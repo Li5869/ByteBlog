@@ -10,14 +10,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AiModerateMessage {
-    
+    //业务类型
     private String bizType;
-
+    //内容
     private String content;
-
+    //业务id
     private Long bizId;
-
+    //作者id
     private Long authorId;
-
+    //标题
     private String title;
 }

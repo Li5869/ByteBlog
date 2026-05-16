@@ -18,7 +18,7 @@ public class ContentModerationDTO {
     private String content;
 
     @Schema(description = "内容类型: article/comment/question")
-    private String contentType = "article";
+    private String contentType;
 
     @Schema(description = "业务Id")
     private Long bizId;

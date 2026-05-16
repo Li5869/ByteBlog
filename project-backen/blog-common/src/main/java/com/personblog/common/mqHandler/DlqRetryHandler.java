@@ -22,6 +22,7 @@ import java.util.Map;
 import static com.personblog.common.config.mqConfig.AiMqConfig.AI_TITLE_DLQ;
 import static com.personblog.common.config.mqConfig.ArticleMqConfig.ARTICLE_ES_DLQ;
 import static com.personblog.common.config.mqConfig.CommentMqConfig.AI_COMMENT_DLQ;
+import static com.personblog.common.config.mqConfig.CommentMqConfig.COMMENT_NOTIFICATION_DLQ;
 import static com.personblog.common.config.mqConfig.InteractionMqConfig.*;
 import static com.personblog.common.constant.StatusConstant.PENDING;
 
@@ -56,7 +57,7 @@ public class DlqRetryHandler {
             LIKE_DLQ, LIKE_DB_DLQ,
             FOLLOW_DLQ, FOLLOW_NOTIFICATION_DLQ,
             USER_LIKE_DLQ, COLLECTION_DLQ, BROWSE_HISTORY_DLQ,
-            AI_COMMENT_DLQ, AI_TITLE_DLQ,
+            AI_COMMENT_DLQ, COMMENT_NOTIFICATION_DLQ, AI_TITLE_DLQ,
             ARTICLE_ES_DLQ
     }, containerFactory = "rabbitListenerContainerFactory")
     public void handleDeadLetter(Message message, Channel channel,

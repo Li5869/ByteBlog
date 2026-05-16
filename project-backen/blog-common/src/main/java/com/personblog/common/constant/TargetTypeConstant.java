@@ -15,4 +15,6 @@ public class TargetTypeConstant {
     public static final String COLUMN = "column";
     //全部
     public static final String ALL = "all";
+    //回复
+    public static final String REPLY = "reply";
 }

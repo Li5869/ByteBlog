@@ -10,4 +10,5 @@ public interface CommentApi {
     Long getCommentAuthorId(Long commentId);
 
     void updateReviewStatue(Long commentId,String statue);
+
 }

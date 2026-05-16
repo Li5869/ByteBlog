@@ -80,11 +80,10 @@ public class ContentModerationService{
     }
 
     private void handleReviewStatue(String type, String statue, Long bizId) {
-        switch (type) {
-            case COMMENT -> commentApi.updateReviewStatue(bizId, statue);
-            case QUESTION -> {
-            }
-            default -> articleInfoAPI.updateArticleReviewStatus(bizId, statue);
+        if (type.equals(COMMENT)) {
+            commentApi.updateReviewStatue(bizId, statue);
+        } else {
+            articleInfoAPI.updateArticleReviewStatus(bizId, statue);
         }
     }
 
@@ -100,7 +99,7 @@ public class ContentModerationService{
             return;
         }
 
-        String title = dto.getTitle() != null ? dto.getTitle() : Moderation.DEFAULT_TITLE;
+        String title = dto.getTitle() != null ? dto.getTitle() : dto.getContent();
 
         // 1. SSE 实时推送
         try {
@@ -113,7 +112,6 @@ public class ContentModerationService{
                     .reason(vo.getReason())
                     .createdAt(LocalDateTime.now())
                     .build();
-
             sseEmitterManager.sendToUser(dto.getAuthorId(), sseMessage);
             log.info("SSE审核通知推送成功, authorId={}, reviewStatus={}", dto.getAuthorId(), reviewStatus);
         } catch (Exception e) {
@@ -123,7 +121,7 @@ public class ContentModerationService{
         // 2. 写入系统通知表
         try {
             String actionType = APPROVED.equals(reviewStatus) ? Moderation.ACTION_APPROVED : Moderation.ACTION_REJECTED;
-            
+
             NotificationMessageDTO notificationDTO = NotificationMessageDTO.builder()
                     .userId(dto.getAuthorId())
                     .actionType(actionType)

@@ -2,7 +2,7 @@
 import {useRoute, useRouter} from 'vue-router'
 import {computed, onMounted, onUnmounted, ref, watch} from 'vue'
 import {marked} from 'marked'
-import {aiApi, articleApi, commentApi, interactionApi, isLoggedIn, userApi} from '../utils/request.js'
+import {articleApi, commentApi, interactionApi, isLoggedIn, userApi} from '../utils/request.js'
 import {useUserStore} from '../stores/user.js'
 import {toast} from '@/utils/toast'
 import {modal} from '@/utils/modal'
@@ -38,7 +38,6 @@ const commentSize = ref(10)
 const followStatusLoaded = ref(false) // 关注状态是否已确认加载完成
 
 const newComment = ref('')
-const isModerating = ref(false)
 const showComments = ref(false)
 const expandedReplies = ref({})
 const activeHeadingId = ref('')
@@ -456,21 +455,6 @@ const submitComment = async () => {
   }
   
   try {
-    isModerating.value = true
-    // AI 内容审核
-    const modRes = await aiApi.moderateContent(newComment.value.trim(), 'comment')
-    isModerating.value = false
-    if (modRes?.isViolation) {
-      const types = (modRes.violationType || []).join('、')
-      const suggestion = modRes.suggestion || '请修改后重试'
-      await modal.confirm(`内容审核未通过\n违规类型：${types}\n建议：${suggestion}`, {
-        title: '评论失败',
-        confirmText: '我知道了',
-        icon: 'warning'
-      })
-      return
-    }
-
     const data = await commentApi.postComment({
       articleId: articleId.value,
       content: newComment.value.trim(),
@@ -491,7 +475,6 @@ const submitComment = async () => {
     newComment.value = ''
     toast.success('评论发表成功')
   } catch (e) {
-    isModerating.value = false
     console.error('发表评论失败:', e)
     toast.error(e.message || '发表评论失败，请稍后重试')
   }
@@ -564,21 +547,6 @@ const submitReply = async (commentId) => {
   }
   
   try {
-    isModerating.value = true
-    // AI 内容审核
-    const modRes = await aiApi.moderateContent(content, 'comment')
-    isModerating.value = false
-    if (modRes?.isViolation) {
-      const types = (modRes.violationType || []).join('、')
-      const suggestion = modRes.suggestion || '请修改后重试'
-      await modal.confirm(`内容审核未通过\n违规类型：${types}\n建议：${suggestion}`, {
-        title: '回复失败',
-        confirmText: '我知道了',
-        icon: 'warning'
-      })
-      return
-    }
-
     const data = await commentApi.postComment({
       articleId: articleId.value,
       content: content,
@@ -607,7 +575,6 @@ const submitReply = async (commentId) => {
     
     toast.success('回复发表成功')
   } catch (e) {
-    isModerating.value = false
     console.error('发表回复失败:', e)
     toast.error(e.message || '发表回复失败，请稍后重试')
   }
@@ -670,22 +637,6 @@ onUnmounted(() => {
 
 <template>
   <div class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 relative">
-    <!-- AI 审核加载遮罩 -->
-    <div
-      v-if="isModerating"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-    >
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-4 min-w-64">
-        <div class="relative w-14 h-14">
-          <div class="absolute inset-0 rounded-full border-4 border-primary-200 dark:border-primary-800 opacity-30"></div>
-          <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-primary-500 animate-spin"></div>
-        </div>
-        <div class="text-center">
-          <p class="text-base font-semibold text-gray-800 dark:text-white">AI 内容审核中</p>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">请稍候，内容安全检测需要几秒钟...</p>
-        </div>
-      </div>
-    </div>
     <div v-if="loading" class="flex items-center justify-center min-h-screen">
       <div class="flex flex-col items-center gap-4">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
@@ -1094,7 +1045,7 @@ onUnmounted(() => {
                       <span class="text-xs text-gray-400">{{ newComment.length }}/500</span>
                       <button 
                         @click="submitComment"
-                        :disabled="!newComment.trim() || isModerating"
+                        :disabled="!newComment.trim()"
                         class="px-5 py-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl hover:from-primary-600 hover:to-primary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold shadow-lg shadow-primary-500/20"
                       >
                         发表评论
@@ -1195,7 +1146,7 @@ onUnmounted(() => {
                                 </button>
                                 <button 
                                   @click="submitReply(comment.id)"
-                                  :disabled="!(replyContent[comment.id] || '').trim() || isModerating"
+                                  :disabled="!(replyContent[comment.id] || '').trim()"
                                   class="px-4 py-1.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg hover:from-primary-600 hover:to-primary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                                 >
                                   发送
