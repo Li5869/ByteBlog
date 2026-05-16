@@ -142,7 +142,7 @@ public class ContentModerationService{
     private String buildPrompt(ContentModerationDTO dto) {
         String template = promptManger.getPrompt(MODERATION_USER_TYPE);
         String contentTypeDesc = getContentTypeDesc(dto.getContentType());
-        String title = dto.getTitle() != null ? dto.getTitle() : Moderation.DEFAULT_TITLE;
+        String title = dto.getTitle() != null ? dto.getTitle() : dto.getContent();
         return String.format(template, contentTypeDesc, title, dto.getContent());
     }
 
