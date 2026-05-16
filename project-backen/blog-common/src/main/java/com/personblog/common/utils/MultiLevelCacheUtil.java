@@ -1,5 +1,6 @@
 package com.personblog.common.utils;
 
+import cn.hutool.core.bean.BeanUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.extern.slf4j.Slf4j;
@@ -114,7 +115,7 @@ public class MultiLevelCacheUtil {
     /** 安全类型转换，类型不匹配时清除缓存并降级返回 null */
     private <T> T castData(Object data, Class<T> clazz, String key) {
         try {
-            return clazz.cast(data);
+            return BeanUtil.toBean(data,clazz);
         } catch (ClassCastException e) {
             log.error("缓存数据类型不匹配, key={}, expected={}, actual={}", key, clazz.getSimpleName(), data.getClass().getSimpleName(), e);
             localCache.invalidate(key);

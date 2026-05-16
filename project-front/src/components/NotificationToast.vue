@@ -60,6 +60,7 @@
 import {computed, onMounted, onUnmounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {sseManager} from '@/utils/sse'
+import {userApi} from '@/utils/request'
 
 const router = useRouter()
 const visible = ref(false)
@@ -101,7 +102,8 @@ const getActionText = (actionType) => {
     'reply': '回复了你的评论',
     'collection': '收藏了你的文章',
     'answer': '回答了你的问题',
-    'adopt': '采纳了你的回答'
+    'adopt': '采纳了你的回答',
+    'online': '上线了'
   }
   return actions[actionType] || '与你互动'
 }
@@ -156,12 +158,36 @@ const handleClick = () => {
   close()
 }
 
+const handleUserOnline = async (data) => {
+  if (!data || !data.online || !data.userId) return
+  try {
+    const res = await userApi.getAuthorInfo(data.userId)
+    if (res && res.nickname) {
+      showNotification({
+        senderNickname: res.nickname || '用户',
+        senderAvatar: res.avatar,
+        actionType: 'online',
+        createdAt: new Date().toISOString()
+      })
+    }
+  } catch (e) {
+    showNotification({
+      senderNickname: '关注的用户',
+      senderAvatar: null,
+      actionType: 'online',
+      createdAt: new Date().toISOString()
+    })
+  }
+}
+
 onMounted(() => {
   sseManager.on('notification', showNotification)
+  sseManager.on('user_online', handleUserOnline)
 })
 
 onUnmounted(() => {
   sseManager.off('notification', showNotification)
+  sseManager.off('user_online', handleUserOnline)
   if (timer) clearTimeout(timer)
 })
 </script>

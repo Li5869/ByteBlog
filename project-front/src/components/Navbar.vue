@@ -7,7 +7,6 @@ import {interactionApi, searchApi} from '@/utils/request'
 import {Events, off, on} from '@/utils/eventBus'
 import OnlineIndicator from './OnlineIndicator.vue'
 import {DEFAULT_AVATAR} from '@/utils/defaults'
-import wsManager from '@/utils/websocket'
 import sseManager from '@/utils/sse'
 
 defineProps({
@@ -217,8 +216,8 @@ onUnmounted(() => {
   off(Events.REFRESH_UNREAD_COUNT, handleRefreshUnreadCount)
   off(Events.NOTIFICATION_READ, handleNotificationRead)
   
-  // 移除 WebSocket 监听
-  wsManager.off('unread_update', handleUnreadUpdate)
+  // 移除 SSE 未读数监听
+  sseManager.off('unread_update', handleUnreadUpdate)
   
   // 移除 SSE 监听
   sseManager.off('notification', handleSseNotification)
@@ -253,8 +252,8 @@ onMounted(() => {
   on(Events.REFRESH_UNREAD_COUNT, handleRefreshUnreadCount)
   on(Events.NOTIFICATION_READ, handleNotificationRead)
   
-  // 监听 WebSocket 未读数更新
-  wsManager.on('unread_update', handleUnreadUpdate)
+  // 监听 SSE 未读数更新
+  sseManager.on('unread_update', handleUnreadUpdate)
   
   // 监听 SSE 通知
   sseManager.on('notification', handleSseNotification)

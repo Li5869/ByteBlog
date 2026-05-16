@@ -1,6 +1,7 @@
 package com.personblog.push.websocket;
 
 import com.personblog.common.utils.MessageUtil;
+import com.personblog.push.constant.PushConstants;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,6 +9,8 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+
+import static com.personblog.push.constant.PushConstants.TYPE_USER_ONLINE;
 
 /**
  * WebSocket 消息实体
@@ -28,14 +31,6 @@ public class WebSocketMessage {
         this.data = data;
         this.timestamp = System.currentTimeMillis();
     }
-
-    public static final String TYPE_WELCOME = "welcome";
-    public static final String TYPE_USER_ONLINE = "user_online";
-    public static final String TYPE_ONLINE_STATUS = "online_status";
-    public static final String TYPE_ERROR = "error";
-    public static final String TYPE_QUERY_ONLINE = "query_online";
-    // 在类中添加新的消息类型常量
-    public static final String TYPE_PRIVATE_MESSAGE = "private_message";  // 私信消息推送
 
     /**
      * 私信消息推送
@@ -65,13 +60,13 @@ public class WebSocketMessage {
         data.put("createdAt", createdAt.toString());
         data.put("timestamp", System.currentTimeMillis());
 
-        return new WebSocketMessage(TYPE_PRIVATE_MESSAGE, data);
+        return new WebSocketMessage(PushConstants.TYPE_PRIVATE_MESSAGE, data);
     }
     /**
      * 欢迎消息
      */
     public static WebSocketMessage welcome(Long userId) {
-        return new WebSocketMessage(TYPE_WELCOME, Map.of(
+        return new WebSocketMessage(PushConstants.TYPE_WELCOME, Map.of(
                 "userId", String.valueOf(userId),  // 转为字符串，避免JS精度丢失
                 "message", "连接成功",
                 "serverTime", System.currentTimeMillis()
@@ -105,14 +100,14 @@ public class WebSocketMessage {
         // 将所有 Long 类型的 key 转为 String，避免JS精度丢失
         Map<String, Boolean> stringKeyStatus = new HashMap<>();
         status.forEach((key, value) -> stringKeyStatus.put(String.valueOf(key), value));
-        return new WebSocketMessage(TYPE_ONLINE_STATUS, stringKeyStatus);
+        return new WebSocketMessage(PushConstants.TYPE_ONLINE_STATUS, stringKeyStatus);
     }
 
     /**
      * 错误消息
      */
     public static WebSocketMessage error(String message) {
-        return new WebSocketMessage(TYPE_ERROR, Map.of("message", message));
+        return new WebSocketMessage(PushConstants.TYPE_ERROR, Map.of("message", message));
     }
 
     public static WebSocketMessage unreadUpdate(Long receiverId, int delta) {

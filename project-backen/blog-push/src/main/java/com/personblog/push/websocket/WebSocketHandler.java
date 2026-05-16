@@ -2,7 +2,10 @@ package com.personblog.push.websocket;
 
 import cn.hutool.json.JSONUtil;
 import com.personblog.common.api.FollowerApi;
+import com.personblog.push.constant.PushConstants;
+import com.personblog.push.onlineMessage.PushMessage;
 import com.personblog.push.service.OnlineStateService;
+import com.personblog.push.service.PushChannelService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -30,6 +33,8 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private final OnlineStateService onlineStatusApi;
     // 粉丝查询接口，由 blog-interaction 模块实现
     private final FollowerApi followerApi;
+    // 跨节点消息推送服务
+    private final PushChannelService pushChannelService;
     // 存储用户会话
     private static final Map<Long, WebSocketSession> USER_SESSIONS = new ConcurrentHashMap<>();
     // 存储会话与用户ID的映射关系
@@ -118,37 +123,40 @@ public class WebSocketHandler extends TextWebSocketHandler {
             session.close();
         }
     }
-    // 发送消息给指定用户
+    // 发送消息给指定用户（通过 Redis Pub/Sub 分发到所有节点，包括自身）
     public void sendToUser(Long userId, WebSocketMessage message) {
+        String json = JSONUtil.toJsonStr(message);
+        pushChannelService.publish(new PushMessage(
+                PushConstants.CHANNEL_WS, userId, json, null));
+    }
+
+    /**
+     * 仅本地投递（供 PushChannelService 跨节点回调使用）
+     */
+    public void sendToLocalUser(Long userId, String json) {
         WebSocketSession session = USER_SESSIONS.get(userId);
         if (session != null && session.isOpen()) {
             try {
-                String json = JSONUtil.toJsonStr(message);
                 session.sendMessage(new TextMessage(json));
             } catch (IOException e) {
-                log.error("[WebSocket] 发送消息失败: userId={}", userId, e);
+                log.error("[WebSocket] 本地投递失败: userId={}", userId, e);
             }
         }
     }
-    // 通知用户的粉丝（只发给在线的粉丝）
+    // 通知用户的粉丝（通过 SSE 广播在线状态，SSE 单向推送足够，无需重复走 WebSocket）
     private void broadcastToFollowers(Long userId, WebSocketMessage message) {
-        // 查询该用户的粉丝列表
         List<Long> followerIds = followerApi.getFollowerIds(userId);
         if (followerIds.isEmpty()) {
             return;
         }
-        String json = JSONUtil.toJsonStr(message);
-        // 只通知当前在线的粉丝
-        followerIds.forEach(followerId -> {
-            WebSocketSession session = USER_SESSIONS.get(followerId);
-            if (session != null && session.isOpen()) {
-                try {
-                    session.sendMessage(new TextMessage(json));
-                } catch (IOException e) {
-                    log.error("[WebSocket] 通知粉丝失败: userId={}, followerId={}", userId, followerId, e);
-                }
-            }
-        });
+        boolean isOnline = PushConstants.TYPE_USER_ONLINE.equals(message.getType())
+                && message.getData() instanceof Map<?, ?> data
+                && Boolean.TRUE.equals(data.get("online"));
+        String ssePayload = JSONUtil.toJsonStr(Map.of(
+                "userId", String.valueOf(userId),
+                "online", isOnline));
+        pushChannelService.publish(new PushMessage(
+                PushConstants.CHANNEL_SSE_BROADCAST, userId, ssePayload, followerIds));
     }
     // 发送消息给指定会话
     private void sendMessage(WebSocketSession session, WebSocketMessage message) {
@@ -167,7 +175,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private void handleMessageByType(WebSocketSession session, Long userId, WebSocketMessage msg) {
         String type = msg.getType();
         // 处理查询在线用户状态消息
-        if (WebSocketMessage.TYPE_QUERY_ONLINE.equals(type)) {
+        if (PushConstants.TYPE_QUERY_ONLINE.equals(type)) {
             Object data = msg.getData();
             if (data instanceof List<?> rawList) {
                 // Jackson 反序列化 JSON 数字为 Integer，需手动转为 Long

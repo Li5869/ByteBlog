@@ -49,14 +49,24 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
 
     @Override
     public List<Long> getFollowerIds(Long userId) {
-        List<Follow> list = lambdaQuery()
+        List<Follow> followers = lambdaQuery()
                 .eq(Follow::getFollowingId, userId)
                 .list();
-        if (CollectionUtil.isEmpty(list)) {
+        if (CollectionUtil.isEmpty(followers)) {
             return List.of();
         }
-        return list.stream()
+        List<Follow> followings = lambdaQuery()
+                .eq(Follow::getFollowerId, userId)
+                .list();
+        if (CollectionUtil.isEmpty(followings)) {
+            return List.of();
+        }
+        Set<Long> followingIdSet = followings.stream()
+                .map(Follow::getFollowingId)
+                .collect(Collectors.toSet());
+        return followers.stream()
                 .map(Follow::getFollowerId)
+                .filter(followingIdSet::contains)
                 .toList();
     }
 
