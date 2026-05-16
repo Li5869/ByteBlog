@@ -111,10 +111,6 @@ class WebSocketManager {
           this.emit('private_message', message.data)
           break
 
-        case 'unread_update':
-          this.emit('unread_update', message.data)
-          break
-
         case 'error':
           console.error('[WebSocket] 服务端错误:', message.data)
           this.emit('error', message.data)

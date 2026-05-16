@@ -1,5 +1,6 @@
 package com.personblog.push.service;
 
+import com.personblog.push.constant.PushConstants;
 import com.personblog.push.onlineMessage.PushMessage;
 import com.personblog.push.sse.SseEmitterManager;
 import com.personblog.push.websocket.WebSocketHandler;
@@ -22,13 +23,6 @@ import java.util.List;
 @Service
 public class PushChannelService {
 
-    private static final String TOPIC_NAME = "byteblog:push";
-
-    public static final String CHANNEL_WS = "ws";
-    public static final String CHANNEL_WS_BROADCAST = "ws:broadcast";
-    public static final String CHANNEL_SSE = "sse";
-    public static final String CHANNEL_SSE_BROADCAST = "sse:broadcast";
-
     private final RedissonClient redissonClient;
     private final WebSocketHandler webSocketHandler;
     private final SseEmitterManager sseEmitterManager;
@@ -43,7 +37,7 @@ public class PushChannelService {
 
     @PostConstruct
     public void subscribe() {
-        RTopic topic = redissonClient.getTopic(TOPIC_NAME);
+        RTopic topic = redissonClient.getTopic(PushConstants.TOPIC_NAME);
         topic.addListener(PushMessage.class, (channel, msg) -> {
             try {
                 handleMessage(msg);
@@ -51,41 +45,26 @@ public class PushChannelService {
                 log.error("[PushChannel] 处理跨节点消息失败: channel={}, userId={}", msg.getChannel(), msg.getUserId(), e);
             }
         });
-        log.info("[PushChannel] 订阅 Redis Topic: {}", TOPIC_NAME);
+        log.info("[PushChannel] 订阅 Redis Topic: {}", PushConstants.TOPIC_NAME);
     }
 
     /**
      * 发布消息到 Redis，所有节点（含自身）都会收到并尝试本地投递
      */
     public void publish(PushMessage msg) {
-        RTopic topic = redissonClient.getTopic(TOPIC_NAME);
+        RTopic topic = redissonClient.getTopic(PushConstants.TOPIC_NAME);
         topic.publish(msg);
     }
 
     private void handleMessage(PushMessage msg) {
         switch (msg.getChannel()) {
-            case CHANNEL_WS -> webSocketHandler.sendToLocalUser(msg.getUserId(), msg.getPayload());
-            case CHANNEL_WS_BROADCAST -> handleWsBroadcast(msg);
-            case CHANNEL_SSE -> sseEmitterManager.sendToLocalUser(msg.getUserId(), msg.getPayload());
-            case CHANNEL_SSE_BROADCAST -> handleSseBroadcast(msg);
-            default -> log.warn("[PushChannel] 未知 channel 类型: {}", msg.getChannel());
-        }
-    }
-
-    /**
-     * WebSocket 粉丝广播：遍历 followerIds，对本节点有连接的粉丝逐一投递
-     */
-    private void handleWsBroadcast(PushMessage msg) {
-        List<Long> followerIds = msg.getFollowerIds();
-        if (followerIds == null || followerIds.isEmpty()) {
-            return;
-        }
-        for (Long followerId : followerIds) {
-            try {
-                webSocketHandler.sendToLocalUser(followerId, msg.getPayload());
-            } catch (Exception e) {
-                log.error("[PushChannel] WS广播投递失败: followerId={}", followerId, e);
+            case PushConstants.CHANNEL_WS -> webSocketHandler.sendToLocalUser(msg.getUserId(), msg.getPayload());
+            case PushConstants.CHANNEL_SSE -> {
+                String eventName = msg.getEventName() != null ? msg.getEventName() : "notification";
+                sseEmitterManager.sendToLocalUser(msg.getUserId(), msg.getPayload(), eventName);
             }
+            case PushConstants.CHANNEL_SSE_BROADCAST -> handleSseBroadcast(msg);
+            default -> log.warn("[PushChannel] 未知 channel 类型: {}", msg.getChannel());
         }
     }
 

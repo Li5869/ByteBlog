@@ -2,6 +2,7 @@ package com.personblog.push.websocket;
 
 import cn.hutool.json.JSONUtil;
 import com.personblog.common.api.FollowerApi;
+import com.personblog.push.constant.PushConstants;
 import com.personblog.push.onlineMessage.PushMessage;
 import com.personblog.push.service.OnlineStateService;
 import com.personblog.push.service.PushChannelService;
@@ -126,7 +127,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     public void sendToUser(Long userId, WebSocketMessage message) {
         String json = JSONUtil.toJsonStr(message);
         pushChannelService.publish(new PushMessage(
-                PushChannelService.CHANNEL_WS, userId, json, null));
+                PushConstants.CHANNEL_WS, userId, json, null));
     }
 
     /**
@@ -142,25 +143,20 @@ public class WebSocketHandler extends TextWebSocketHandler {
             }
         }
     }
-    // 通知用户的粉丝（通过 Redis Pub/Sub 广播到所有节点，同时走 WS 和 SSE 两个通道）
+    // 通知用户的粉丝（通过 SSE 广播在线状态，SSE 单向推送足够，无需重复走 WebSocket）
     private void broadcastToFollowers(Long userId, WebSocketMessage message) {
         List<Long> followerIds = followerApi.getFollowerIds(userId);
         if (followerIds.isEmpty()) {
             return;
         }
-        String json = JSONUtil.toJsonStr(message);
-        // 1. WebSocket 广播
-        pushChannelService.publish(new PushMessage(
-                PushChannelService.CHANNEL_WS_BROADCAST, userId, json, followerIds));
-        // 2. SSE 广播（在线状态事件）
-        boolean isOnline = WebSocketMessage.TYPE_USER_ONLINE.equals(message.getType())
+        boolean isOnline = PushConstants.TYPE_USER_ONLINE.equals(message.getType())
                 && message.getData() instanceof Map<?, ?> data
                 && Boolean.TRUE.equals(data.get("online"));
         String ssePayload = JSONUtil.toJsonStr(Map.of(
                 "userId", String.valueOf(userId),
                 "online", isOnline));
         pushChannelService.publish(new PushMessage(
-                PushChannelService.CHANNEL_SSE_BROADCAST, userId, ssePayload, followerIds));
+                PushConstants.CHANNEL_SSE_BROADCAST, userId, ssePayload, followerIds));
     }
     // 发送消息给指定会话
     private void sendMessage(WebSocketSession session, WebSocketMessage message) {
@@ -179,7 +175,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private void handleMessageByType(WebSocketSession session, Long userId, WebSocketMessage msg) {
         String type = msg.getType();
         // 处理查询在线用户状态消息
-        if (WebSocketMessage.TYPE_QUERY_ONLINE.equals(type)) {
+        if (PushConstants.TYPE_QUERY_ONLINE.equals(type)) {
             Object data = msg.getData();
             if (data instanceof List<?> rawList) {
                 // Jackson 反序列化 JSON 数字为 Integer，需手动转为 Long

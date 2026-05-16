@@ -1,6 +1,7 @@
 package com.personblog.push.sse;
 
 import cn.hutool.json.JSONUtil;
+import com.personblog.push.constant.PushConstants;
 import com.personblog.push.onlineMessage.PushMessage;
 import com.personblog.push.service.PushChannelService;
 import lombok.RequiredArgsConstructor;
@@ -49,14 +50,20 @@ public class SseEmitterManager {
     }
 
     /**
-     * 推送消息给指定用户（通过 Redis Pub/Sub 分发到所有节点，包括自身）
-     * @param userId 用户ID
-     * @param message 消息内容
+     * 推送消息给指定用户（SSE 事件名默认 notification）
      */
     public void sendToUser(Long userId, Object message) {
+        sendToUser(userId, message, "notification");
+    }
+
+    /**
+     * 推送消息给指定用户（通过 Redis Pub/Sub 分发到所有节点，支持自定义 SSE 事件名）
+     */
+    public void sendToUser(Long userId, Object message, String eventName) {
         String json = JSONUtil.toJsonStr(message);
-        pushChannelService.publish(new PushMessage(
-                PushChannelService.CHANNEL_SSE, userId, json, null));
+        PushMessage msg = new PushMessage(PushConstants.CHANNEL_SSE, userId, json, null);
+        msg.setEventName(eventName);
+        pushChannelService.publish(msg);
     }
 
     /**
