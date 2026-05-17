@@ -85,6 +85,9 @@ const isDraggingCover = ref(false)
 let currentStreamReader = null
 let currentAbortController = null
 
+// 防重复提交标记
+const starting = ref(false)
+
 // ==================== 分类和标签数据 ====================
 const categories = ref([])
 const tags = ref([])
@@ -226,7 +229,7 @@ const handleErrorEvent = (data) => {
 // ==================== SSE 流读取 ====================
 
 const readSSEStream = async (stream) => {
-  const reader = stream.getReader()
+  const reader = stream.body.getReader()
   const decoder = new TextDecoder()
   currentStreamReader = reader
 
@@ -274,11 +277,22 @@ const readSSEStream = async (stream) => {
 
 // ==================== 操作方法 ====================
 
+/**
+ * 创建写作任务
+ * 使用 aiApi.createWritingTask，由 request.js 统一处理 401 刷新逻辑
+ */
+const createWritingTaskDirect = async (message) => {
+  const result = await aiApi.createWritingTask(message)
+  return result
+}
+
 const handleStartWriting = async () => {
   if (!userInput.value.trim()) {
     toast.error('请输入写作需求')
     return
   }
+  if (starting.value) return
+  starting.value = true
 
   try {
     phase.value = 'planning'
@@ -288,16 +302,35 @@ const handleStartWriting = async () => {
     plan.value = null
     resetExecuteSteps()
 
-    const createResult = await aiApi.createWritingTask(userInput.value)
+    const createResult = await createWritingTaskDirect(userInput.value)
     taskId.value = createResult.taskId
 
-    const stream = await aiApi.streamWriting(createResult.taskId)
-    await readSSEStream(stream)
+    // stream 请求失败时尝试重连（最多3次）
+    let streamRetries = 0
+    const maxStreamRetries = 3
+    while (streamRetries < maxStreamRetries) {
+      try {
+        const stream = await aiApi.streamWriting(createResult.taskId)
+        if (stream && stream.body) {
+          await readSSEStream(stream)
+          break
+        }
+      } catch (streamError) {
+        streamRetries++
+        if (streamRetries < maxStreamRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * streamRetries))
+          continue
+        }
+        throw streamError
+      }
+    }
 
   } catch (error) {
     console.error('启动写作任务失败:', error)
     toast.error(error.message || '启动写作任务失败')
     phase.value = 'idle'
+  } finally {
+    starting.value = false
   }
 }
 
@@ -749,12 +782,18 @@ onUnmounted(() => {
             <p class="text-xs text-gray-400 dark:text-gray-500">💡 描述越具体，AI 产出的文章越贴合你的需求</p>
             <button
               @click="handleStartWriting"
-              class="px-6 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl hover:from-violet-600 hover:to-purple-700 transition-all text-sm font-semibold shadow-lg shadow-violet-500/20 flex items-center gap-2"
+              :disabled="starting"
+              :class="[
+                'px-6 py-2.5 text-white rounded-xl transition-all text-sm font-semibold shadow-lg shadow-violet-500/20 flex items-center gap-2',
+                starting 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700'
+              ]"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              开始写作
+              {{ starting ? '处理中...' : '开始写作' }}
             </button>
           </div>
         </div>

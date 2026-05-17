@@ -1,7 +1,6 @@
 package com.personblog.security.filter;
 
 import com.personblog.common.utils.UserContextHolder;
-import com.personblog.security.config.JwtProperties;
 import com.personblog.security.entity.LoginUser;
 import com.personblog.security.service.UserDetailsServiceImpl;
 import com.personblog.security.utils.JwtUtil;
@@ -41,7 +40,6 @@ import java.io.IOException;
 public class JwtAuthenticationTokenFilter extends OncePerRequestFilter {
     
     private final JwtUtil jwtUtil;
-    private final JwtProperties jwtProperties;
     private final UserDetailsServiceImpl userDetailsService;
     
     /**
@@ -65,13 +63,12 @@ public class JwtAuthenticationTokenFilter extends OncePerRequestFilter {
             
             // 2. 如果 Token 存在且有效，进行认证
             if (StringUtils.hasText(token) && jwtUtil.validateToken(token)) {
-                
+
                 // 2.1 从 Token 中解析用户ID
                 Long userId = jwtUtil.getUserIdFromToken(token);
                 log.debug("JWT Token 验证通过，用户ID: {}", userId);
                 
                 // 2.2 从 Redis 获取登录用户信息
-                // 注意：Token 有效不代表 Redis 中有登录信息（可能已登出）
                 LoginUser loginUser = userDetailsService.getLoginUserByToken(token);
                 if (loginUser != null) {
                     // 2.3 刷新 Token 过期时间（活跃用户不过期）
@@ -81,37 +78,43 @@ public class JwtAuthenticationTokenFilter extends OncePerRequestFilter {
                     UserContextHolder.setUserId(loginUser.getUserId());
                     
                     // 2.5 创建认证对象
-                    // UsernamePasswordAuthenticationToken 是 Spring Security 的标准认证对象
-                    // 参数：用户信息、凭证（null）、权限集合
                     UsernamePasswordAuthenticationToken authentication = 
                         new UsernamePasswordAuthenticationToken(
-                            loginUser,           // principal: 用户信息
-                            null,                // credentials: 凭证（JWT 无状态，不需要）
-                            loginUser.getAuthorities()  // authorities: 权限集合
+                            loginUser,
+                            null,
+                            loginUser.getAuthorities()
                         );
                     
                     // 2.6 设置认证详情（包含请求信息）
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     
                     // 2.7 将认证信息存入 SecurityContext
-                    // 后续可以通过 SecurityContextHolder.getContext().getAuthentication() 获取
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                     
                     log.debug("用户认证成功: {}", loginUser.getUsername());
                 } else {
-                    // Redis 中没有登录信息，说明用户已登出或 Token 已过期
                     log.debug("Redis 中未找到登录信息，Token 可能已失效");
                 }
             }
             
             // 3. 继续过滤器链
-            // 无论认证是否成功，都继续执行后续过滤器和 Controller
-            // 未认证的请求会被 SecurityConfig 中的配置拦截
             filterChain.doFilter(request, response);
         } finally {
             // 4. 清理 ThreadLocal，避免内存泄漏
             UserContextHolder.clearUserId();
         }
+    }
+
+    /**
+     * 允许异步调度时重新执行过滤器
+     * 控制器返回 Mono 等异步类型时，Spring MVC 会触发异步调度（DispatcherType.ASYNC），
+     * OncePerRequestFilter 默认跳过异步调度，导致安全上下文无法传播到新线程，
+     * 从而触发 AuthenticationEntryPoint 返回 401。
+     * 返回 false 确保异步调度时也执行过滤，重新验证 Token 并设置安全上下文。
+     */
+    @Override
+    protected boolean shouldNotFilterAsyncDispatch() {
+        return false;
     }
     
     /**

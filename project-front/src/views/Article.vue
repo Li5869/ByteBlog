@@ -177,22 +177,27 @@ const fetchCommentLikes = async () => {
 const extractHeadings = (content) => {
   if (!content) return []
   const headings = []
-  const regex = /^(#{1,6})\s+(.+)$/gm
-  let match
+  const lines = content.split('\n')
+  let inCodeBlock = false
   let index = 0
-  
-  while ((match = regex.exec(content)) !== null) {
-    const level = match[1].length
-    const text = match[2].trim()
-    const id = `heading-${index}`
-    headings.push({
-      level,
-      text,
-      id
-    })
-    index++
+
+  for (const line of lines) {
+    // 遇到 ``` 开头的行切换代码块状态（支持 ```、```java 等）
+    if (line.trimStart().startsWith('```')) {
+      inCodeBlock = !inCodeBlock
+      continue
+    }
+    if (inCodeBlock) continue
+
+    const match = line.match(/^(#{1,6})\s+(.+)$/)
+    if (match) {
+      const level = match[1].length
+      const text = match[2].trim()
+      headings.push({ level, text, id: `heading-${index}` })
+      index++
+    }
   }
-  
+
   return headings
 }
 
@@ -235,15 +240,10 @@ const isLongArticle = computed(() => {
 const scrollToHeading = (id) => {
   const element = document.getElementById(id)
   if (element) {
-    const offset = 100
-    const elementPosition = element.getBoundingClientRect().top
-    const offsetPosition = elementPosition + window.pageYOffset - offset
-    
-    window.scrollTo({
-      top: offsetPosition,
-      behavior: 'smooth'
-    })
-    
+    // 导航栏 sticky h-14 (56px)，留 4px 间距
+    const navbarHeight = 60
+    const top = element.getBoundingClientRect().top + window.scrollY - navbarHeight
+    window.scrollTo({ top, behavior: 'smooth' })
     activeHeadingId.value = id
   }
 }
@@ -253,21 +253,22 @@ const updateActiveHeading = () => {
     id: h.id,
     element: document.getElementById(h.id)
   })).filter(h => h.element)
-  
+
   if (headingElements.length === 0) return
-  
-  const scrollPosition = window.scrollY + 150
-  
+
+  // 导航栏下方 70px 作为判定阈值
+  const navbarBottom = 70
   let currentId = headingElements[0].id
-  
+
+  // 从下往上找第一个已经滚过导航栏的标题
   for (let i = headingElements.length - 1; i >= 0; i--) {
-    const heading = headingElements[i]
-    if (heading.element && heading.element.offsetTop <= scrollPosition) {
-      currentId = heading.id
+    const rect = headingElements[i].element.getBoundingClientRect()
+    if (rect.top <= navbarBottom) {
+      currentId = headingElements[i].id
       break
     }
   }
-  
+
   activeHeadingId.value = currentId
 }
 
@@ -1249,20 +1250,20 @@ onUnmounted(() => {
               <div class="p-3 max-h-[calc(100vh-200px)] overflow-y-auto">
                 <nav class="space-y-1">
                   <template v-for="heading in headings" :key="heading.id">
-                    <a 
+                    <a
                       @click.prevent="scrollToHeading(heading.id)"
                       href="#"
-                      class="block py-2 px-3 text-sm rounded-xl cursor-pointer transition-all duration-200"
+                      class="block py-1.5 px-3 rounded-lg cursor-pointer transition-all duration-200 leading-snug"
                       :class="[
-                        activeHeadingId === heading.id 
-                          ? 'text-primary-500 bg-primary-50 dark:bg-primary-900/20 font-semibold border-l-2 border-primary-500' 
+                        activeHeadingId === heading.id
+                          ? 'text-primary-500 bg-primary-50 dark:bg-primary-900/20 font-semibold border-l-2 border-primary-500'
                           : 'text-gray-600 dark:text-gray-400 hover:text-primary-500 hover:bg-gray-50 dark:hover:bg-gray-700/50',
-                        heading.level === 1 ? 'font-bold' : '',
-                        heading.level === 2 ? '' : '',
-                        heading.level === 3 ? 'pl-5 text-xs' : '',
-                        heading.level === 4 ? 'pl-7 text-xs' : '',
-                        heading.level === 5 ? 'pl-9 text-xs' : '',
-                        heading.level === 6 ? 'pl-11 text-xs' : ''
+                        heading.level === 1 ? 'text-sm font-bold pl-3' : '',
+                        heading.level === 2 ? 'text-[13px] font-semibold pl-3' : '',
+                        heading.level === 3 ? 'text-xs pl-6' : '',
+                        heading.level === 4 ? 'text-[11px] pl-9' : '',
+                        heading.level === 5 ? 'text-[11px] pl-11' : '',
+                        heading.level === 6 ? 'text-[11px] pl-[52px]' : ''
                       ]"
                     >
                       {{ heading.text }}

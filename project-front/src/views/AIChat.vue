@@ -26,6 +26,7 @@ const messagesLoading = ref(false)
 const expandedThinking = ref({})
 const messagesContainer = ref(null)
 const currentReader = ref(null)
+const currentAbortController = ref(null)
 const sidebarCollapsed = ref(false)
 
 /** AI 助手头像 */
@@ -299,16 +300,17 @@ const sendMessage = async () => {
   let reader = null
   
   try {
-    const stream = await aiApi.sendAgentMessageStream(
-      currentConversation.value.id, 
+    const result = await aiApi.sendAgentMessageStream(
+      currentConversation.value.id,
       content
     )
-    
-    if (!stream) {
+
+    if (!result || !result.body) {
       throw new Error('响应失败')
     }
-    
-    reader = stream.getReader()
+
+    currentAbortController.value = result.controller
+    reader = result.body.getReader()
     currentReader.value = reader
     const decoder = new TextDecoder()
     let buffer = ''
@@ -380,6 +382,7 @@ const sendMessage = async () => {
     }
   } finally {
     currentReader.value = null
+    currentAbortController.value = null
     isStreaming.value = false
     isLoading.value = false
   }
@@ -388,13 +391,23 @@ const sendMessage = async () => {
 // 停止流式输出
 const stopStreaming = async () => {
   if (!currentConversation.value) return
-  
+
   try {
     await aiApi.stopChat(String(currentConversation.value.id))
   } catch (e) {
     console.warn('停止对话接口调用失败:', e)
   }
-  
+
+  // 使用 AbortController 终止底层 HTTP 连接，确保服务端停止生成
+  if (currentAbortController.value) {
+    try {
+      currentAbortController.value.abort()
+    } catch (e) {
+      // ignore
+    }
+    currentAbortController.value = null
+  }
+
   if (currentReader.value) {
     try {
       currentReader.value.cancel()
@@ -403,7 +416,7 @@ const stopStreaming = async () => {
     }
     currentReader.value = null
   }
-  
+
   isStreaming.value = false
   isLoading.value = false
 }

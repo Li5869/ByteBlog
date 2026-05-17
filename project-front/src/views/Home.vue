@@ -170,7 +170,7 @@ onUnmounted(() => {
         :key="banner.id"
         :to="`/article/${banner.articleId}`"
         class="absolute inset-0 transition-all duration-700 ease-out cursor-pointer"
-        :class="index === currentSlide ? 'opacity-100 scale-100' : 'opacity-0 scale-105'"
+        :class="index === currentSlide ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-105 pointer-events-none'"
       >
         <img :src="banner.cover" :alt="banner.title" class="w-full h-full object-cover" />
         <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>

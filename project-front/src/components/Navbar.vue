@@ -137,14 +137,6 @@ const navLinks = [
   { name: '我的', path: '/mine' }
 ]
 
-const mobileNavLinks = [
-  { name: '首页', path: '/' },
-  { name: '博客', path: '/blog' },
-  { name: '专栏', path: '/columns' },
-  { name: '问答', path: '/qa' },
-  { name: '我的', path: '/mine' }
-]
-
 const handleNormalSearch = () => {
   if (!searchQuery.value.trim()) return
   router.push({ path: '/search', query: { q: searchQuery.value } })
@@ -815,36 +807,6 @@ watch(() => route.query.login, (newVal) => {
       </div>
     </div>
   </transition>
-
-  <!-- 移动端底部导航栏 -->
-  <footer class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-40 md:hidden">
-    <div class="flex items-center justify-around h-14">
-      <RouterLink 
-        v-for="link in mobileNavLinks" 
-        :key="link.path" 
-        :to="link.path"
-        class="flex flex-col items-center justify-center px-4 py-2 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-        active-class="text-red-500 dark:text-red-400"
-      >
-        <svg v-if="link.name === '首页'" class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-        </svg>
-        <svg v-else-if="link.name === '博客'" class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        <svg v-else-if="link.name === '专栏'" class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-        </svg>
-        <svg v-else-if="link.name === '问答'" class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <svg v-else-if="link.name === '我的'" class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-        <span class="text-xs">{{ link.name }}</span>
-      </RouterLink>
-    </div>
-  </footer>
 
   <!-- 登录弹窗 -->
   <Teleport to="body">

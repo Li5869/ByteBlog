@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -53,6 +54,15 @@ public class WritingAgentController {
         WritingTask task = writingTaskService.createTask(userId, dto.getMessage());
         String taskId = String.valueOf(task.getId());
         log.info("[Writing] 创建任务成功, taskId={}, userId={}", task.getId(), userId);
+
+        // 幂等检查命中的已有任务：任务已启动过，直接返回不需要再次调用 Python 服务
+        if ("generating_plan".equals(task.getCurrentStep()) && task.getCreatedAt().isBefore(LocalDateTime.now().minusSeconds(2))) {
+            log.info("[Writing] 幂等命中，跳过Python服务调用, taskId={}", taskId);
+            return Mono.just(JsonData.buildSuccess(WritingTaskVO.builder()
+                    .taskId(taskId)
+                    .status(task.getStatus())
+                    .build()));
+        }
 
         return pythonWritingService.startWriting(taskId, dto.getMessage())
                 .map(id -> JsonData.buildSuccess(WritingTaskVO.builder()

@@ -240,7 +240,7 @@ watch(() => route.query, (newQuery) => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 pb-20">
+  <div class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 ">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
       <!-- ===== 搜索区 ===== -->

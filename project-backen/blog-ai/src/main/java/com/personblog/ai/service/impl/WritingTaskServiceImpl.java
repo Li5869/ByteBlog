@@ -39,6 +39,20 @@ public class WritingTaskServiceImpl implements IWritingTaskService {
     @Override
     @Transactional
     public WritingTask createTask(Long userId, String userRequest) {
+        // 幂等性检查：如果用户最近10秒内已创建过 planning 状态的任务，直接返回该任务
+        LocalDateTime tenSecondsAgo = LocalDateTime.now().minusSeconds(10);
+        LambdaQueryWrapper<WritingTask> wrapper = new LambdaQueryWrapper<WritingTask>()
+                .eq(WritingTask::getUserId, userId)
+                .eq(WritingTask::getStatus, "planning")
+                .ge(WritingTask::getCreatedAt, tenSecondsAgo)
+                .orderByDesc(WritingTask::getCreatedAt)
+                .last("LIMIT 1");
+        WritingTask existingTask = writingTaskMapper.selectOne(wrapper);
+        if (existingTask != null) {
+            log.info("[WritingTask] 命中幂等检查，返回已有任务, taskId={}, userId={}", existingTask.getId(), userId);
+            return existingTask;
+        }
+
         WritingTask task = new WritingTask();
         task.setUserId(userId);
         task.setUserRequest(userRequest);
