@@ -266,7 +266,7 @@ const deleteConversation = async (conversation, event) => {
 
 // 发送消息
 const sendMessage = async () => {
-  const content = inputMessage.value.trim()
+  const content = (inputMessage.value ?? '').trim()
   if (!content || isStreaming.value) return
   
   if (!currentConversation.value) {
@@ -678,7 +678,7 @@ onMounted(async () => {
             <button
               v-else
               class="send-btn"
-              :disabled="!inputMessage.trim()"
+              :disabled="!(inputMessage ?? '').trim()"
               @click="sendMessage"
             >
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
