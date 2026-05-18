@@ -498,11 +498,14 @@ class WritingAgent:
         config = {"configurable": {"thread_id": thread_id}}
 
         async for event in self.graph.astream(None, config):
-            if "reflect" in event:
+            # execute节点完成时，立即推送reflecting状态，让前端实时显示
+            if "execute" in event:
+                yield {"type": "phase", "data": {"phase": "reflecting"}}
+
+            elif "reflect" in event:
                 node_output = event["reflect"]
                 reflection = node_output.get("reflection")
                 if reflection:
-                    yield {"type": "phase", "data": {"phase": "reflecting"}}
                     yield {
                         "type": "reflection_result",
                         "data": reflection.model_dump()

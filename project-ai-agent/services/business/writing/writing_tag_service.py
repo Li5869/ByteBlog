@@ -32,8 +32,8 @@ class WritingTagService:
             {
                 "category_name": "分类名",
                 "category_id": 1,  # 数据库中存在则返回 ID，否则为 None
-                "tag_names": ["新标签1", "新标签2"],  # 数据库中不存在的标签名
-                "tag_ids": [1, 2, 3]  # 数据库中存在的标签 ID
+                "tag_names": ["标签1", "标签2"],  # 所有标签名称（包括已有和新标签）
+                "tag_ids": [1, 2, 3]  # 数据库中已存在的标签 ID（用于发布时关联）
             }
         """
         categories, existing_tags = await self._fetch_existing_data()
@@ -65,17 +65,17 @@ class WritingTagService:
             tag_names_from_llm = llm_result.tags
 
             category_id = self._match_category(category_name, categories)
-            tag_ids, new_tag_names = self._match_tags(tag_names_from_llm, existing_tags)
+            tag_ids, all_tag_names = self._match_tags(tag_names_from_llm, existing_tags)
 
             result = {
                 "category_name": category_name,
                 "category_id": category_id,
-                "tag_names": new_tag_names,
+                "tag_names": all_tag_names,
                 "tag_ids": tag_ids,
             }
 
             logger.info(
-                f"[Tags] 生成结果: category_id={category_id}, tag_ids={tag_ids}, new_tags={new_tag_names}"
+                f"[Tags] 生成结果: category_id={category_id}, tag_ids={tag_ids}, tag_names={all_tag_names}"
             )
             return result
 
@@ -128,7 +128,12 @@ class WritingTagService:
 
     @staticmethod
     def _match_tags(tag_names_from_llm: Optional[list], existing_tags: list) -> tuple:
-        """在已有标签中匹配标签名称，分离出已有标签 ID 和新标签名"""
+        """
+        在已有标签中匹配标签名称，返回已有标签ID和所有标签名称
+        
+        Returns:
+            (tag_ids, all_tag_names): 已有标签ID列表和所有标签名称列表
+        """
         if not tag_names_from_llm:
             return [], []
 
@@ -137,12 +142,11 @@ class WritingTagService:
 
         existing_tag_map = {tag.get("name"): int(tag.get("id")) for tag in existing_tags}
         tag_ids = []
-        new_tag_names = []
+        all_tag_names = []
 
         for tag_name in tag_names_from_llm:
+            all_tag_names.append(tag_name)
             if tag_name in existing_tag_map:
                 tag_ids.append(existing_tag_map[tag_name])
-            else:
-                new_tag_names.append(tag_name)
 
-        return tag_ids, new_tag_names
+        return tag_ids, all_tag_names

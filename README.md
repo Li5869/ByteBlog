@@ -19,7 +19,6 @@
   <img src="https://img.shields.io/badge/Elasticsearch-8.x-005571?style=flat-square&logo=elasticsearch&logoColor=white" alt="Elasticsearch">
   <img src="https://img.shields.io/badge/Nacos-2.x-00BFFF?style=flat-square&logo=nacos&logoColor=white" alt="Nacos">
 </p>
-
 </div>
 
 ---
@@ -117,10 +116,10 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 
 | 截图位置 | 建议内容 | 展示亮点 |
 |---------|---------|---------|
-| `images/homepage.png` | 首页文章列表 + 分类导航 + 热门标签 | 整体 UI 风格、响应式布局、Tailwind 设计 |
-| `images/article-detail.png` | 文章详情页（Markdown 渲染 + 评论区 + 点赞/收藏按钮） | 文章阅读体验、评论交互、社交互动 |
+|  | 首页文章列表 + 分类导航 + 热门标签 | 整体 UI 风格、响应式布局、Tailwind 设计 |
+| ![ai润色和发布文章](D:\code\Java\agent-project\ByteBlog\docs\gif\ai润色和发布文章.gif) | 文章详情页（Markdown 渲染 + 评论区 + 点赞/收藏按钮） | 文章阅读体验、评论交互、社交互动 |
 | `images/ai-writing.gif` | AI 写作 Agent 完整工作流（输入需求 → 生成计划 → 流式输出内容） | Plan-and-Execute 范式、SSE 流式输出、进度实时推送 |
-| `images/ai-chat.png` | AI 对话界面（展示工具调用过程 + 深度思考 + 最终回答） | ReAct 循环推理、Parent-Child RAG 知识检索、工具调用可视化 |
+| ![ai问答和skill机制展示](D:\code\Java\agent-project\ByteBlog\docs\gif\ai问答和skill机制展示.gif) | AI 对话界面（展示工具调用过程 + 深度思考 + 最终回答） | ReAct 循环推理、Parent-Child RAG 知识检索、工具调用可视化 |
 | `images/knowledge-qa.png` | 知识库问答界面（管理端上传文档 + 用户端提问获得基于文档的回答） | RAG 完整链路：文档切片 → 向量化 → 语义检索 → LLM 回答 |
 | `images/search.png` | 搜索页面（多类型搜索结果 + 搜索建议下拉） | ES 多字段加权检索、Completion Suggester |
 | `images/notification.png` | 实时通知弹窗（点赞/评论/关注提醒） | SSE 实时推送、WebSocket 在线状态 |
