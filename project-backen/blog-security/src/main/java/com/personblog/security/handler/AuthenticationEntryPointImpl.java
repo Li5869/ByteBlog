@@ -30,20 +30,12 @@ import java.io.IOException;
 @Slf4j
 @Component
 public class AuthenticationEntryPointImpl implements AuthenticationEntryPoint {
-    
-    /**
-     * 处理认证失败
-     * 
-     * @param request HTTP 请求
-     * @param response HTTP 响应
-     * @param authException 认证异常
-     */
+
     @Override
-    public void commence(HttpServletRequest request, 
-                        HttpServletResponse response, 
+    public void commence(HttpServletRequest request,
+                        HttpServletResponse response,
                         AuthenticationException authException) throws IOException {
-        
-        // 记录日志
+
         log.warn("认证失败: {} - {}", request.getRequestURI(), authException.getMessage());
         
         // 设置响应类型和编码

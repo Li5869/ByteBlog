@@ -26,6 +26,7 @@ const messagesLoading = ref(false)
 const expandedThinking = ref({})
 const messagesContainer = ref(null)
 const currentReader = ref(null)
+const currentAbortController = ref(null)
 const sidebarCollapsed = ref(false)
 
 /** AI 助手头像 */
@@ -265,7 +266,7 @@ const deleteConversation = async (conversation, event) => {
 
 // 发送消息
 const sendMessage = async () => {
-  const content = inputMessage.value.trim()
+  const content = String(inputMessage.value ?? '').trim()
   if (!content || isStreaming.value) return
   
   if (!currentConversation.value) {
@@ -299,16 +300,17 @@ const sendMessage = async () => {
   let reader = null
   
   try {
-    const stream = await aiApi.sendAgentMessageStream(
-      currentConversation.value.id, 
+    const result = await aiApi.sendAgentMessageStream(
+      currentConversation.value.id,
       content
     )
-    
-    if (!stream) {
+
+    if (!result || !result.body) {
       throw new Error('响应失败')
     }
-    
-    reader = stream.getReader()
+
+    currentAbortController.value = result.controller
+    reader = result.body.getReader()
     currentReader.value = reader
     const decoder = new TextDecoder()
     let buffer = ''
@@ -367,10 +369,26 @@ const sendMessage = async () => {
     if (currentConversation.value.messageCount !== undefined) {
       currentConversation.value.messageCount += 2
     }
-    if (!currentConversation.value.title || currentConversation.value.title === '新对话') {
+    const isFirstMessage = !currentConversation.value.title || currentConversation.value.title === '新对话'
+    if (isFirstMessage) {
       currentConversation.value.title = content.substring(0, 20) + (content.length > 20 ? '...' : '')
     }
     syncCurrentConversationToList()
+    // 第一次对话后仅刷新当前对话的列表项，获取 MQ 异步更新的对话标题
+    if (isFirstMessage) {
+      try {
+        const data = await aiApi.getConversationList(pagination.value.current, pagination.value.size)
+        const updated = (data.records || []).find(c => String(c.id) === String(currentConversation.value.id))
+        if (updated) {
+          const idx = conversations.value.findIndex(c => String(c.id) === String(updated.id))
+          if (idx !== -1) {
+            conversations.value[idx] = { ...conversations.value[idx], ...updated }
+          }
+        }
+      } catch (error) {
+        console.warn('刷新当前对话标题失败:', error)
+      }
+    }
     
   } catch (error) {
     if (error.name !== 'AbortError') {
@@ -380,6 +398,7 @@ const sendMessage = async () => {
     }
   } finally {
     currentReader.value = null
+    currentAbortController.value = null
     isStreaming.value = false
     isLoading.value = false
   }
@@ -388,13 +407,23 @@ const sendMessage = async () => {
 // 停止流式输出
 const stopStreaming = async () => {
   if (!currentConversation.value) return
-  
+
   try {
     await aiApi.stopChat(String(currentConversation.value.id))
   } catch (e) {
     console.warn('停止对话接口调用失败:', e)
   }
-  
+
+  // 使用 AbortController 终止底层 HTTP 连接，确保服务端停止生成
+  if (currentAbortController.value) {
+    try {
+      currentAbortController.value.abort()
+    } catch (e) {
+      // ignore
+    }
+    currentAbortController.value = null
+  }
+
   if (currentReader.value) {
     try {
       currentReader.value.cancel()
@@ -403,7 +432,7 @@ const stopStreaming = async () => {
     }
     currentReader.value = null
   }
-  
+
   isStreaming.value = false
   isLoading.value = false
 }
@@ -455,7 +484,7 @@ onMounted(async () => {
           </div>
           <span v-if="!sidebarCollapsed" class="logo-text">AI 助手</span>
         </div>
-        <button class="new-chat-btn" @click="createNewConversation">
+        <button class="new-chat-btn" @click="createNewConversation()">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
@@ -540,7 +569,7 @@ onMounted(async () => {
             <button @click="createNewConversation('帮我解答一个技术问题')">
               <div class="action-icon qa">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.219 1.04-2.453 1.482-3.72a10.003 10.003 0 01-.09-3.28m-9.82 0c.18 1.12.51 2.195.96 3.42 1.24M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </div>
               <span>技术问答</span>
@@ -572,7 +601,7 @@ onMounted(async () => {
               <span>{{ currentConversation.messageCount || 0 }} 条消息</span>
             </div>
           </div>
-          <n-button text size="small" @click="createNewConversation">
+          <n-button text size="small" @click="createNewConversation()">
             <template #icon>
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -665,7 +694,7 @@ onMounted(async () => {
             <button
               v-else
               class="send-btn"
-              :disabled="!inputMessage.trim()"
+              :disabled="!String(inputMessage ?? '').trim()"
               @click="sendMessage"
             >
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">

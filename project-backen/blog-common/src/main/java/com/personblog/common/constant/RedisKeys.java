@@ -278,6 +278,15 @@ public class RedisKeys {
      */
     public static final String BROWSE_HISTORY_KEY_PREFIX = "browse:history:";
 
+    /**
+     * 浏览历史活跃用户集合
+     * 完整 Key 格式：browse:active:users
+     * 存储内容：有浏览历史的用户ID集合
+     * 数据类型：Set
+     * 用途：替代 KEYS 命令，O(1) 获取需要同步的用户列表
+     */
+    public static final String BROWSE_ACTIVE_USERS = "browse:active:users";
+
     // =============================================
     // 七、分类标签模块
     // =============================================

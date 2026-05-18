@@ -36,18 +36,16 @@ class PromptManager:
     # ==================== SmartAgent ====================
 
     @staticmethod
-    def get_smart_agent_system_prompt(
-        progressive_disclosure: bool = False,
-    ) -> str:
+    def get_smart_agent_system_prompt() -> str:
         """
         获取 SmartAgent 分析阶段（think 节点）的系统提示词
-        
-        Args:
-            progressive_disclosure: 是否启用渐进式披露（减少 token 消耗）
-        
+
+        采用渐进式披露策略，只注入 Skills 简要描述，
+        Agent 可通过 get_skill_details 获取完整技能详情。
+
         定义位置：prompts/smart_agent_prompts.py
         """
-        return _get_smart_agent_system_prompt(progressive_disclosure=progressive_disclosure)
+        return _get_smart_agent_system_prompt()
 
     # ==================== WritingAgent ====================
 

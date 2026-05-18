@@ -68,9 +68,7 @@ class SmartAgent:
 
         self.tools = ALL_TOOLS
         self.prompt_manager = prompt_manager
-        self.system_prompt = prompt_manager.get_smart_agent_system_prompt(
-            progressive_disclosure=True
-        )
+        self.system_prompt = prompt_manager.get_smart_agent_system_prompt()
         self._event_queue: Optional[asyncio.Queue] = None
         self.graph = self._build_graph()
 

@@ -9,7 +9,7 @@
 import JSONbig from 'json-bigint'
 
 // 配置 json-bigint：大数转为字符串，避免雪花ID精度丢失
-const JSONbigString = JSONbig({ storeAsString: true })
+export const JSONbigString = JSONbig({ storeAsString: true })
 
 const BASE_URL = '/api'
 
@@ -150,15 +150,15 @@ const refreshAccessToken = async () => {
  */
 const request = async (url, options = {}) => {
   const token = getToken()
-  
+
   const defaultHeaders = {
     'Content-Type': 'application/json',
   }
-  
+
   if (token) {
     defaultHeaders['token'] = token
   }
-  
+
   const config = {
     ...options,
     headers: {
@@ -166,25 +166,22 @@ const request = async (url, options = {}) => {
       ...options.headers,
     },
   }
-  
+
   try {
     const response = await fetch(`${BASE_URL}${url}`, config)
     const text = await response.text()
     const data = JSONbigString.parse(text)
-    
+
     // 处理 401 未授权错误
     if (response.status === 401) {
-      // 如果是刷新接口本身返回 401，说明 Refresh Token 也过期了
       if (url === '/auth/refresh') {
         clearAuth()
         window.location.href = '/'
         return Promise.reject(new Error('登录状态已过期，请重新登录'))
       }
 
-      // 尝试使用 Refresh Token 刷新
       const refreshToken = getRefreshToken()
       if (!refreshToken) {
-        // 没有 Refresh Token，直接跳转登录
         clearAuth()
         window.location.href = '/'
         return Promise.reject(new Error('未登录或登录已过期'))
@@ -194,7 +191,6 @@ const request = async (url, options = {}) => {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           subscribeTokenRefresh((newToken) => {
-            // 使用新 Token 重新发起请求
             config.headers['token'] = newToken
             fetch(`${BASE_URL}${url}`, config)
               .then(res => res.text())
@@ -211,18 +207,16 @@ const request = async (url, options = {}) => {
         })
       }
 
-      // 开始刷新 Token，使用 try/finally 确保锁一定释放
+      // 开始刷新 Token
       isRefreshing = true
       try {
         const newToken = await refreshAccessToken()
 
         if (newToken) {
-          // 刷新成功，更新请求头并重新发起请求
-          config.headers['token'] = newToken
-          // 通知等待队列中的请求
           onRefreshed(newToken)
 
-          // 重新发起当前请求
+          // 刷新成功，重试原始请求（401 表示请求未被后端处理，可以安全重试）
+          config.headers['token'] = newToken
           const retryResponse = await fetch(`${BASE_URL}${url}`, config)
           const retryText = await retryResponse.text()
           const retryData = JSONbigString.parse(retryText)
@@ -233,7 +227,6 @@ const request = async (url, options = {}) => {
 
           return retryData.data
         } else {
-          // 刷新失败，清除认证信息并跳转登录
           onRefreshFailed()
           return Promise.reject(new Error('登录状态已过期，请重新登录'))
         }
@@ -249,6 +242,109 @@ const request = async (url, options = {}) => {
     return data.data
   } catch (error) {
     console.error('请求错误:', error)
+    return Promise.reject(error)
+  }
+}
+
+/**
+ * 统一 SSE 请求处理函数
+ * 使用与 request() 相同的刷新机制，避免竞态条件
+ * 
+ * @param {string} url - 请求 URL
+ * @param {Object} options - 请求选项
+ * @returns {Promise<{body: ReadableStream, controller: AbortController}>}
+ */
+const sseRequest = async (url, options = {}) => {
+  const token = getToken()
+  
+  const defaultHeaders = {
+    'Accept': 'text/event-stream',
+  }
+  
+  if (token) {
+    defaultHeaders['token'] = token
+  }
+  
+  const controller = new AbortController()
+  const config = {
+    ...options,
+    headers: {
+      ...defaultHeaders,
+      ...options.headers,
+    },
+    signal: controller.signal
+  }
+  
+  try {
+    const response = await fetch(url, config)
+    
+    // 处理 401 未授权错误
+    if (response.status === 401) {
+      // 尝试使用 Refresh Token 刷新
+      const refreshToken = getRefreshToken()
+      if (!refreshToken) {
+        clearAuth()
+        window.location.href = '/'
+        return Promise.reject(new Error('未登录或登录已过期'))
+      }
+
+      // 如果正在刷新，将当前请求加入队列等待
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          subscribeTokenRefresh((newToken) => {
+            // 使用新 Token 重新发起请求
+            config.headers['token'] = newToken
+            fetch(url, config)
+              .then(res => {
+                if (!res.ok) {
+                  reject(new Error('请求失败'))
+                  return
+                }
+                resolve({ body: res.body, controller })
+              })
+              .catch(reject)
+          })
+        })
+      }
+
+      // 开始刷新 Token
+      isRefreshing = true
+      try {
+        const newToken = await refreshAccessToken()
+
+        if (newToken) {
+          // 刷新成功，更新请求头并重新发起请求
+          config.headers['token'] = newToken
+          // 通知等待队列中的请求
+          onRefreshed(newToken)
+
+          // 重新发起当前请求
+          const retryResponse = await fetch(url, config)
+          if (!retryResponse.ok) {
+            return Promise.reject(new Error('请求失败'))
+          }
+
+          return { body: retryResponse.body, controller }
+        } else {
+          // 刷新失败，清除认证信息并跳转登录
+          onRefreshFailed()
+          return Promise.reject(new Error('登录状态已过期，请重新登录'))
+        }
+      } finally {
+        isRefreshing = false
+      }
+    }
+    
+    if (!response.ok) {
+      return Promise.reject(new Error('请求失败'))
+    }
+    
+    return { body: response.body, controller }
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      return { body: null, controller }
+    }
+    console.error('SSE请求错误:', error)
     return Promise.reject(error)
   }
 }
@@ -623,36 +719,13 @@ export const aiApi = {
    * @returns {EventSource} SSE 连接
    */
   sendMessageStream: (conversationId, content) => {
-    const token = getToken()
     const url = `${BASE_URL}/ai/chat/messages`
-
-    return new Promise((resolve, reject) => {
-      const controller = new AbortController()
-      const signal = controller.signal
-
-      fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
-          ...(token ? { 'token': token } : {})
-        },
-        body: JSON.stringify({ conversationId, content }),
-        signal
-      }).then(response => {
-        if (!response.ok) {
-          reject(new Error('请求失败'))
-          return
-        }
-        response._abortController = controller
-        resolve(response.body)
-      }).catch(err => {
-        if (err.name === 'AbortError') {
-          resolve(null)
-        } else {
-          reject(err)
-        }
-      })
+    return sseRequest(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ conversationId, content })
     })
   },
 
@@ -663,36 +736,13 @@ export const aiApi = {
    * @returns {ReadableStream} SSE 流
    */
   sendAgentMessageStream: (conversationId, content) => {
-    const token = getToken()
     const url = `${BASE_URL}/ai/chat/agent/stream`
-
-    return new Promise((resolve, reject) => {
-      const controller = new AbortController()
-      const signal = controller.signal
-
-      fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
-          ...(token ? { 'token': token } : {})
-        },
-        body: JSON.stringify({ conversationId, content }),
-        signal
-      }).then(response => {
-        if (!response.ok) {
-          reject(new Error('请求失败'))
-          return
-        }
-        response._abortController = controller
-        resolve(response.body)
-      }).catch(err => {
-        if (err.name === 'AbortError') {
-          resolve(null)
-        } else {
-          reject(err)
-        }
-      })
+    return sseRequest(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ conversationId, content })
     })
   },
 
@@ -702,8 +752,30 @@ export const aiApi = {
    * @param {string} message - 写作需求
    * @returns {Promise<{taskId: string, status: string}>}
    */
-  createWritingTask: (message) => 
-    post('/ai/writing/create', { message }),
+  createWritingTask: (message) =>
+    request('/ai/writing/create', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }),
+
+  /**
+   * 刷新 Token（直接调用，不经过 request() 的 401 处理）
+   * @param {string} refreshToken - Refresh Token
+   * @returns {Promise<{accessToken: string, refreshToken: string}>}
+   */
+  refreshToken: async (refreshToken) => {
+    const response = await fetch(`${BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    })
+    const text = await response.text()
+    const data = JSONbigString.parse(text)
+    if (data.code !== 0) {
+      return null
+    }
+    return data.data
+  },
 
   /**
    * 恢复写作任务（批准或修改大纲）
@@ -760,35 +832,8 @@ export const aiApi = {
    * @returns {Promise<ReadableStream>} SSE 流
    */
   streamWriting: (taskId) => {
-    const token = getToken()
     const url = `${BASE_URL}/ai/writing/${taskId}/stream`
-
-    return new Promise((resolve, reject) => {
-      const controller = new AbortController()
-      const signal = controller.signal
-
-      fetch(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'text/event-stream',
-          ...(token ? { 'token': token } : {})
-        },
-        signal
-      }).then(response => {
-        if (!response.ok) {
-          reject(new Error('请求失败'))
-          return
-        }
-        response._abortController = controller
-        resolve(response.body)
-      }).catch(err => {
-        if (err.name === 'AbortError') {
-          resolve(null)
-        } else {
-          reject(err)
-        }
-      })
-    })
+    return sseRequest(url, { method: 'GET' })
   }
 }
 

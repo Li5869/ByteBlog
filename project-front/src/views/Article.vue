@@ -2,7 +2,7 @@
 import {useRoute, useRouter} from 'vue-router'
 import {computed, onMounted, onUnmounted, ref, watch} from 'vue'
 import {marked} from 'marked'
-import {aiApi, articleApi, commentApi, interactionApi, isLoggedIn, userApi} from '../utils/request.js'
+import {articleApi, commentApi, interactionApi, isLoggedIn, userApi} from '../utils/request.js'
 import {useUserStore} from '../stores/user.js'
 import {toast} from '@/utils/toast'
 import {modal} from '@/utils/modal'
@@ -38,7 +38,6 @@ const commentSize = ref(10)
 const followStatusLoaded = ref(false) // 关注状态是否已确认加载完成
 
 const newComment = ref('')
-const isModerating = ref(false)
 const showComments = ref(false)
 const expandedReplies = ref({})
 const activeHeadingId = ref('')
@@ -178,22 +177,27 @@ const fetchCommentLikes = async () => {
 const extractHeadings = (content) => {
   if (!content) return []
   const headings = []
-  const regex = /^(#{1,6})\s+(.+)$/gm
-  let match
+  const lines = content.split('\n')
+  let inCodeBlock = false
   let index = 0
-  
-  while ((match = regex.exec(content)) !== null) {
-    const level = match[1].length
-    const text = match[2].trim()
-    const id = `heading-${index}`
-    headings.push({
-      level,
-      text,
-      id
-    })
-    index++
+
+  for (const line of lines) {
+    // 遇到 ``` 开头的行切换代码块状态（支持 ```、```java 等）
+    if (line.trimStart().startsWith('```')) {
+      inCodeBlock = !inCodeBlock
+      continue
+    }
+    if (inCodeBlock) continue
+
+    const match = line.match(/^(#{1,6})\s+(.+)$/)
+    if (match) {
+      const level = match[1].length
+      const text = match[2].trim()
+      headings.push({ level, text, id: `heading-${index}` })
+      index++
+    }
   }
-  
+
   return headings
 }
 
@@ -236,15 +240,10 @@ const isLongArticle = computed(() => {
 const scrollToHeading = (id) => {
   const element = document.getElementById(id)
   if (element) {
-    const offset = 100
-    const elementPosition = element.getBoundingClientRect().top
-    const offsetPosition = elementPosition + window.pageYOffset - offset
-    
-    window.scrollTo({
-      top: offsetPosition,
-      behavior: 'smooth'
-    })
-    
+    // 导航栏 sticky h-14 (56px)，留 4px 间距
+    const navbarHeight = 60
+    const top = element.getBoundingClientRect().top + window.scrollY - navbarHeight
+    window.scrollTo({ top, behavior: 'smooth' })
     activeHeadingId.value = id
   }
 }
@@ -254,21 +253,22 @@ const updateActiveHeading = () => {
     id: h.id,
     element: document.getElementById(h.id)
   })).filter(h => h.element)
-  
+
   if (headingElements.length === 0) return
-  
-  const scrollPosition = window.scrollY + 150
-  
+
+  // 导航栏下方 70px 作为判定阈值
+  const navbarBottom = 70
   let currentId = headingElements[0].id
-  
+
+  // 从下往上找第一个已经滚过导航栏的标题
   for (let i = headingElements.length - 1; i >= 0; i--) {
-    const heading = headingElements[i]
-    if (heading.element && heading.element.offsetTop <= scrollPosition) {
-      currentId = heading.id
+    const rect = headingElements[i].element.getBoundingClientRect()
+    if (rect.top <= navbarBottom) {
+      currentId = headingElements[i].id
       break
     }
   }
-  
+
   activeHeadingId.value = currentId
 }
 
@@ -456,21 +456,6 @@ const submitComment = async () => {
   }
   
   try {
-    isModerating.value = true
-    // AI 内容审核
-    const modRes = await aiApi.moderateContent(newComment.value.trim(), 'comment')
-    isModerating.value = false
-    if (modRes?.isViolation) {
-      const types = (modRes.violationType || []).join('、')
-      const suggestion = modRes.suggestion || '请修改后重试'
-      await modal.confirm(`内容审核未通过\n违规类型：${types}\n建议：${suggestion}`, {
-        title: '评论失败',
-        confirmText: '我知道了',
-        icon: 'warning'
-      })
-      return
-    }
-
     const data = await commentApi.postComment({
       articleId: articleId.value,
       content: newComment.value.trim(),
@@ -491,7 +476,6 @@ const submitComment = async () => {
     newComment.value = ''
     toast.success('评论发表成功')
   } catch (e) {
-    isModerating.value = false
     console.error('发表评论失败:', e)
     toast.error(e.message || '发表评论失败，请稍后重试')
   }
@@ -564,21 +548,6 @@ const submitReply = async (commentId) => {
   }
   
   try {
-    isModerating.value = true
-    // AI 内容审核
-    const modRes = await aiApi.moderateContent(content, 'comment')
-    isModerating.value = false
-    if (modRes?.isViolation) {
-      const types = (modRes.violationType || []).join('、')
-      const suggestion = modRes.suggestion || '请修改后重试'
-      await modal.confirm(`内容审核未通过\n违规类型：${types}\n建议：${suggestion}`, {
-        title: '回复失败',
-        confirmText: '我知道了',
-        icon: 'warning'
-      })
-      return
-    }
-
     const data = await commentApi.postComment({
       articleId: articleId.value,
       content: content,
@@ -607,7 +576,6 @@ const submitReply = async (commentId) => {
     
     toast.success('回复发表成功')
   } catch (e) {
-    isModerating.value = false
     console.error('发表回复失败:', e)
     toast.error(e.message || '发表回复失败，请稍后重试')
   }
@@ -670,22 +638,6 @@ onUnmounted(() => {
 
 <template>
   <div class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 relative">
-    <!-- AI 审核加载遮罩 -->
-    <div
-      v-if="isModerating"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-    >
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-4 min-w-64">
-        <div class="relative w-14 h-14">
-          <div class="absolute inset-0 rounded-full border-4 border-primary-200 dark:border-primary-800 opacity-30"></div>
-          <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-primary-500 animate-spin"></div>
-        </div>
-        <div class="text-center">
-          <p class="text-base font-semibold text-gray-800 dark:text-white">AI 内容审核中</p>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">请稍候，内容安全检测需要几秒钟...</p>
-        </div>
-      </div>
-    </div>
     <div v-if="loading" class="flex items-center justify-center min-h-screen">
       <div class="flex flex-col items-center gap-4">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
@@ -1094,7 +1046,7 @@ onUnmounted(() => {
                       <span class="text-xs text-gray-400">{{ newComment.length }}/500</span>
                       <button 
                         @click="submitComment"
-                        :disabled="!newComment.trim() || isModerating"
+                        :disabled="!newComment.trim()"
                         class="px-5 py-2 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl hover:from-primary-600 hover:to-primary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold shadow-lg shadow-primary-500/20"
                       >
                         发表评论
@@ -1195,7 +1147,7 @@ onUnmounted(() => {
                                 </button>
                                 <button 
                                   @click="submitReply(comment.id)"
-                                  :disabled="!(replyContent[comment.id] || '').trim() || isModerating"
+                                  :disabled="!(replyContent[comment.id] || '').trim()"
                                   class="px-4 py-1.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg hover:from-primary-600 hover:to-primary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                                 >
                                   发送
@@ -1298,20 +1250,20 @@ onUnmounted(() => {
               <div class="p-3 max-h-[calc(100vh-200px)] overflow-y-auto">
                 <nav class="space-y-1">
                   <template v-for="heading in headings" :key="heading.id">
-                    <a 
+                    <a
                       @click.prevent="scrollToHeading(heading.id)"
                       href="#"
-                      class="block py-2 px-3 text-sm rounded-xl cursor-pointer transition-all duration-200"
+                      class="block py-1.5 px-3 rounded-lg cursor-pointer transition-all duration-200 leading-snug"
                       :class="[
-                        activeHeadingId === heading.id 
-                          ? 'text-primary-500 bg-primary-50 dark:bg-primary-900/20 font-semibold border-l-2 border-primary-500' 
+                        activeHeadingId === heading.id
+                          ? 'text-primary-500 bg-primary-50 dark:bg-primary-900/20 font-semibold border-l-2 border-primary-500'
                           : 'text-gray-600 dark:text-gray-400 hover:text-primary-500 hover:bg-gray-50 dark:hover:bg-gray-700/50',
-                        heading.level === 1 ? 'font-bold' : '',
-                        heading.level === 2 ? '' : '',
-                        heading.level === 3 ? 'pl-5 text-xs' : '',
-                        heading.level === 4 ? 'pl-7 text-xs' : '',
-                        heading.level === 5 ? 'pl-9 text-xs' : '',
-                        heading.level === 6 ? 'pl-11 text-xs' : ''
+                        heading.level === 1 ? 'text-sm font-bold pl-3' : '',
+                        heading.level === 2 ? 'text-[13px] font-semibold pl-3' : '',
+                        heading.level === 3 ? 'text-xs pl-6' : '',
+                        heading.level === 4 ? 'text-[11px] pl-9' : '',
+                        heading.level === 5 ? 'text-[11px] pl-11' : '',
+                        heading.level === 6 ? 'text-[11px] pl-[52px]' : ''
                       ]"
                     >
                       {{ heading.text }}

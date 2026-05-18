@@ -24,8 +24,7 @@ import java.util.Set;
 
 import static com.personblog.common.config.mqConfig.InteractionMqConfig.BROWSE_HISTORY_KEY;
 import static com.personblog.common.config.mqConfig.InteractionMqConfig.INTERACTION_EXCHANGE;
-import static com.personblog.common.constant.RedisKeys.BROWSE_COUNT_KEY;
-import static com.personblog.common.constant.RedisKeys.BROWSE_HISTORY_KEY_PREFIX;
+import static com.personblog.common.constant.RedisKeys.*;
 
 @Service
 @Slf4j
@@ -43,6 +42,7 @@ public class BrowseHistoryServiceImpl extends ServiceImpl<BrowseHistoryMapper, B
                 String historyKey = BROWSE_HISTORY_KEY_PREFIX + userId;
                 long timestamp = System.currentTimeMillis();
                 redisTemplate.opsForZSet().add(historyKey, articleId.toString(), timestamp);
+                redisTemplate.opsForSet().add(BROWSE_ACTIVE_USERS, userId.toString());
         }
     }
 
@@ -52,7 +52,7 @@ public class BrowseHistoryServiceImpl extends ServiceImpl<BrowseHistoryMapper, B
         int pageSize = (size == null || size <= 0) ? 10 : Math.min(size, 50);
         
         long offset = (long) (pageNum - 1) * pageSize;
-        
+        String key = BROWSE_HISTORY_KEY_PREFIX+userId;
         List<BrowseHistoryVO> voList = baseMapper.selectUserBrowseHistory(userId, offset, pageSize);
         long total = baseMapper.countByUserId(userId);
         
@@ -89,12 +89,12 @@ public class BrowseHistoryServiceImpl extends ServiceImpl<BrowseHistoryMapper, B
             log.info("浏览计数同步完成，共 {} 条记录", countMessageList.size());
         }
         
-        Set<String> historyKeys = redisTemplate.keys(BROWSE_HISTORY_KEY_PREFIX + "*");
-        if (historyKeys != null && !historyKeys.isEmpty()) {
+        Set<String> activeUsers = redisTemplate.opsForSet().members(BROWSE_ACTIVE_USERS);
+        if (activeUsers != null && !activeUsers.isEmpty()) {
             List<BrowseHistoryMessageDTO> historyMessageList = new ArrayList<>();
+            List<String> keysToDelete = new ArrayList<>();
             
-            for (String historyKey : historyKeys) {
-                String userIdStr = historyKey.replace(BROWSE_HISTORY_KEY_PREFIX, "");
+            for (String userIdStr : activeUsers) {
                 Long userId;
                 try {
                     userId = Long.valueOf(userIdStr);
@@ -102,6 +102,9 @@ public class BrowseHistoryServiceImpl extends ServiceImpl<BrowseHistoryMapper, B
                     log.warn("无效的用户ID: {}", userIdStr);
                     continue;
                 }
+                
+                String historyKey = BROWSE_HISTORY_KEY_PREFIX + userId;
+                keysToDelete.add(historyKey);
                 
                 Set<ZSetOperations.TypedTuple<String>> browseRecords = 
                         redisTemplate.opsForZSet().rangeWithScores(historyKey, 0, -1);
@@ -126,11 +129,13 @@ public class BrowseHistoryServiceImpl extends ServiceImpl<BrowseHistoryMapper, B
             
             if (!historyMessageList.isEmpty()) {
                 rabbitTemplate.convertAndSend(INTERACTION_EXCHANGE, BROWSE_HISTORY_KEY, historyMessageList);
-                for (String historyKey : historyKeys) {
-                    redisTemplate.delete(historyKey);
-                }
                 log.info("浏览历史同步完成，共 {} 条记录", historyMessageList.size());
             }
+            
+            if (!keysToDelete.isEmpty()) {
+                redisTemplate.delete(keysToDelete);
+            }
+            redisTemplate.delete(BROWSE_ACTIVE_USERS);
         }
     }
 }

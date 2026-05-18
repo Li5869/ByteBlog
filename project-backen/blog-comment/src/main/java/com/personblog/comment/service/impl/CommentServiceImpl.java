@@ -9,7 +9,6 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.personblog.api.articleAPI.ArticleInfoAPI;
 import com.personblog.api.interactionAPI.CommentApi;
 import com.personblog.api.interactionAPI.LikeApi;
-import com.personblog.api.interactionAPI.NotificationApi;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.comment.dto.AdminCommentQueryDTO;
 import com.personblog.comment.dto.CommentCreateDTO;
@@ -17,31 +16,29 @@ import com.personblog.comment.entity.Comment;
 import com.personblog.comment.mapper.CommentMapper;
 import com.personblog.comment.service.ICommentService;
 import com.personblog.comment.vo.*;
+import com.personblog.common.dto.Comment.CommentNotificationMessage;
 import com.personblog.common.dto.Interaction.LikeMessageDTO;
-import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
 import com.personblog.common.dto.User.UserDTO;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
-import com.personblog.common.utils.MultiLevelCacheUtil;
 import com.personblog.common.utils.UserContextHolder;
-import com.personblog.push.sse.SseEmitterManager;
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
+import static com.personblog.common.config.mqConfig.CommentMqConfig.COMMENT_EXCHANGE;
+import static com.personblog.common.config.mqConfig.CommentMqConfig.COMMENT_NOTIFICATION_KEY;
 import static com.personblog.common.constant.RedisKeys.COMMENT_PAGE;
 import static com.personblog.common.constant.StatusConstant.APPROVED;
-import static com.personblog.common.constant.TargetTypeConstant.ARTICLE;
+import static com.personblog.common.constant.StatusConstant.PENDING;
 import static com.personblog.common.constant.TargetTypeConstant.COMMENT;
 import static com.personblog.common.enums.BizCodeEnum.*;
 
@@ -61,11 +58,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     private final UseApi useApi;
     private final LikeApi likeApi;
     private final ArticleInfoAPI articleInfoAPI;
-    private final SseEmitterManager sseEmitterManager;
-    private final NotificationApi notificationApi;
-    private final MultiLevelCacheUtil cacheUtil;
-    @Resource(name = "CommentExecutor")
-    private Executor executor;
+    private final RabbitTemplate rabbitTemplate;
 
     // 本地缓存 - 评论分页
     private Cache<String, Page<CommentVO>> commentPageCache;
@@ -274,7 +267,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         comment.setAuthorId(userId);
         comment.setParentId(dto.getParentId());
         comment.setLikes(0L);
-        comment.setStatus(APPROVED);
+        comment.setStatus(PENDING);
         comment.setIsDeleted(false);
         comment.setIsAnonymous(false);
 
@@ -286,85 +279,18 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         // 创建评论后清理分页缓存
         commentPageCache.invalidateAll();
 
-        // 异步更新文章评论数
-        CompletableFuture.runAsync(() -> articleInfoAPI.updateCommentCount(dto.getArticleId(), 1), executor)
-                .exceptionally(e -> {
-                    log.error("更新文章评论数失败, articleId={}", dto.getArticleId(), e);
-                    return null;
-                });
-
-        // 异步发送通知
-        Long articleId = dto.getArticleId();
-        Long parentId = dto.getParentId();
-        String content = dto.getContent().trim();
-        CompletableFuture.runAsync(() -> {
-            try {
-                // 获取文章作者ID和标题
-                Long authorId = articleInfoAPI.getArticleAuthorId(articleId);
-
-                // 获取评论者信息
-                List<UserDTO> users = useApi.getUserInfo(Collections.singleton(userId));
-                UserDTO sender = users.isEmpty() ? null : users.getFirst();
-                
-                // 确定通知接收者：回复评论通知原评论作者，否则通知文章作者
-                Long receiverId;
-                String actionType;
-                String targetType;
-                String parentCommentContent = null;
-                if (parentId != null) {
-                    // 回复评论：通知被回复的评论作者
-                    Comment parentComment = this.getById(parentId);
-                    receiverId = parentComment.getAuthorId();
-                    parentCommentContent = parentComment.getContent();
-                    actionType = "reply";
-                    targetType = COMMENT;
-                } else {
-                    // 评论文章：通知文章作者
-                    receiverId = authorId;
-                    actionType = COMMENT;
-                    targetType = ARTICLE;
-                }
-                
-                // 不给自己发通知
-                if (!receiverId.equals(userId)) {
-                    Long relatedId;
-                    Long targetId;
-                    if (parentId != null) {
-                        targetId = parentId;
-                        relatedId = articleId;
-                    } else {
-                        targetId = articleId;
-                        relatedId = comment.getId();
-                    }
-                    
-                    NotificationMessageDTO messageDTO = NotificationMessageDTO.builder()
-                            .userId(receiverId)
-                            .actionType(actionType)
-                            .targetType(targetType)
-                            .targetId(targetId)
-                            .senderId(userId)
-                            .targetTitle(parentCommentContent)
-                            .targetTitle(dto.getArticleTitle())
-                            .relatedId(relatedId)
-                            .senderNickname(sender != null ? sender.getNickname() : "用户")
-                            .senderAvatar(sender != null ? sender.getAvatar() : "")
-                            .content(content)
-                            .createdAt(LocalDateTime.now())
-                            .build();
-                    
-                    // 保存通知到数据库，获取通知ID
-                    Long notificationId = notificationApi.saveNotification(messageDTO);
-                    
-                    // 设置通知ID后再发送SSE实时通知
-                    if (notificationId != null) {
-                        messageDTO.setId(notificationId);
-                        sseEmitterManager.sendToUser(receiverId, messageDTO);
-                    }
-                }
-            } catch (Exception e) {
-                log.error("发送评论通知失败, articleId={}, userId={}", articleId, userId, e);
-            }
-        }, executor);
+        // 发送MQ消息异步处理：文章评论数更新 + 评论通知
+        CommentNotificationMessage notificationMessage = CommentNotificationMessage.builder()
+                .articleId(dto.getArticleId())
+                .parentId(dto.getParentId())
+                .content(dto.getContent().trim())
+                .bizId(comment.getId())
+                .commentId(comment.getId())
+                .userId(userId)
+                .articleTitle(dto.getArticleTitle())
+                .delta(1)
+                .build();
+        rabbitTemplate.convertAndSend(COMMENT_EXCHANGE, COMMENT_NOTIFICATION_KEY, notificationMessage);
 
         CommentVO vo = toCommonVO(dto, comment);
         // 设置作者信息
@@ -425,9 +351,13 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         if (!removed) {
             throw new BizException(DELETE_ERROR);
         }
-        else {
-            articleInfoAPI.updateCommentCount(comment.getArticleId(),-list.size());
-        }
+
+        // 发送MQ消息异步更新文章评论数
+        CommentNotificationMessage notificationMessage = CommentNotificationMessage.builder()
+                .articleId(comment.getArticleId())
+                .delta(-totalRemove)
+                .build();
+        rabbitTemplate.convertAndSend(COMMENT_EXCHANGE, COMMENT_NOTIFICATION_KEY, notificationMessage);
         // 删除评论后清理分页缓存
         commentPageCache.invalidateAll();
         return CommentRemoveVO.builder().deleteTotal(totalRemove).build();

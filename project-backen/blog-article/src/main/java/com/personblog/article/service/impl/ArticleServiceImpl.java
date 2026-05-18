@@ -343,8 +343,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     @Override
     public ArticleMetadataVO getArticleMetadata(Long id) {
         String cacheKey = ARTICLE_METADATA + id;
-        articleCountExecutor.execute(()-> browseHistoryApi.recordBrowse(
-                UserContextHolder.getUserId(), id));
+        browseHistoryApi.recordBrowse(UserContextHolder.getUserId(),id);
         // 从缓存获取文章基础信息（含正文、分类、标签），不包含互动数据
         return cacheUtil.get(
                 cacheKey,

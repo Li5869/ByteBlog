@@ -112,7 +112,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-100 dark:bg-gray-900 pb-16 md:pb-0">
+  <div class="min-h-screen bg-gray-100 dark:bg-gray-900 ">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
       <button 
         @click="goBack"
