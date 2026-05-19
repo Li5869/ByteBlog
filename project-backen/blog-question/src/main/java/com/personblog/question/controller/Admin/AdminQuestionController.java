@@ -1,7 +1,7 @@
 package com.personblog.question.controller.Admin;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.personblog.common.adminLog.RecordLog;
+import com.personblog.admin.aspect.RecordLog;
 import com.personblog.common.result.JsonData;
 import com.personblog.question.dto.AdminQuestionQueryDTO;
 import com.personblog.question.service.IAnswerService;

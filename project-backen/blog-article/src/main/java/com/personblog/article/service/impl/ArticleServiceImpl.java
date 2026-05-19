@@ -9,6 +9,9 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.personblog.api.AIAPI.AiArticleDraftApi;
+import com.personblog.api.adminAPI.TagApi;
+import com.personblog.api.adminAPI.TagDTO;
+import com.personblog.api.adminAPI.TagVO;
 import com.personblog.api.articleAPI.ArticleInfoAPI;
 import com.personblog.api.interactionAPI.BrowseHistoryApi;
 import com.personblog.api.interactionAPI.FollowApi;
@@ -35,12 +38,9 @@ import com.personblog.common.dto.Moderate.AiModerateMessage;
 import com.personblog.common.dto.Search.SearchSyncMessageDTO;
 import com.personblog.common.dto.User.UserDTO;
 import com.personblog.common.dto.User.UserLikeMessageDTO;
-import com.personblog.common.entity.Tag;
 import com.personblog.common.exception.BizException;
-import com.personblog.common.service.ITagService;
 import com.personblog.common.utils.MultiLevelCacheUtil;
 import com.personblog.common.utils.UserContextHolder;
-import com.personblog.common.vo.TagVO;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
@@ -92,7 +92,7 @@ import static com.personblog.common.enums.BizCodeEnum.*;
 public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> implements IArticleService, ArticleInfoAPI {
     private final ICategoryService categoryService;
     private final IArticleTagService articleTagService;
-    private final ITagService tagService;
+    private final TagApi tagApi;
     private final UseApi useApi;
     private final FollowApi followApi;
     private final LikeApi likeApi;
@@ -400,12 +400,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
      * 使用 Redis Pipeline 批量查询文章互动数据
      * 已登录：查询收藏状态 + 浏览量增量 + 点赞数（3 条命令合并）
      * 未登录：仅查询浏览量增量 + 点赞数（2 条命令合并），跳过用户相关状态
-     *
      * Pipeline 命令顺序（已登录）：
      *   0. SISMEMBER collections:set:articleId:{id} {userId}  - 是否已收藏
      *   1. HGET browse:count {id}                             - 浏览量增量
      *   2. SCARD likes:set:article:{id}                       - 实时点赞数
-     *
      * Pipeline 命令顺序（未登录）：
      *   0. HGET browse:count {id}                             - 浏览量增量
      *   1. SCARD likes:set:article:{id}                       - 实时点赞数
@@ -465,9 +463,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         // 查询标签信息
         Set<Long> tagIds = getTagIdsByArticleId(article.getId());
         if (CollectionUtil.isNotEmpty(tagIds)) {
-            List<Tag> tags = tagService.listByIds(tagIds);
-            if (CollectionUtil.isNotEmpty(tags)) {
-                vo.setTags(tags.stream()
+            List<TagVO> tagVOs = tagApi.getTagsByIds(tagIds);
+            if (CollectionUtil.isNotEmpty(tagVOs)) {
+                vo.setTags(tagVOs.stream()
                         .map(tag -> BeanUtil.copyProperties(tag, ArticleMetadataVO.TagInfo.class)).toList());
             }
         }
@@ -926,9 +924,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 .map(ArticleTag::getTagId)
                 .collect(Collectors.toSet());
 
-        List<Tag> tags = tagService.listByIds(tagIds);
-        Map<Long, String> tagNameMap = tags.stream()
-                .collect(Collectors.toMap(Tag::getId, Tag::getName));
+        List<TagVO> tagVOs = tagApi.getTagsByIds(tagIds);
+        Map<Long, String> tagNameMap = tagVOs.stream()
+                .collect(Collectors.toMap(TagVO::getId, TagVO::getName));
 
         Map<Long, List<String>> result = new HashMap<>();
         articleTags.forEach(at -> {
@@ -997,7 +995,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                     .filter(Objects::nonNull)
                     .collect(Collectors.toSet());
             if (CollectionUtil.isNotEmpty(uniqueTagIds)) {
-                long count = tagService.lambdaQuery().in(Tag::getId, uniqueTagIds).count();
+                long count = tagApi.countExistingTags(uniqueTagIds);
                 if (count != uniqueTagIds.size()) {
                     throw new BizException(TAG_NOT_EXIST);
                 }
@@ -1012,16 +1010,16 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                     .collect(Collectors.toCollection(LinkedHashSet::new));
 
             if (CollectionUtil.isNotEmpty(normalizedNames)) {
-                List<Tag> existingTags = tagService.lambdaQuery().in(Tag::getName, normalizedNames).list();
-                Map<String, Tag> nameTagMap = existingTags.stream()
-                        .collect(Collectors.toMap(Tag::getName, tag -> tag, (a, b) -> a));
-                resultIds.addAll(existingTags.stream().map(Tag::getId).toList());
+                List<TagDTO> existingTags = tagApi.getTagsByNames(normalizedNames);
+                Map<String, TagDTO> nameTagMap = existingTags.stream()
+                        .collect(Collectors.toMap(TagDTO::getName, tag -> tag, (a, b) -> a));
+                resultIds.addAll(existingTags.stream().map(TagDTO::getId).toList());
 
-                List<Tag> newTags = new ArrayList<>();
+                List<TagDTO> newTags = new ArrayList<>();
                 LocalDateTime now = LocalDateTime.now();
                 for (String tagName : normalizedNames) {
                     if (!nameTagMap.containsKey(tagName)) {
-                        Tag tag = new Tag();
+                        TagDTO tag = new TagDTO();
                         tag.setName(tagName);
                         tag.setUseCount(0L);
                         tag.setCreatedAt(now);
@@ -1029,8 +1027,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                     }
                 }
                 if (CollectionUtil.isNotEmpty(newTags)) {
-                    tagService.saveBatch(newTags);
-                    resultIds.addAll(newTags.stream().map(Tag::getId).toList());
+                    tagApi.saveTags(newTags);
+                    resultIds.addAll(newTags.stream().map(TagDTO::getId).toList());
                 }
             }
         }
@@ -1459,12 +1457,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 .map(ArticleTag::getTagId)
                 .collect(Collectors.toSet());
 
-        List<Tag> tags = tagService.listByIds(tagIds);
-        Map<Long, TagVO> tagVOMap = tags.stream()
-                .collect(Collectors.toMap(Tag::getId, tag -> TagVO.builder()
-                        .id(tag.getId())
-                        .name(tag.getName())
-                        .build()));
+        List<TagVO> tagVOs = tagApi.getTagsByIds(tagIds);
+        Map<Long, TagVO> tagVOMap = tagVOs.stream()
+                .collect(Collectors.toMap(TagVO::getId, tag -> tag));
 
         Map<Long, List<TagVO>> result = new HashMap<>();
         articleTags.forEach(at -> {
@@ -1522,13 +1517,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         // 获取标签信息
         Set<Long> tagIds = getTagIdsByArticleId(article.getId());
         if (CollectionUtil.isNotEmpty(tagIds)) {
-            List<Tag> tags = tagService.listByIds(tagIds);
-            vo.setTags(tags.stream()
-                    .map(tag -> TagVO.builder()
-                            .id(tag.getId())
-                            .name(tag.getName())
-                            .build())
-                    .collect(Collectors.toList()));
+            List<TagVO> tagVOs = tagApi.getTagsByIds(tagIds);
+            vo.setTags(tagVOs);
         }
 
         return vo;

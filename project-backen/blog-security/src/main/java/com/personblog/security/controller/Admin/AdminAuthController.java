@@ -1,6 +1,7 @@
 package com.personblog.security.controller.Admin;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.personblog.admin.aspect.RecordLog;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.result.JsonData;
 import com.personblog.security.dto.LoginDTO;
@@ -54,6 +55,7 @@ public class AdminAuthController {
      */
     @Operation(summary = "管理员登录", description = "管理员专用登录接口，非管理员账号无法登录")
     @PostMapping("/login")
+    @RecordLog(Type = "login",description = "登陆")
     public JsonData<AdminInfoVO> login(@Valid @RequestBody LoginDTO loginDTO) {
         log.info("管理员登录请求: {}", loginDTO.getUsername());
 
@@ -231,6 +233,7 @@ public class AdminAuthController {
      */
     @Operation(summary = "管理员登出", description = "退出管理后台，清除登录状态")
     @PostMapping("/logout")
+    @RecordLog(Type = "logout",description = "登出")
     public JsonData<Void> logout() {
         return JsonData.buildSuccess();
     }

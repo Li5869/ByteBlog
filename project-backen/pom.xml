@@ -13,6 +13,7 @@
 
     <modules>
         <module>blog-common</module>
+        <module>blog-admin</module>
         <module>blog-security</module>
         <module>blog-article</module>
         <module>blog-comment</module>

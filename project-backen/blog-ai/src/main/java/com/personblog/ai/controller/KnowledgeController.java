@@ -1,5 +1,6 @@
 package com.personblog.ai.controller;
 
+import com.personblog.admin.aspect.RecordLog;
 import com.personblog.ai.BizService.KnowledgeService;
 import com.personblog.ai.dto.KnowledgeUploadVO;
 import com.personblog.common.result.JsonData;
@@ -24,6 +25,7 @@ public class KnowledgeController {
 
     @Operation(summary = "上传文件", description = "上传文件到知识库，支持 .txt 和 .md 文件，自动切片并向量化存储")
     @PostMapping("/file")
+    @RecordLog(Type = "create",businessType = "knowledge",description = "上传知识库文件")
     public JsonData<KnowledgeUploadVO> uploadFile(@RequestParam("file") MultipartFile file) {
         String filename = file.getOriginalFilename();
         if (filename == null || (!filename.endsWith(".txt") && !filename.endsWith(".md"))) {

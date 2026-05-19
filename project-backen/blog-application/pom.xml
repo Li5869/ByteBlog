@@ -23,6 +23,11 @@
         </dependency>
         <dependency>
             <groupId>com.personblog</groupId>
+            <artifactId>blog-admin</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.personblog</groupId>
             <artifactId>blog-security</artifactId>
             <version>${project.version}</version>
         </dependency>

@@ -1,6 +1,8 @@
 package com.personblog.article.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.personblog.api.adminAPI.TagApi;
+import com.personblog.api.adminAPI.TagVO;
 import com.personblog.api.searchAPI.ArticleSearchDataApi;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.article.entity.Article;
@@ -11,8 +13,6 @@ import com.personblog.article.mapper.ArticleTagMapper;
 import com.personblog.article.mapper.CategoryMapper;
 import com.personblog.common.dto.Search.ArticleSearchDTO;
 import com.personblog.common.dto.User.UserDTO;
-import com.personblog.common.entity.Tag;
-import com.personblog.common.mapper.TagMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -32,7 +32,7 @@ public class ArticleSearchDataServiceImpl implements ArticleSearchDataApi {
     private final ArticleMapper articleMapper;
     private final ArticleTagMapper articleTagMapper;
     private final CategoryMapper categoryMapper;
-    private final TagMapper tagMapper;
+    private final TagApi tagApi;
     private final UseApi useApi;
 
     @Override
@@ -81,8 +81,8 @@ public class ArticleSearchDataServiceImpl implements ArticleSearchDataApi {
         // 批量查询标签名称
         List<Long> tagIds = articleTags.stream().map(ArticleTag::getTagId).distinct().toList();
         Map<Long, String> tagNameMap = tagIds.isEmpty() ? Collections.emptyMap() :
-                tagMapper.selectBatchIds(tagIds).stream()
-                        .collect(Collectors.toMap(Tag::getId, Tag::getName));
+                tagApi.getTagsByIds(tagIds).stream()
+                        .collect(Collectors.toMap(TagVO::getId, TagVO::getName));
 
         // 通过UseApi跨模块查询作者信息
         List<Long> authorIds = articles.stream().map(Article::getAuthorId).distinct().toList();

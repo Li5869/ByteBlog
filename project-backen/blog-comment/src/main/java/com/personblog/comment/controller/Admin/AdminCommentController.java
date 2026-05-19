@@ -1,11 +1,11 @@
 package com.personblog.comment.controller.Admin;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.personblog.admin.aspect.RecordLog;
 import com.personblog.comment.dto.AdminCommentQueryDTO;
 import com.personblog.comment.service.ICommentService;
 import com.personblog.comment.vo.AdminCommentDetailVO;
 import com.personblog.comment.vo.AdminCommentVO;
-import com.personblog.common.adminLog.RecordLog;
 import com.personblog.common.result.JsonData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
