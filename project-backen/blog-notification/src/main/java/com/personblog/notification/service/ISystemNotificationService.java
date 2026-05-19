@@ -1,13 +1,13 @@
-package com.personblog.interaction.service;
+package com.personblog.notification.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.personblog.api.interactionAPI.SystemNotificationApi;
-import com.personblog.interaction.dto.SystemNotificationQueryDTO;
-import com.personblog.interaction.entity.SystemNotification;
-import com.personblog.interaction.vo.BatchDeleteResultVO;
-import com.personblog.interaction.vo.SystemNotificationVO;
-import com.personblog.interaction.vo.UnreadCountVO;
+import com.personblog.notification.dto.SystemNotificationQueryDTO;
+import com.personblog.notification.entity.SystemNotification;
+import com.personblog.notification.vo.BatchDeleteResultVO;
+import com.personblog.notification.vo.SystemNotificationVO;
+import com.personblog.notification.vo.UnreadCountVO;
 
 import java.util.List;
 

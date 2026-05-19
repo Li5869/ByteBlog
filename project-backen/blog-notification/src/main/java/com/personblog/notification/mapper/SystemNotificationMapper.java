@@ -1,7 +1,7 @@
-package com.personblog.interaction.mapper;
+package com.personblog.notification.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.personblog.interaction.entity.SystemNotification;
+import com.personblog.notification.entity.SystemNotification;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Update;

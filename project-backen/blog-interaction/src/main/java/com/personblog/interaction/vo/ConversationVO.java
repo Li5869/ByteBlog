@@ -2,6 +2,7 @@ package com.personblog.interaction.vo;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+import com.personblog.notification.vo.SenderVO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 

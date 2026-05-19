@@ -1,14 +1,14 @@
-package com.personblog.interaction.controller;
+package com.personblog.notification.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.personblog.common.dto.Notification.BizNotificationQueryDTO;
 import com.personblog.common.result.JsonData;
 import com.personblog.common.utils.UserContextHolder;
-import com.personblog.interaction.dto.BatchDeleteDTO;
-import com.personblog.interaction.service.IBizNotificationService;
-import com.personblog.interaction.vo.BatchDeleteResultVO;
-import com.personblog.interaction.vo.BizNotificationVO;
-import com.personblog.interaction.vo.UnreadCountVO;
+import com.personblog.notification.dto.BatchDeleteDTO;
+import com.personblog.notification.service.IBizNotificationService;
+import com.personblog.notification.vo.BatchDeleteResultVO;
+import com.personblog.notification.vo.BizNotificationVO;
+import com.personblog.notification.vo.UnreadCountVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;

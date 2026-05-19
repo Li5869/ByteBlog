@@ -12,7 +12,7 @@ import com.personblog.interaction.mapper.MessageMapper;
 import com.personblog.interaction.service.IConversationService;
 import com.personblog.interaction.service.MessageService;
 import com.personblog.interaction.vo.MessageVO;
-import com.personblog.interaction.vo.UnreadCountVO;
+import com.personblog.notification.vo.UnreadCountVO;
 import com.personblog.push.service.MessagePushService;
 import com.personblog.push.vo.PushMessageVO;
 import lombok.RequiredArgsConstructor;

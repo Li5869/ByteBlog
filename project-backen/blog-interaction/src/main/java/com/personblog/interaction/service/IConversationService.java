@@ -2,8 +2,8 @@ package com.personblog.interaction.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.personblog.interaction.entity.Conversation;
-import com.personblog.interaction.vo.BatchDeleteResultVO;
 import com.personblog.interaction.vo.ConversationVO;
+import com.personblog.notification.vo.BatchDeleteResultVO;
 
 import java.util.List;
 

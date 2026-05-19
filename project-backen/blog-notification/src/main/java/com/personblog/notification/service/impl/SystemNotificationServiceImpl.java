@@ -1,4 +1,4 @@
-package com.personblog.interaction.service.impl;
+package com.personblog.notification.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -7,13 +7,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
 import com.personblog.common.exception.BizException;
-import com.personblog.interaction.dto.SystemNotificationQueryDTO;
-import com.personblog.interaction.entity.SystemNotification;
-import com.personblog.interaction.mapper.SystemNotificationMapper;
-import com.personblog.interaction.service.ISystemNotificationService;
-import com.personblog.interaction.vo.BatchDeleteResultVO;
-import com.personblog.interaction.vo.SystemNotificationVO;
-import com.personblog.interaction.vo.UnreadCountVO;
+import com.personblog.notification.dto.SystemNotificationQueryDTO;
+import com.personblog.notification.entity.SystemNotification;
+import com.personblog.notification.mapper.SystemNotificationMapper;
+import com.personblog.notification.service.ISystemNotificationService;
+import com.personblog.notification.vo.BatchDeleteResultVO;
+import com.personblog.notification.vo.SystemNotificationVO;
+import com.personblog.notification.vo.UnreadCountVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

@@ -1,11 +1,11 @@
-package com.personblog.interaction.mqHandler;
+package com.personblog.notification.mqHandler;
 
 import com.personblog.api.usrAPI.UseApi;
+import com.personblog.common.dto.Interaction.FollowMessageDTO;
 import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
 import com.personblog.common.dto.User.UserDTO;
-import com.personblog.interaction.dto.MqMessage.FollowMessageDTO;
-import com.personblog.interaction.entity.BizNotification;
-import com.personblog.interaction.mapper.BizNotificationMapper;
+import com.personblog.notification.entity.BizNotification;
+import com.personblog.notification.mapper.BizNotificationMapper;
 import com.personblog.push.service.OnlineStateService;
 import com.personblog.push.sse.SseEmitterManager;
 import com.rabbitmq.client.Channel;
@@ -30,7 +30,7 @@ public class NotificationMqHandler {
 
     private final BizNotificationMapper bizNotificationMapper;
     private final SseEmitterManager sseEmitterManager;
-    private final OnlineStateService onlineStateService; // 复用 WebSocket 的在线状态服务
+    private final OnlineStateService onlineStateService;
     private final UseApi useApi;
 
     /**
@@ -51,11 +51,11 @@ public class NotificationMqHandler {
 
             // 保存通知到数据库
             BizNotification notification = new BizNotification();
-            notification.setUserId(dto.getFollowingId()); // 接收通知的用户（被关注者）
+            notification.setUserId(dto.getFollowingId());
             notification.setActionType("follow");
             notification.setTargetType("user");
-            notification.setTargetId(dto.getFollowerId()); // 目标ID是关注者ID
-            notification.setSenderId(dto.getFollowerId()); // 发送者是关注者
+            notification.setTargetId(dto.getFollowerId());
+            notification.setSenderId(dto.getFollowerId());
             notification.setIsRead(false);
             notification.setCreatedAt(LocalDateTime.now());
 

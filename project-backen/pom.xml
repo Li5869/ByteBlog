@@ -25,6 +25,7 @@
         <module>blog-application</module>
         <module>blog-api</module>
         <module>blog-push</module>
+        <module>blog-notification</module>
     </modules>
 
     <properties>

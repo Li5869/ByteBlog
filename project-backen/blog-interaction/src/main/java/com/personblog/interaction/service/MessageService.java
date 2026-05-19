@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.personblog.interaction.dto.MessageQueryDTO;
 import com.personblog.interaction.entity.Message;
 import com.personblog.interaction.vo.MessageVO;
-import com.personblog.interaction.vo.UnreadCountVO;
+import com.personblog.notification.vo.UnreadCountVO;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

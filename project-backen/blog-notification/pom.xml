@@ -11,9 +11,9 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>blog-interaction</artifactId>
-    <name>blog-interaction</name>
-    <description>person blog interaction module</description>
+    <artifactId>blog-notification</artifactId>
+    <name>blog-notification</name>
+    <description>person blog notification module</description>
 
     <dependencies>
         <dependency>
@@ -23,17 +23,12 @@
         </dependency>
         <dependency>
             <groupId>com.personblog</groupId>
-            <artifactId>blog-push</artifactId>
+            <artifactId>blog-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.personblog</groupId>
-            <artifactId>blog-api</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>com.personblog</groupId>
-            <artifactId>blog-notification</artifactId>
+            <artifactId>blog-push</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
