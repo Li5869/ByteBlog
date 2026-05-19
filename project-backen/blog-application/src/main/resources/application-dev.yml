@@ -33,7 +33,12 @@ spring:
 search:
   enabled: true
   sync-on-startup: false
-
+cache:
+  local:
+    max-size: 2000      # 本地缓存最大容量，默认 2000
+    null-ttl: 15        # 空值本地缓存过期时间（秒），默认 15
+  redis:
+    null-ttl: 30        # 空值 Redis 缓存过期时间（秒），默认 30
 xxl:
   job:
     admin:
