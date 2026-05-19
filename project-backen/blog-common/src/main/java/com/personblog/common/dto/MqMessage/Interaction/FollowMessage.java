@@ -1,4 +1,4 @@
-package com.personblog.common.dto.Interaction;
+package com.personblog.common.dto.MqMessage.Interaction;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class FollowMessageDTO {
+public class FollowMessage {
     @JsonSerialize(using = ToStringSerializer.class)
     private Long followingId;
     private Boolean isFollow;

@@ -3,7 +3,7 @@ package com.personblog.comment.mqHandler;
 import com.personblog.api.AIAPI.AICommentApi;
 import com.personblog.comment.dto.CommentCreateDTO;
 import com.personblog.comment.service.ICommentService;
-import com.personblog.common.dto.Comment.AICommentDTO;
+import com.personblog.common.dto.MqMessage.Comment.AICommentMessage;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +23,7 @@ public class AICommentHandler {
     private final ICommentService commentService;
     private final AICommentApi aiCommentApi;
     @RabbitListener(queues = AI_COMMENT_QUEUE, containerFactory = "rabbitListenerContainerFactory")
-    public void AiCommentSend(AICommentDTO dto, Channel channel,
+    public void AiCommentSend(AICommentMessage dto, Channel channel,
                               @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
             String s = aiCommentApi.commentContent(dto.getArticleContent());

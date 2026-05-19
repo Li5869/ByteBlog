@@ -1,4 +1,4 @@
-package com.personblog.common.dto.Moderate;
+package com.personblog.common.dto.MqMessage.AIModerate;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -7,10 +7,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.personblog.api.interactionAPI.NotificationApi;
 import com.personblog.api.usrAPI.UseApi;
+import com.personblog.common.dto.MqMessage.notifaction.NotificationMessage;
 import com.personblog.common.dto.Notification.BatchDeleteResultVO;
 import com.personblog.common.dto.Notification.SenderVO;
 import com.personblog.common.dto.Notification.UnreadCountVO;
-import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
 import com.personblog.common.dto.User.UserDTO;
 import com.personblog.common.exception.BizException;
 import com.personblog.notification.dto.BizNotificationQueryDTO;
@@ -164,7 +164,7 @@ public class BizNotificationServiceImpl extends ServiceImpl<BizNotificationMappe
     }
 
     @Override
-    public Long saveNotification(NotificationMessageDTO dto) {
+    public Long saveNotification(NotificationMessage dto) {
         try {
             BizNotification notification = new BizNotification();
             notification.setUserId(dto.getUserId());

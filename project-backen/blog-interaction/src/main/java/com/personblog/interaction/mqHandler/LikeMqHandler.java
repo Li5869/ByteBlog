@@ -6,12 +6,12 @@ import com.personblog.api.interactionAPI.NotificationApi;
 import com.personblog.api.questionAPI.AnswerApi;
 import com.personblog.api.questionAPI.QuestionApi;
 import com.personblog.api.usrAPI.UseApi;
-import com.personblog.common.dto.Interaction.LikeMessageDTO;
-import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
+import com.personblog.common.dto.MqMessage.Interaction.LikeMessage;
+import com.personblog.common.dto.MqMessage.Interaction.LikeSaveDBMessage;
+import com.personblog.common.dto.MqMessage.Interaction.SyncLikeCacheMessage;
+import com.personblog.common.dto.MqMessage.notifaction.NotificationMessage;
 import com.personblog.common.dto.User.UserDTO;
 import com.personblog.interaction.bizService.BizLikeService;
-import com.personblog.interaction.dto.MqMessage.LikeSaveDBMessageDTO;
-import com.personblog.interaction.dto.MqMessage.SyncLikeCacheMessageDTO;
 import com.personblog.interaction.service.AnswerLikeService;
 import com.personblog.interaction.service.ArticleLikeService;
 import com.personblog.interaction.service.CommentLikeService;
@@ -60,7 +60,7 @@ public class LikeMqHandler {
 
     private final Map<String, LikeStrategy> likeStrategyMap = new HashMap<>();
 
-    private final Map<String, Consumer<List<LikeMessageDTO>>> likeCountUpdaters = new HashMap<>(4);
+    private final Map<String, Consumer<List<LikeMessage>>> likeCountUpdaters = new HashMap<>(4);
 
     // 点赞缓存同步锁前缀
     private static final String LIKE_SYNC_LOCK_PREFIX = "like_sync_cache:";
@@ -78,14 +78,14 @@ public class LikeMqHandler {
         likeCountUpdaters.put(ANSWER, answerApi::updateLikeCount);
     }
     @RabbitListener(queues = LIKE_QUEUE, containerFactory = "rabbitListenerContainerFactory")
-    public void handlerLikeMessage(List<LikeMessageDTO> dtos, Channel channel,
+    public void handlerLikeMessage(List<LikeMessage> dtos, Channel channel,
                                    @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
-            Map<String, List<LikeMessageDTO>> map = dtos.stream()
-                    .collect(Collectors.groupingBy(LikeMessageDTO::getTargetType));
+            Map<String, List<LikeMessage>> map = dtos.stream()
+                    .collect(Collectors.groupingBy(com.personblog.common.dto.MqMessage.Interaction.LikeMessage::getTargetType));
 
             likeCountUpdaters.forEach((type, updater) -> {
-                List<LikeMessageDTO> list = map.get(type);
+                List<LikeMessage> list = map.get(type);
                 if (list != null) {
                     updater.accept(list);
                 }
@@ -99,7 +99,7 @@ public class LikeMqHandler {
     }
 
     @RabbitListener(queues = LIKE_DB_QUEUE, containerFactory = "rabbitListenerContainerFactory")
-    public void SaveDate2DB(LikeSaveDBMessageDTO dto, Channel channel,
+    public void SaveDate2DB(LikeSaveDBMessage dto, Channel channel,
                             @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
             log.info("开始存库点赞记录");
@@ -117,7 +117,7 @@ public class LikeMqHandler {
     }
 
     /** 发送点赞通知 */
-    private void sendLikeNotification(LikeSaveDBMessageDTO dto) {
+    private void sendLikeNotification(LikeSaveDBMessage dto) {
         try {
             List<UserDTO> users = useApi.getUserInfo(Collections.singletonList(dto.getUserId()));
             UserDTO sender = users.isEmpty() ? null : users.getFirst();
@@ -129,7 +129,7 @@ public class LikeMqHandler {
                 notifyContent = null;
             }
 
-            NotificationMessageDTO messageDTO = NotificationMessageDTO.builder()
+            NotificationMessage messageDTO = NotificationMessage.builder()
                     .userId(dto.getAuthorId())
                     .actionType("like")
                     .targetType(dto.getTargetType().toLowerCase())
@@ -152,7 +152,7 @@ public class LikeMqHandler {
     }
 
     @RabbitListener(queues = LIKE_SYNC_CACHE_QUEUE, containerFactory = "rabbitListenerContainerFactory")
-    public void syncLikeCache(SyncLikeCacheMessageDTO dto, Channel channel,
+    public void syncLikeCache(SyncLikeCacheMessage dto, Channel channel,
                               @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         // 同类型点赞缓存同步使用分布式锁串行执行，防止并发
         RLock lock = redissonClient.getLock(LIKE_SYNC_LOCK_PREFIX + dto.getTargetType());

@@ -1,6 +1,6 @@
 package com.personblog.search.mqHandler;
 
-import com.personblog.common.dto.Search.SearchSyncMessageDTO;
+import com.personblog.common.dto.MqMessage.search.SearchSyncMessageDTO;
 import com.personblog.search.config.mqConfig.SearchMqConfig;
 import com.personblog.search.service.DeleteSearchService;
 import com.personblog.search.service.SearchSyncService;

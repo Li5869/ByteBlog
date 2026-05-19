@@ -1,7 +1,7 @@
 package com.personblog.interaction.mqHandler;
 
 import com.personblog.api.usrAPI.UseApi;
-import com.personblog.common.dto.User.UserLikeMessageDTO;
+import com.personblog.common.dto.MqMessage.user.UserLikeMessageDTO;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

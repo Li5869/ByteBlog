@@ -1,4 +1,4 @@
-package com.personblog.common.dto.Interaction;
+package com.personblog.common.dto.MqMessage.Interaction;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
@@ -7,25 +7,16 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BrowseHistoryMessageDTO {
-
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long userId;
-
+public class CollectionMessage {
     @JsonSerialize(using = ToStringSerializer.class)
     private Long articleId;
-
-    private LocalDateTime browseTime;
-
-    private String articleTitle;
-
-    private String articleCover;
-
-    private Long views;
+    private Long collectionTimes;
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long userId;
+    private Integer delta;
+    private Boolean isCollection;
 }

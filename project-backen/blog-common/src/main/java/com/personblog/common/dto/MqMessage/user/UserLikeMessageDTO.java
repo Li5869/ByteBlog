@@ -1,4 +1,4 @@
-package com.personblog.common.dto.User;
+package com.personblog.common.dto.MqMessage.user;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;

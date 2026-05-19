@@ -1,7 +1,7 @@
 package com.personblog.interaction.mqHandler;
 
 import com.personblog.api.usrAPI.UseApi;
-import com.personblog.common.dto.Interaction.FollowMessageDTO;
+import com.personblog.common.dto.MqMessage.Interaction.FollowMessage;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +26,7 @@ public class FollowMqHandler {
     private final UseApi userApi;
     
     @RabbitListener(queues = FOLLOW_QUEUE, containerFactory = "rabbitListenerContainerFactory")
-    public void handleFollowMessage(FollowMessageDTO dto, Channel channel,
+    public void handleFollowMessage(FollowMessage dto, Channel channel,
                                     @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         Long followingId = dto.getFollowingId();
         Boolean isFollow = dto.getIsFollow();

@@ -2,8 +2,8 @@ package com.personblog.ai.mqHandler;
 
 import com.personblog.ai.BizService.ContentModerationService;
 import com.personblog.ai.dto.ContentModerationDTO;
-import com.personblog.common.dto.Comment.AICommentDTO;
-import com.personblog.common.dto.Moderate.AiModerateMessage;
+import com.personblog.common.dto.MqMessage.AIModerate.AiModerateMessage;
+import com.personblog.common.dto.MqMessage.Comment.AICommentMessage;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -64,7 +64,7 @@ public class AiModerateMqHandler {
             String reviewStatus = contentModerationService.moderate(dto);
             // 文章审核通过后，自动触发AI评论
             if (ARTICLE.equals(message.getBizType()) && APPROVED.equals(reviewStatus)) {
-                AICommentDTO commentMessage = AICommentDTO.builder()
+                AICommentMessage commentMessage = AICommentMessage.builder()
                         .articleId(message.getBizId())
                         .articleContent(message.getContent())
                         .articleTitle(message.getTitle())

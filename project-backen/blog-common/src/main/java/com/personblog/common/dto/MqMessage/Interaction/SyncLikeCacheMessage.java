@@ -1,4 +1,4 @@
-package com.personblog.common.dto.Interaction;
+package com.personblog.common.dto.MqMessage.Interaction;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,11 +9,6 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LikeMessageDTO {
-
+public class SyncLikeCacheMessage {
     private String targetType;
-
-    private Long likeTimes;
-
-    private Long id;
 }

@@ -2,7 +2,7 @@ package com.personblog.question.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.personblog.api.questionAPI.AnswerApi;
-import com.personblog.common.dto.Interaction.LikeMessageDTO;
+import com.personblog.common.dto.MqMessage.Interaction.LikeMessage;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
 import com.personblog.question.entity.Answer;
@@ -27,7 +27,7 @@ import java.util.List;
 public class AnswerServiceImpl extends ServiceImpl<AnswerMapper, Answer> implements IAnswerService, AnswerApi {
 
     @Override
-    public void updateLikeCount(List<LikeMessageDTO> likeMessageDTOS) {
+    public void updateLikeCount(List<LikeMessage> likeMessageDTOS) {
 
     }
     // ==================== 管理端接口实现 ====================

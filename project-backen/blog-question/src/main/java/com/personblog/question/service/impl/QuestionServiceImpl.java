@@ -15,8 +15,8 @@ import com.personblog.api.questionAPI.QuestionApi;
 import com.personblog.api.searchAPI.DeleteSearchAPI;
 import com.personblog.api.searchAPI.SearchSyncApi;
 import com.personblog.api.usrAPI.UseApi;
-import com.personblog.common.dto.Interaction.LikeMessageDTO;
-import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
+import com.personblog.common.dto.MqMessage.Interaction.LikeMessage;
+import com.personblog.common.dto.MqMessage.notifaction.NotificationMessage;
 import com.personblog.common.dto.User.UserDTO;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
@@ -602,9 +602,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateLikeCount(List<LikeMessageDTO> likeMessageDTOS) {
+    public void updateLikeCount(List<LikeMessage> likeMessageDTOS) {
         List<Question> list = new ArrayList<>(likeMessageDTOS.size());
-        for (LikeMessageDTO likeMessageDTO : likeMessageDTOS) {
+        for (LikeMessage likeMessageDTO : likeMessageDTOS) {
             Question question = new Question();
             question.setLikes(likeMessageDTO.getLikeTimes());
             question.setId(likeMessageDTO.getId());
@@ -612,7 +612,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         }
         updateBatchById(list);
         // 清理问题详情缓存
-        for (LikeMessageDTO dto : likeMessageDTOS) {
+        for (LikeMessage dto : likeMessageDTOS) {
             cacheUtil.evict(QUESTION_DETAIL + dto.getId());
         }
     }
@@ -776,7 +776,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                 UserDTO sender = users.isEmpty() ? null : users.getFirst();
                 
                 // 构建通知消息
-                NotificationMessageDTO messageDTO = NotificationMessageDTO.builder()
+                NotificationMessage messageDTO = NotificationMessage.builder()
                         .userId(questionAuthorId)
                         .actionType("answer")
                         .targetType("question")
@@ -1164,7 +1164,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                     UserDTO sender = users.isEmpty() ? null : users.getFirst();
                     
                     // 构建通知消息
-                    NotificationMessageDTO messageDTO = NotificationMessageDTO.builder()
+                    NotificationMessage messageDTO = NotificationMessage.builder()
                             .userId(answerAuthorId)
                             .actionType("adopt")
                             .targetType("answer")

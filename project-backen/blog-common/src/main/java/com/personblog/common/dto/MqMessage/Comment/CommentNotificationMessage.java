@@ -1,4 +1,4 @@
-package com.personblog.comment.dto;
+package com.personblog.common.dto.MqMessage.Comment;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

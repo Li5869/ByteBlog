@@ -1,4 +1,4 @@
-package com.personblog.common.dto.Comment;
+package com.personblog.common.dto.MqMessage.Comment;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AICommentDTO {
+public class AICommentMessage {
     //文章id
     private Long articleId;
     //文章内容

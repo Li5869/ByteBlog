@@ -5,9 +5,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.personblog.common.dto.MqMessage.notifaction.NotificationMessage;
 import com.personblog.common.dto.Notification.BatchDeleteResultVO;
 import com.personblog.common.dto.Notification.UnreadCountVO;
-import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
 import com.personblog.common.exception.BizException;
 import com.personblog.notification.dto.SystemNotificationQueryDTO;
 import com.personblog.notification.entity.SystemNotification;
@@ -34,7 +34,7 @@ public class SystemNotificationServiceImpl extends ServiceImpl<SystemNotificatio
     private final SystemNotificationMapper systemNotificationMapper;
 
     @Override
-    public void saveNotification(NotificationMessageDTO dto) {
+    public void saveNotification(NotificationMessage dto) {
         SystemNotification notification = new SystemNotification();
         notification.setUserId(dto.getUserId());
         notification.setTitle(buildNotificationTitle(dto.getActionType()));

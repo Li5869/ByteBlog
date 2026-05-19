@@ -3,11 +3,11 @@ package com.personblog.comment.mqHandler;
 import com.personblog.api.articleAPI.ArticleInfoAPI;
 import com.personblog.api.interactionAPI.NotificationApi;
 import com.personblog.api.usrAPI.UseApi;
-import com.personblog.comment.dto.CommentNotificationMessage;
 import com.personblog.comment.entity.Comment;
 import com.personblog.comment.service.ICommentService;
-import com.personblog.common.dto.Moderate.AiModerateMessage;
-import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
+import com.personblog.common.dto.MqMessage.AIModerate.AiModerateMessage;
+import com.personblog.common.dto.MqMessage.Comment.CommentNotificationMessage;
+import com.personblog.common.dto.MqMessage.notifaction.NotificationMessage;
 import com.personblog.common.dto.User.UserDTO;
 import com.personblog.push.sse.SseEmitterManager;
 import com.rabbitmq.client.Channel;
@@ -102,7 +102,7 @@ public class CommentNotificationHandler {
                     relatedId = message.getCommentId();
                 }
 
-                NotificationMessageDTO notificationDTO = NotificationMessageDTO.builder()
+                NotificationMessage notificationDTO = NotificationMessage.builder()
                         .userId(receiverId)
                         .actionType(actionType)
                         .targetType(targetType)

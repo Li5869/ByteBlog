@@ -20,7 +20,6 @@ import com.personblog.api.usrAPI.UseApi;
 import com.personblog.article.dto.article.AdminArticleQueryDTO;
 import com.personblog.article.dto.article.ArticlePublishDTO;
 import com.personblog.article.dto.article.ArticleQueryDTO;
-import com.personblog.article.dto.message.ArticleStatsMessage;
 import com.personblog.article.entity.Article;
 import com.personblog.article.entity.ArticleTag;
 import com.personblog.article.entity.Category;
@@ -30,14 +29,15 @@ import com.personblog.article.service.IArticleTagService;
 import com.personblog.article.service.ICategoryService;
 import com.personblog.article.service.IColumnArticleService;
 import com.personblog.article.vo.*;
-import com.personblog.common.dto.Interaction.BrowseHistoryMessageDTO;
-import com.personblog.common.dto.Interaction.CollectionMessageDTO;
-import com.personblog.common.dto.Interaction.LikeMessageDTO;
-import com.personblog.common.dto.Moderate.AiModerateMessage;
-import com.personblog.common.dto.Search.SearchSyncMessageDTO;
+import com.personblog.common.dto.MqMessage.AIModerate.AiModerateMessage;
+import com.personblog.common.dto.MqMessage.Interaction.BrowseHistoryMessage;
+import com.personblog.common.dto.MqMessage.Interaction.CollectionMessage;
+import com.personblog.common.dto.MqMessage.Interaction.LikeMessage;
+import com.personblog.common.dto.MqMessage.article.ArticleStatsMessage;
+import com.personblog.common.dto.MqMessage.search.SearchSyncMessageDTO;
+import com.personblog.common.dto.MqMessage.user.UserLikeMessageDTO;
 import com.personblog.common.dto.Tag.TagDTO;
 import com.personblog.common.dto.User.UserDTO;
-import com.personblog.common.dto.User.UserLikeMessageDTO;
 import com.personblog.common.exception.BizException;
 import com.personblog.common.utils.MultiLevelCacheUtil;
 import com.personblog.common.utils.UserContextHolder;
@@ -1055,9 +1055,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateLikeCount(List<LikeMessageDTO> dtoList) {
+    public void updateLikeCount(List<LikeMessage> dtoList) {
         List<Long> articleIds = dtoList.stream()
-                .map(LikeMessageDTO::getId)
+                .map(com.personblog.common.dto.MqMessage.Interaction.LikeMessage::getId)
                 .collect(Collectors.toList());
         
         Map<Long, Article> oldArticleMap = listByIds(articleIds).stream()
@@ -1066,7 +1066,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         List<Article> list = new ArrayList<>(dtoList.size());
         List<UserLikeMessageDTO> userLikeMessages = new ArrayList<>();
         
-        for (LikeMessageDTO dto : dtoList) {
+        for (LikeMessage dto : dtoList) {
             Article article = new Article();
             article.setLikes(dto.getLikeTimes());
             article.setId(dto.getId());
@@ -1098,7 +1098,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
 
     @Override
-    public void updateCollectionCount(CollectionMessageDTO dto) {
+    public void updateCollectionCount(CollectionMessage dto) {
         Article article = new Article();
         article.setId(dto.getArticleId());
         article.setCollections(dto.getCollectionTimes());
@@ -1109,14 +1109,14 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateBrowseCount(List<BrowseHistoryMessageDTO> dtoList) {
+    public void updateBrowseCount(List<BrowseHistoryMessage> dtoList) {
         if (dtoList == null || dtoList.isEmpty()) {
             return;
         }
         
         // 获取所有文章ID
         List<Long> articleIds = dtoList.stream()
-                .map(BrowseHistoryMessageDTO::getArticleId)
+                .map(BrowseHistoryMessage::getArticleId)
                 .collect(Collectors.toList());
         
         // 批量查询数据库中的文章

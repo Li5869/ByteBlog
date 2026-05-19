@@ -1,8 +1,8 @@
 package com.personblog.notification.mqHandler;
 
 import com.personblog.api.usrAPI.UseApi;
-import com.personblog.common.dto.Interaction.FollowMessageDTO;
-import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
+import com.personblog.common.dto.MqMessage.Interaction.FollowMessage;
+import com.personblog.common.dto.MqMessage.notifaction.NotificationMessage;
 import com.personblog.common.dto.User.UserDTO;
 import com.personblog.notification.entity.BizNotification;
 import com.personblog.notification.mapper.BizNotificationMapper;
@@ -38,7 +38,7 @@ public class NotificationMqHandler {
      * 监听关注通知队列，保存通知并推送
      */
     @RabbitListener(queues = FOLLOW_NOTIFICATION_QUEUE, containerFactory = "rabbitListenerContainerFactory")
-    public void handleFollowNotification(FollowMessageDTO dto, Channel channel,
+    public void handleFollowNotification(FollowMessage dto, Channel channel,
                                          @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
             log.info("收到关注消息: followerId={}, followingId={}", dto.getFollowerId(), dto.getFollowingId());
@@ -71,7 +71,7 @@ public class NotificationMqHandler {
                 UserDTO sender = users.isEmpty() ? null : users.getFirst();
 
                 // 构建推送消息
-                NotificationMessageDTO message = NotificationMessageDTO.builder()
+                NotificationMessage message = NotificationMessage.builder()
                     .id(notification.getId())
                     .actionType("follow")
                     .targetType("user")

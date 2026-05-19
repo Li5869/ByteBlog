@@ -1,4 +1,4 @@
-package com.personblog.common.dto.Search;
+package com.personblog.common.dto.MqMessage.search;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

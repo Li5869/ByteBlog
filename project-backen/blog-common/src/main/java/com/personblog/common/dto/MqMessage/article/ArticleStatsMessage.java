@@ -1,4 +1,4 @@
-package com.personblog.article.dto.message;
+package com.personblog.common.dto.MqMessage.article;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

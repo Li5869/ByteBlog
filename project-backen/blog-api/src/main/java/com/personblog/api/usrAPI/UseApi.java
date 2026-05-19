@@ -1,7 +1,7 @@
 package com.personblog.api.usrAPI;
 
+import com.personblog.common.dto.MqMessage.user.UserLikeMessageDTO;
 import com.personblog.common.dto.User.UserDTO;
-import com.personblog.common.dto.User.UserLikeMessageDTO;
 
 import java.util.Collection;
 import java.util.List;

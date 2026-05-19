@@ -1,4 +1,4 @@
-package com.personblog.common.dto.Notification.sse;
+package com.personblog.common.dto.MqMessage.notifaction;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(description = "通知推送消息")
-public class NotificationMessageDTO {
+public class NotificationMessage {
     
     @Schema(description = "通知ID")
     private Long id;

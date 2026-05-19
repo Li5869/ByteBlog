@@ -2,8 +2,8 @@ package com.personblog.article.mqHandler;
 
 import com.personblog.api.adminAPI.TagApi;
 import com.personblog.api.usrAPI.UseApi;
-import com.personblog.article.dto.message.ArticleStatsMessage;
 import com.personblog.article.service.ICategoryService;
+import com.personblog.common.dto.MqMessage.article.ArticleStatsMessage;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

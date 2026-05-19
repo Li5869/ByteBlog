@@ -5,8 +5,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.personblog.api.interactionAPI.NotificationApi;
 import com.personblog.api.usrAPI.UseApi;
-import com.personblog.common.dto.Interaction.CollectionMessageDTO;
-import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
+import com.personblog.common.dto.MqMessage.Interaction.CollectionMessage;
+import com.personblog.common.dto.MqMessage.notifaction.NotificationMessage;
 import com.personblog.common.dto.User.UserDTO;
 import com.personblog.common.exception.BizException;
 import com.personblog.common.utils.UserContextHolder;
@@ -66,7 +66,7 @@ public class CollectionServiceImpl extends ServiceImpl<CollectionMapper, Collect
         double s = isCollection?-1:1;
         Double score = redisTemplate.opsForZSet().incrementScore(COLLECTION_TIMES_KEY_PREFIX, dto.getArticleId().toString(), s);
 
-        CollectionMessageDTO message = CollectionMessageDTO.builder()
+        CollectionMessage message = CollectionMessage.builder()
                 .articleId(dto.getArticleId())
                 .collectionTimes(score.longValue())
                 .userId(userId)
@@ -92,7 +92,7 @@ public class CollectionServiceImpl extends ServiceImpl<CollectionMapper, Collect
                     UserDTO sender = users.isEmpty() ? null : users.getFirst();
                     
                     // 构建通知消息
-                    NotificationMessageDTO messageDTO = NotificationMessageDTO.builder()
+                    NotificationMessage messageDTO = NotificationMessage.builder()
                             .userId(authorId)
                             .actionType("collection")
                             .targetType(ARTICLE)

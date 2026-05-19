@@ -4,7 +4,7 @@ import cn.hutool.core.collection.CollectionUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.personblog.api.interactionAPI.FollowApi;
-import com.personblog.common.dto.Interaction.FollowMessageDTO;
+import com.personblog.common.dto.MqMessage.Interaction.FollowMessage;
 import com.personblog.common.exception.BizException;
 import com.personblog.common.utils.MultiLevelCacheUtil;
 import com.personblog.common.utils.UserContextHolder;
@@ -75,7 +75,7 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
         boolean isSuccess = dto.getIsFollow() ? unFollow(dto.getFollowingId(), userId) : followed(dto.getFollowingId(), userId);
         if(!isSuccess) throw new BizException(FOLLOW_ERROR);
         
-        FollowMessageDTO messageDTO = FollowMessageDTO.builder()
+        FollowMessage messageDTO = FollowMessage.builder()
                 .followingId(dto.getFollowingId())
                 .isFollow(dto.getIsFollow())
                 .followerId(userId)

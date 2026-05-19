@@ -12,12 +12,12 @@ import com.personblog.api.interactionAPI.LikeApi;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.comment.dto.AdminCommentQueryDTO;
 import com.personblog.comment.dto.CommentCreateDTO;
-import com.personblog.comment.dto.CommentNotificationMessage;
 import com.personblog.comment.entity.Comment;
 import com.personblog.comment.mapper.CommentMapper;
 import com.personblog.comment.service.ICommentService;
 import com.personblog.comment.vo.*;
-import com.personblog.common.dto.Interaction.LikeMessageDTO;
+import com.personblog.common.dto.MqMessage.Comment.CommentNotificationMessage;
+import com.personblog.common.dto.MqMessage.Interaction.LikeMessage;
 import com.personblog.common.dto.User.UserDTO;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
@@ -219,9 +219,9 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateLikeCount(List<LikeMessageDTO> dtoList) {
+    public void updateLikeCount(List<LikeMessage> dtoList) {
         List<Comment> list = new ArrayList<>(dtoList.size());
-        for (LikeMessageDTO likeMessageDTO : dtoList) {
+        for (LikeMessage likeMessageDTO : dtoList) {
             Comment comment = new Comment();
             comment.setLikes(likeMessageDTO.getLikeTimes());
             comment.setId(likeMessageDTO.getId());

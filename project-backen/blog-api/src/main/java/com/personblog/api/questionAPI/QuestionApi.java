@@ -1,9 +1,9 @@
 package com.personblog.api.questionAPI;
 
-import com.personblog.common.dto.Interaction.LikeMessageDTO;
+import com.personblog.common.dto.MqMessage.Interaction.LikeMessage;
 
 import java.util.List;
 
 public interface QuestionApi {
-    void updateLikeCount(List<LikeMessageDTO> likeMessageDTOS);
+    void updateLikeCount(List<LikeMessage> likeMessageDTOS);
 }
