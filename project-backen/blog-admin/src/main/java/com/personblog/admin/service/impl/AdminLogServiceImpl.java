@@ -7,7 +7,6 @@ import com.personblog.admin.entity.AdminLog;
 import com.personblog.admin.mapper.AdminLogMapper;
 import com.personblog.admin.service.IAdminLogService;
 import com.personblog.admin.vo.AdminLogVO;
-import com.personblog.api.adminAPI.AdminLogApi;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,7 +17,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @RequiredArgsConstructor
-public class AdminLogServiceImpl extends ServiceImpl<AdminLogMapper, AdminLog> implements IAdminLogService, AdminLogApi {
+public class AdminLogServiceImpl extends ServiceImpl<AdminLogMapper, AdminLog> implements IAdminLogService {
 
     private final AdminLogMapper adminLogMapper;
 

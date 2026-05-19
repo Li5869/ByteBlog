@@ -55,10 +55,4 @@ public interface ArticleInfoAPI {
      */
     void refreshHotArticles();
 
-    /**
-     * 更新文章状态，目前用于审核
-     * @param articleId
-     * @param statue
-     */
-    void updateArticleState(Long articleId,Integer statue);
 }

@@ -28,6 +28,8 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
+import static com.personblog.ai.config.mqConfig.AiMqConfig.AI_EXCHANGE;
+import static com.personblog.ai.config.mqConfig.AiMqConfig.AI_TITLE_KEY;
 import static com.personblog.ai.constants.AiBusinessConstants.Defaults;
 import static com.personblog.ai.constants.ChatEventTypeEnum.DATA;
 import static com.personblog.ai.constants.ChatEventTypeEnum.PARAM;
@@ -35,8 +37,6 @@ import static com.personblog.ai.constants.LLMType.ASSISTANT;
 import static com.personblog.ai.constants.LLMType.USER;
 import static com.personblog.ai.constants.PythonAiApiConstants.Chat.STREAM;
 import static com.personblog.ai.constants.PythonAiApiConstants.*;
-import static com.personblog.common.config.mqConfig.AiMqConfig.AI_EXCHANGE;
-import static com.personblog.common.config.mqConfig.AiMqConfig.AI_TITLE_KEY;
 import static com.personblog.common.constant.RedisKeys.REDIS_MEMORY_PREFIX;
 
 @Slf4j

@@ -3,7 +3,6 @@ package com.personblog.interaction.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.personblog.api.interactionAPI.CollectedApi;
 import com.personblog.api.interactionAPI.NotificationApi;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.common.dto.Interaction.CollectionMessageDTO;
@@ -31,12 +30,12 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.COLLECTION_KEY;
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.INTERACTION_EXCHANGE;
 import static com.personblog.common.constant.RedisKeys.COLLECTION_TIMES_KEY_PREFIX;
 import static com.personblog.common.constant.RedisKeys.COLLECTION_USER_KEY_PREFIX;
 import static com.personblog.common.constant.TargetTypeConstant.ARTICLE;
 import static com.personblog.common.enums.BizCodeEnum.ERROR_OPERATION;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.COLLECTION_KEY;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.INTERACTION_EXCHANGE;
 
 /**
  * <p>
@@ -49,7 +48,7 @@ import static com.personblog.common.enums.BizCodeEnum.ERROR_OPERATION;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class CollectionServiceImpl extends ServiceImpl<CollectionMapper, Collection> implements CollectionService, CollectedApi {
+public class CollectionServiceImpl extends ServiceImpl<CollectionMapper, Collection> implements CollectionService {
     private final StringRedisTemplate redisTemplate;
     private final RabbitTemplate rabbitTemplate;
     private final NotificationApi notificationApi;

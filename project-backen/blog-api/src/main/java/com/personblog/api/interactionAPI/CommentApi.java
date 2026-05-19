@@ -6,8 +6,6 @@ import java.util.List;
 
 public interface CommentApi {
     void updateLikeCount(List<LikeMessageDTO> dtoList);
-    
-    Long getCommentAuthorId(Long commentId);
 
     void updateReviewStatue(Long commentId,String statue);
 

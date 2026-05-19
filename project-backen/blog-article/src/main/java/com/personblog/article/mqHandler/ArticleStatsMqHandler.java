@@ -2,8 +2,8 @@ package com.personblog.article.mqHandler;
 
 import com.personblog.api.adminAPI.TagApi;
 import com.personblog.api.usrAPI.UseApi;
+import com.personblog.article.dto.message.ArticleStatsMessage;
 import com.personblog.article.service.ICategoryService;
-import com.personblog.common.dto.Article.ArticleStatsMessage;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.Set;
 
-import static com.personblog.common.config.mqConfig.ArticleStatsMqConfig.ARTICLE_STATS_QUEUE;
+import static com.personblog.article.config.mqConfig.ArticleStatsMqConfig.ARTICLE_STATS_QUEUE;
 
 /**
  * 文章统计更新 MQ 消费者

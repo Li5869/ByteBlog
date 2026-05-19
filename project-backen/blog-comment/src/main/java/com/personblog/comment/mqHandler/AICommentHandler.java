@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
-import static com.personblog.common.config.mqConfig.CommentMqConfig.AI_COMMENT_QUEUE;
+import static com.personblog.comment.config.mqConfig.CommentMqConfig.AI_COMMENT_QUEUE;
 
 @RequiredArgsConstructor
 @Component

@@ -14,7 +14,6 @@ public interface SystemNotificationApi {
      * 保存系统通知
      *
      * @param dto 通知消息
-     * @return 通知ID
      */
-    Long saveNotification(NotificationMessageDTO dto);
+    void saveNotification(NotificationMessageDTO dto);
 }

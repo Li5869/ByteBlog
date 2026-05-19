@@ -15,9 +15,9 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
-import static com.personblog.common.config.mqConfig.AiMqConfig.AI_MODERATE_QUEUE;
-import static com.personblog.common.config.mqConfig.CommentMqConfig.COMMENT_EXCHANGE;
-import static com.personblog.common.config.mqConfig.CommentMqConfig.COMMENT_ROUTING_KEY;
+import static com.personblog.ai.config.mqConfig.AiMqConfig.AI_MODERATE_QUEUE;
+import static com.personblog.common.constant.MqRoutingConstants.COMMENT_EXCHANGE;
+import static com.personblog.common.constant.MqRoutingConstants.COMMENT_ROUTING_KEY;
 import static com.personblog.common.constant.StatusConstant.APPROVED;
 import static com.personblog.common.constant.TargetTypeConstant.ARTICLE;
 

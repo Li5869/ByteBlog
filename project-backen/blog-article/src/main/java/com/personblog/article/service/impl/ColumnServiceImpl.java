@@ -7,9 +7,10 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.personblog.api.columnAPI.ColumnApi;
 import com.personblog.api.searchAPI.ColumnSearchDataApi;
 import com.personblog.api.usrAPI.UseApi;
-import com.personblog.article.dto.ColumnArticleDTO;
-import com.personblog.article.dto.ColumnCreateDTO;
-import com.personblog.article.dto.ColumnUpdateDTO;
+import com.personblog.article.dto.column.ColumnArticleDTO;
+import com.personblog.article.dto.column.ColumnCreateDTO;
+import com.personblog.article.dto.column.ColumnQueryDTO;
+import com.personblog.article.dto.column.ColumnUpdateDTO;
 import com.personblog.article.entity.Article;
 import com.personblog.article.entity.Column;
 import com.personblog.article.entity.ColumnArticle;
@@ -19,7 +20,6 @@ import com.personblog.article.service.IColumnArticleService;
 import com.personblog.article.service.IColumnService;
 import com.personblog.article.service.IColumnSubscriptionService;
 import com.personblog.article.vo.*;
-import com.personblog.common.dto.Column.ColumnQueryDTO;
 import com.personblog.common.dto.Search.ColumnSearchDTO;
 import com.personblog.common.dto.Search.SearchSyncMessageDTO;
 import com.personblog.common.dto.User.UserDTO;
@@ -36,9 +36,9 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.personblog.common.config.mqConfig.SearchMqConfig.*;
 import static com.personblog.common.constant.RedisKeys.COLUMN_READ_COUNT;
 import static com.personblog.common.constant.TargetTypeConstant.COLUMN;
+import static com.personblog.search.config.mqConfig.SearchMqConfig.*;
 
 /**
  * 专栏服务实现类
@@ -285,26 +285,6 @@ public class ColumnServiceImpl extends ServiceImpl<ColumnMapper, Column> impleme
                         .build())
                 .collect(Collectors.toList());
     }
-    @Override
-    public String getColumnTitle(Long columnId) {
-        Column column = getById(columnId);
-        return column != null ? column.getTitle() : null;
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void updateColumnArticleCount(Long columnId) {
-        // 统计实际文章数量
-        int actualCount = columnArticleService.countByColumnId(columnId);
-
-        // 更新专栏文章数量
-        lambdaUpdate()
-                .eq(Column::getId, columnId)
-                .set(Column::getArticlesCount, actualCount)
-                .set(Column::getUpdatedAt, LocalDateTime.now())
-                .update();
-    }
-
     @Override
     @Transactional
     public void updateColumnView() {

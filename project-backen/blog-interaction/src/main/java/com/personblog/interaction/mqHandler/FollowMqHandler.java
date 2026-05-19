@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.FOLLOW_QUEUE;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.FOLLOW_QUEUE;
 
 /**
  * 关注消息处理器

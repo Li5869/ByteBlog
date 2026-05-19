@@ -19,11 +19,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-import static com.personblog.common.config.mqConfig.AiMqConfig.AI_TITLE_DLQ;
-import static com.personblog.common.config.mqConfig.ArticleMqConfig.ARTICLE_ES_DLQ;
-import static com.personblog.common.config.mqConfig.CommentMqConfig.AI_COMMENT_DLQ;
-import static com.personblog.common.config.mqConfig.CommentMqConfig.COMMENT_NOTIFICATION_DLQ;
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.*;
+import static com.personblog.common.constant.DlqConstants.*;
 import static com.personblog.common.constant.StatusConstant.PENDING;
 
 /**

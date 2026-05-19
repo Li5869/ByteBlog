@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.FOLLOW_NOTIFICATION_QUEUE;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.FOLLOW_NOTIFICATION_QUEUE;
 
 @Slf4j
 @Component

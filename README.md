@@ -25,7 +25,7 @@
 
 ## 项目简介
 
-ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆盖 **文章发布、问答社区、AI 智能写作与对话、全文检索、实时互动** 等核心场景。项目采用 **模块化单体架构**，后端 12 个 Maven 模块严格分层，通过 `blog-api` 契约接口层解决跨模块循环依赖；AI 侧采用 **Spring AI + Python Agent 双引擎架构**，Spring AI 处理简单同步任务（摘要、审核），Python LangChain/LangGraph 处理复杂异步工作流（对话、写作、RAG）。
+ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆盖 **文章发布、问答社区、AI 智能写作与对话、全文检索、实时互动** 等核心场景。项目采用 **模块化单体架构**，后端 15 个 Maven 模块严格分层，通过 `blog-api` 契约接口层解决跨模块循环依赖；AI 侧采用 **Spring AI + Python Agent 双引擎架构**，Spring AI 处理简单同步任务（摘要、审核），Python LangChain/LangGraph 处理复杂异步工作流（对话、写作、RAG）。
 
 技术选型对标工业级应用：JDK 21 虚拟线程压榨并发性能、Caffeine + Redis + DB 三级缓存对抗热点、Elasticsearch 毫秒级全文搜索、RabbitMQ 异步解耦削峰、WebSocket + SSE 双通道实时推送、LangGraph 智能 Agent 驱动 AI 写作与对话、Nacos 服务发现与配置中心实现动态配置管理。
 
@@ -202,52 +202,84 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 ## 后端模块全景
 
 ```
-project-backen/  —— Spring Boot 4 + Maven 多模块
+project-backen/  —— Spring Boot 4 + Maven 多模块（15 个子模块）
 │
 ├── blog-common/      # 公共基础设施
-│   ├── MultiLevelCacheUtil     三级缓存（Caffeine → Redis → DB）
-│   ├── mqConfig/               所有 MQ 队列定义（5 个模块，16 个队列）
-│   ├── mqHandler/DlqRetryHandler  统一死信处理器
-│   ├── RedissonConfig          分布式锁
-│   └── UserContextHolder       用户上下文 ThreadLocal
+│   ├── constant/              常量定义（DlqConstants、MqRoutingConstants）
+│   ├── dto/                   跨模块共享 DTO（FollowMessageDTO、BrowseHistoryMessageDTO 等）
+│   ├── config/                基础配置（Redis、Redisson、MyBatis Plus、OSS）
+│   ├── utils/                 工具类（RedisUtil、MultiLevelCacheUtil、UserContextHolder）
+│   ├── exception/             统一异常处理
+│   └── result/                统一响应封装
+│
+├── blog-api/         # 模块间接口契约层
+│   ├── adminAPI/              TagApi、AdminLogApi（后台管理接口）
+│   ├── interactionAPI/        LikeApi、FollowApi、BrowseHistoryApi（互动接口）
+│   ├── messageAPI/            ConversationApi（私信接口）
+│   ├── searchAPI/             SearchSyncApi（搜索同步接口）
+│   └── ...                    其他业务接口定义
+│
+├── blog-admin/       # 后台管理模块 ✨ 新增
+│   ├── entity/                Tag、AdminLog、SensitiveWord、SystemConfig、MqErrorLog
+│   ├── controller/            TagController、AdminLogController、AdminTagController
+│   ├── service/               标签管理、操作日志、敏感词、系统配置服务
+│   ├── aspect/                OperatorLogAspect（操作日志切面）
+│   └── mqHandler/             DlqRetryHandler（统一死信队列重试处理器）
+│
+├── blog-notification/ # 通知中心模块 ✨ 新增
+│   ├── entity/                BizNotification、SystemNotification
+│   ├── controller/            BizNotificationController、SystemNotificationController
+│   ├── service/               业务通知、系统通知服务
+│   └── mqHandler/             NotificationMqHandler（通知消息处理器）
+│
+├── blog-message/     # 私信服务模块 ✨ 新增
+│   ├── entity/                Conversation、Message
+│   ├── controller/            MessageController
+│   ├── service/               会话管理、消息管理服务
+│   └── mapper/                ConversationMapper、MessageMapper
 │
 ├── blog-push/        # 实时推送通道
 │   ├── websocket/              WebSocket 连接管理 + 心跳
-│   ├── sse/SseEmitterManager（单用户 多设备 ConcurrentHashMap）
+│   ├── sse/SseEmitterManager（单用户多设备 ConcurrentHashMap）
 │   └── PushChannelService（Redisson Pub/Sub 跨节点分发）
-│
-├── blog-api/         # 模块间接口契约（LikeApi、FollowApi、SearchSyncApi...）
 │
 ├── blog-security/    # 认证授权
 │   ├── JWT 双令牌（Access 30min + Refresh 7d）
 │   ├── API Key 鉴权（服务间通信）
 │   └── 方法级权限 @PreAuthorize
 │
-├── blog-article/     # 文章管理（CRUD + 草稿 + 分类标签 + 轮播图）
+├── blog-article/     # 文章管理
+│   ├── entity/                Article、Category、Column、ColumnArticle、ColumnSubscription
+│   ├── controller/            文章 CRUD、分类管理、专栏管理
+│   ├── config/mqConfig/       ArticleMqConfig、ArticleStatsMqConfig（MQ 配置已迁移）
+│   └── mqHandler/             ArticleStatsMqHandler（文章统计处理器）
 │
 ├── blog-comment/     # 评论管理
 │   ├── 创建评论 → MQ（AI 审核队列 + 通知队列）
-│   └── Caffeine 本地缓存评论分页
+│   ├── config/mqConfig/       CommentMqConfig（MQ 配置已迁移）
+│   └── mqHandler/             AICommentHandler、CommentNotificationHandler
 │
-├── blog-interaction/ # 社交互动
+├── blog-interaction/ # 社交互动（已精简）
 │   ├── 点赞（Redis Set 原子操作 → Pipeline 批量查询 → MQ 落库）
 │   ├── LikeStrategy 策略模式（文章/评论/问答/回答统一点赞行为）
-│   ├── 通知（MQ → SSE 实时推送）
-│   └── 关注/收藏/私信/浏览历史
+│   ├── 关注/收藏/浏览历史（通知、私信已拆分到独立模块）
+│   ├── config/mqConfig/       InteractionMqConfig（MQ 配置已迁移）
+│   └── mqHandler/             BrowseHistoryMqHandler、CollectionMqHandler
 │
 ├── blog-question/    # 问答社区（提问、回答、采纳）
 │
 ├── blog-search/      # Elasticsearch 全文搜索
 │   ├── BoolQuery + MultiMatch 多字段加权搜索（title^2）
 │   ├── Completion Suggester 搜索建议
+│   ├── config/mqConfig/       SearchMqConfig（MQ 配置已迁移）
 │   └── MQ 增量同步
 │
 ├── blog-ai/          # AI 能力集成
 │   ├── PythonAgentChatService（WebClient + Reactor Flux SSE 流式）
 │   ├── PythonWritingService（写作任务全生命周期管理）
 │   ├── NacosPromptProperties（@RefreshScope 动态 Prompt）
-│   ├── AiTitleMqHandler（MQ 异步 AI 标题生成）
-│   └── AiModerateMqHandler（MQ 异步 AI 内容审核）
+│   ├── config/mqConfig/       AiMqConfig（MQ 配置已迁移）
+│   └── mqHandler/             AiTitleMqHandler、AiModerateMqHandler
 │
 ├── blog-job/         # XXL-Job 定时任务
 │
@@ -651,12 +683,12 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
 
 ```
 ByteBlog/
-├── project-backen/           # Spring Boot 后端（12 个 Maven 子模块）
+├── project-backen/           # Spring Boot 后端（15 个 Maven 子模块）
 ├── project-front/            # 前端用户端（Vue 3 + NaiveUI + Tailwind）
 ├── project-front-admin/      # 前端管理端（Vue 3 + Element Plus）
 ├── project-ai-agent/         # Python AI Agent（FastAPI + LangGraph）
 ├── sql/                      # 数据库 DDL 脚本
-├── docs/                     # 项目文档（AI 模块/接口/开发/认证）
+├── docs/                     # 项目文档（AI 模块/接口/开发/认证/架构重构计划）
 ├── images/                   # 截图资源（README 引用）
 ├── ENV_SETUP.md              # 环境变量配置详细指南
 ├── .gitignore                # Git 忽略规则

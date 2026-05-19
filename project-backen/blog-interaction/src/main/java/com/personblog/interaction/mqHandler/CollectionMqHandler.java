@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.COLLECTION_QUEUE;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.COLLECTION_QUEUE;
 
 @Slf4j
 @Component

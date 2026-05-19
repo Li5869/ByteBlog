@@ -1,10 +1,10 @@
 package com.personblog.article.controller.Article;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.personblog.article.dto.ArticlePublishDTO;
+import com.personblog.article.dto.article.ArticlePublishDTO;
+import com.personblog.article.dto.article.ArticleQueryDTO;
 import com.personblog.article.service.IArticleService;
 import com.personblog.article.vo.*;
-import com.personblog.common.dto.Article.ArticleQueryDTO;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
 import com.personblog.common.monitor.BusinessMetrics;

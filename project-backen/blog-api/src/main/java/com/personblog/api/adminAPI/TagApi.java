@@ -1,5 +1,7 @@
 package com.personblog.api.adminAPI;
 
+import com.personblog.common.dto.Tag.TagDTO;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -10,14 +12,6 @@ import java.util.Set;
  * @author LSH
  */
 public interface TagApi {
-
-    /**
-     * 获取热门标签列表
-     *
-     * @param limit 数量限制
-     * @return 标签列表
-     */
-    List<TagVO> getHotTags(int limit);
 
     /**
      * 根据ID批量获取标签
@@ -49,14 +43,6 @@ public interface TagApi {
      * @param tags 标签DTO列表
      */
     void saveTags(List<TagDTO> tags);
-
-    /**
-     * 更新标签使用次数
-     *
-     * @param tagId 标签ID
-     * @param delta 变化量（正数增加，负数减少）
-     */
-    void updateTagUseCount(Long tagId, int delta);
 
     /**
      * 批量更新标签使用次数

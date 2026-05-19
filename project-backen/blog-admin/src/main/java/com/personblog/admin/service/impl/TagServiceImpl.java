@@ -12,8 +12,8 @@ import com.personblog.admin.mapper.TagMapper;
 import com.personblog.admin.service.ITagService;
 import com.personblog.admin.vo.AdminTagVO;
 import com.personblog.api.adminAPI.TagApi;
-import com.personblog.api.adminAPI.TagDTO;
 import com.personblog.api.adminAPI.TagVO;
+import com.personblog.common.dto.Tag.TagDTO;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
 import jakarta.annotation.PostConstruct;
@@ -191,12 +191,6 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
     }
 
     // ==================== TagApi 接口实现 ====================
-
-    @Override
-    public List<TagVO> getHotTags(int limit) {
-        return getTagList(limit);
-    }
-
     @Override
     public List<TagVO> getTagsByIds(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) {
@@ -252,17 +246,6 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
         saveBatch(entityList);
         tagCache.invalidateAll();
     }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void updateTagUseCount(Long tagId, int delta) {
-        lambdaUpdate()
-                .eq(Tag::getId, tagId)
-                .setSql("use_count = use_count + {0}", delta)
-                .update();
-        tagCache.invalidateAll();
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void batchUpdateTagUseCount(Set<Long> tagIds, int delta) {

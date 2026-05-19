@@ -38,8 +38,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.*;
 import static com.personblog.common.constant.TargetTypeConstant.*;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.*;
 
 @Slf4j
 @Component

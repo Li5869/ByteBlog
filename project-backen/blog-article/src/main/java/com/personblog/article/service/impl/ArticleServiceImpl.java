@@ -9,17 +9,18 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.personblog.api.AIAPI.AiArticleDraftApi;
+import com.personblog.api.AIwritingAPI.WritingTaskApi;
 import com.personblog.api.adminAPI.TagApi;
-import com.personblog.api.adminAPI.TagDTO;
 import com.personblog.api.adminAPI.TagVO;
 import com.personblog.api.articleAPI.ArticleInfoAPI;
 import com.personblog.api.interactionAPI.BrowseHistoryApi;
 import com.personblog.api.interactionAPI.FollowApi;
 import com.personblog.api.interactionAPI.LikeApi;
 import com.personblog.api.usrAPI.UseApi;
-import com.personblog.api.writingAPI.WritingTaskApi;
-import com.personblog.article.dto.AdminArticleQueryDTO;
-import com.personblog.article.dto.ArticlePublishDTO;
+import com.personblog.article.dto.article.AdminArticleQueryDTO;
+import com.personblog.article.dto.article.ArticlePublishDTO;
+import com.personblog.article.dto.article.ArticleQueryDTO;
+import com.personblog.article.dto.message.ArticleStatsMessage;
 import com.personblog.article.entity.Article;
 import com.personblog.article.entity.ArticleTag;
 import com.personblog.article.entity.Category;
@@ -29,13 +30,12 @@ import com.personblog.article.service.IArticleTagService;
 import com.personblog.article.service.ICategoryService;
 import com.personblog.article.service.IColumnArticleService;
 import com.personblog.article.vo.*;
-import com.personblog.common.dto.Article.ArticleQueryDTO;
-import com.personblog.common.dto.Article.ArticleStatsMessage;
 import com.personblog.common.dto.Interaction.BrowseHistoryMessageDTO;
 import com.personblog.common.dto.Interaction.CollectionMessageDTO;
 import com.personblog.common.dto.Interaction.LikeMessageDTO;
 import com.personblog.common.dto.Moderate.AiModerateMessage;
 import com.personblog.common.dto.Search.SearchSyncMessageDTO;
+import com.personblog.common.dto.Tag.TagDTO;
 import com.personblog.common.dto.User.UserDTO;
 import com.personblog.common.dto.User.UserLikeMessageDTO;
 import com.personblog.common.exception.BizException;
@@ -63,19 +63,19 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
-import static com.personblog.common.config.mqConfig.AiMqConfig.AI_EXCHANGE;
-import static com.personblog.common.config.mqConfig.AiMqConfig.AI_MODERATE_KEY;
-import static com.personblog.common.config.mqConfig.ArticleStatsMqConfig.ARTICLE_STATS_EXCHANGE;
-import static com.personblog.common.config.mqConfig.ArticleStatsMqConfig.ARTICLE_STATS_KEY;
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.INTERACTION_EXCHANGE;
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.USER_LIKE_KEY;
-import static com.personblog.common.config.mqConfig.SearchMqConfig.*;
+import static com.personblog.ai.config.mqConfig.AiMqConfig.AI_EXCHANGE;
+import static com.personblog.ai.config.mqConfig.AiMqConfig.AI_MODERATE_KEY;
+import static com.personblog.article.config.mqConfig.ArticleStatsMqConfig.ARTICLE_STATS_EXCHANGE;
+import static com.personblog.article.config.mqConfig.ArticleStatsMqConfig.ARTICLE_STATS_KEY;
 import static com.personblog.common.constant.PageConstant.*;
 import static com.personblog.common.constant.RedisKeys.*;
 import static com.personblog.common.constant.StatusConstant.APPROVED;
 import static com.personblog.common.constant.StatusConstant.PENDING;
 import static com.personblog.common.constant.TargetTypeConstant.ARTICLE;
 import static com.personblog.common.enums.BizCodeEnum.*;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.INTERACTION_EXCHANGE;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.USER_LIKE_KEY;
+import static com.personblog.search.config.mqConfig.SearchMqConfig.*;
 
 
 /**
@@ -1190,15 +1190,6 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         hotArticleCache.invalidateAll();
         log.info("热门文章标记已刷新, Top {}", MAX_HOT_SIZE);
     }
-
-    @Override
-    public void updateArticleState(Long articleId, Integer statue) {
-        lambdaUpdate()
-                .eq(Article::getAuthorId, articleId)
-                .set(Article::getStatus, statue)
-                .update();
-    }
-
     // ==================== MQ 消息发送 ====================
 
     /**

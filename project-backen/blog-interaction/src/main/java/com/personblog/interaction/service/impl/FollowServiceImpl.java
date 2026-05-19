@@ -4,7 +4,6 @@ import cn.hutool.core.collection.CollectionUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.personblog.api.interactionAPI.FollowApi;
-import com.personblog.common.api.FollowerApi;
 import com.personblog.common.dto.Interaction.FollowMessageDTO;
 import com.personblog.common.exception.BizException;
 import com.personblog.common.utils.MultiLevelCacheUtil;
@@ -24,13 +23,13 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.*;
 import static com.personblog.common.constant.RedisKeys.*;
 import static com.personblog.common.enums.BizCodeEnum.FOLLOW_ERROR;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.*;
 
 @Service
 @RequiredArgsConstructor
-public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> implements FollowService, FollowApi, FollowerApi {
+public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> implements FollowService, FollowApi {
     private final RabbitTemplate rabbitTemplate;
     private final MultiLevelCacheUtil cacheUtil;
     private final StringRedisTemplate redisTemplate;

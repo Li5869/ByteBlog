@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.BROWSE_HISTORY_QUEUE;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.BROWSE_HISTORY_QUEUE;
 
 @Slf4j
 @Component

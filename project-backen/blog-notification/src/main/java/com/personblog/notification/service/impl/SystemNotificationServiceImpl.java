@@ -5,15 +5,15 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.personblog.common.dto.Notification.BatchDeleteResultVO;
+import com.personblog.common.dto.Notification.UnreadCountVO;
 import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
 import com.personblog.common.exception.BizException;
 import com.personblog.notification.dto.SystemNotificationQueryDTO;
 import com.personblog.notification.entity.SystemNotification;
 import com.personblog.notification.mapper.SystemNotificationMapper;
 import com.personblog.notification.service.ISystemNotificationService;
-import com.personblog.notification.vo.BatchDeleteResultVO;
 import com.personblog.notification.vo.SystemNotificationVO;
-import com.personblog.notification.vo.UnreadCountVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -34,7 +34,7 @@ public class SystemNotificationServiceImpl extends ServiceImpl<SystemNotificatio
     private final SystemNotificationMapper systemNotificationMapper;
 
     @Override
-    public Long saveNotification(NotificationMessageDTO dto) {
+    public void saveNotification(NotificationMessageDTO dto) {
         SystemNotification notification = new SystemNotification();
         notification.setUserId(dto.getUserId());
         notification.setTitle(buildNotificationTitle(dto.getActionType()));
@@ -43,7 +43,6 @@ public class SystemNotificationServiceImpl extends ServiceImpl<SystemNotificatio
         notification.setCreatedAt(dto.getCreatedAt() != null ? dto.getCreatedAt() : LocalDateTime.now());
 
         this.save(notification);
-        return notification.getId();
     }
 
     /**

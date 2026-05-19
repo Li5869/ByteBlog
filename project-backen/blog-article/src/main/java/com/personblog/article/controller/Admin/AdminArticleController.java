@@ -2,7 +2,7 @@ package com.personblog.article.controller.Admin;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.personblog.admin.aspect.RecordLog;
-import com.personblog.article.dto.AdminArticleQueryDTO;
+import com.personblog.article.dto.article.AdminArticleQueryDTO;
 import com.personblog.article.service.IArticleService;
 import com.personblog.article.vo.AdminArticleVO;
 import com.personblog.common.result.JsonData;

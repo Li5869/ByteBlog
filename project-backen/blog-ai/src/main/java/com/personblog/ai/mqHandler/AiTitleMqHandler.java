@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.Objects;
 
-import static com.personblog.common.config.mqConfig.AiMqConfig.AI_TITLE_QUEUE;
+import static com.personblog.ai.config.mqConfig.AiMqConfig.AI_TITLE_QUEUE;
 
 @Slf4j
 @RequiredArgsConstructor

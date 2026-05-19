@@ -3,9 +3,9 @@ package com.personblog.comment.mqHandler;
 import com.personblog.api.articleAPI.ArticleInfoAPI;
 import com.personblog.api.interactionAPI.NotificationApi;
 import com.personblog.api.usrAPI.UseApi;
+import com.personblog.comment.dto.CommentNotificationMessage;
 import com.personblog.comment.entity.Comment;
 import com.personblog.comment.service.ICommentService;
-import com.personblog.common.dto.Comment.CommentNotificationMessage;
 import com.personblog.common.dto.Moderate.AiModerateMessage;
 import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
 import com.personblog.common.dto.User.UserDTO;
@@ -24,9 +24,9 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
-import static com.personblog.common.config.mqConfig.AiMqConfig.AI_EXCHANGE;
-import static com.personblog.common.config.mqConfig.AiMqConfig.AI_MODERATE_KEY;
-import static com.personblog.common.config.mqConfig.CommentMqConfig.COMMENT_NOTIFICATION_QUEUE;
+import static com.personblog.comment.config.mqConfig.CommentMqConfig.COMMENT_NOTIFICATION_QUEUE;
+import static com.personblog.common.constant.MqRoutingConstants.AI_EXCHANGE;
+import static com.personblog.common.constant.MqRoutingConstants.AI_MODERATE_KEY;
 import static com.personblog.common.constant.TargetTypeConstant.*;
 
 @Slf4j
