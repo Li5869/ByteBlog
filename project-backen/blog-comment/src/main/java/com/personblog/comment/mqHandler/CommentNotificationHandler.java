@@ -64,7 +64,7 @@ public class CommentNotificationHandler {
             AiModerateMessage aiModerateMessage = new AiModerateMessage();
             aiModerateMessage.setAuthorId(message.getUserId());
             aiModerateMessage.setContent(message.getContent());
-            aiModerateMessage.setBizId(message.getBizId());
+            aiModerateMessage.setBizId(message.getCommentId());
             aiModerateMessage.setBizType(COMMENT);
             rabbitTemplate.convertAndSend(AI_EXCHANGE, AI_MODERATE_KEY, aiModerateMessage);
             // 获取评论者信息

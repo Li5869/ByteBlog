@@ -125,15 +125,16 @@ async def upload_file(file: UploadFile = File(...)):
     """
     上传文件到知识库
 
-    支持 .txt 和 .md 文件（Parent-Child Chunking）。
+    仅支持 .md 文件（Parent-Child Chunking）。
+    返回 parent_ids 和 chunk_count 供 Java 端持久化。
     """
     try:
         if not file.filename:
             raise HTTPException(status_code=400, detail="文件名不能为空")
 
         suffix = file.filename.split(".")[-1].lower()
-        if suffix not in ["txt", "md"]:
-            raise HTTPException(status_code=400, detail="仅支持 .txt 和 .md 文件")
+        if suffix != "md":
+            raise HTTPException(status_code=400, detail="仅支持 .md 格式的 Markdown 文件")
 
         content = await file.read()
         text = content.decode("utf-8")
@@ -148,10 +149,12 @@ async def upload_file(file: UploadFile = File(...)):
             }
         )
 
-        await service.parent_child_add_documents([doc])
+        parent_ids, chunk_count = await service.parent_child_add_documents([doc])
 
         return ApiResponse(data={
-            "filename": file.filename
+            "filename": file.filename,
+            "ids": parent_ids,
+            "chunk_count": chunk_count
         })
 
     except Exception as e:

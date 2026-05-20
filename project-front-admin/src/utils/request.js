@@ -453,14 +453,22 @@ export const adminLogApi = {
 
 /**
  * 知识库管理 API
- * 注意：这些接口调用的是 Python AI 服务，需要通过 Java 后端代理
+ * 上传接口调用 Python AI 服务，其他接口调用 Java 后端
  */
 export const knowledgeApi = {
-  uploadFile: async (file) => {
+  /**
+   * 上传文件到知识库
+   * @param {File} file - 文件对象
+   * @param {string} description - 文件描述（可选）
+   */
+  uploadFile: async (file, description) => {
     const token = getToken()
     const formData = new FormData()
     formData.append('file', file)
-    
+    if (description) {
+      formData.append('description', description)
+    }
+
     const response = await fetch(`${BASE_URL}/ai/knowledge/file`, {
       method: 'POST',
       headers: {
@@ -468,7 +476,7 @@ export const knowledgeApi = {
       },
       body: formData
     })
-    
+
     const data = await safeParseJson(response)
 
     if (response.status === 401) {
@@ -482,7 +490,38 @@ export const knowledgeApi = {
     }
 
     return data.data
-  }
+  },
+
+  /**
+   * 分页查询知识库文件列表
+   * @param {Object} params - 查询参数 { current, size, keyword, uploaderId, source }
+   */
+  getList: (params) => get('/ai/knowledge/list', params),
+
+  /**
+   * 获取知识库文件详情
+   * @param {number|string} fileId - 文件ID
+   */
+  getDetail: (fileId) => get(`/ai/knowledge/${fileId}`),
+
+  /**
+   * 更新知识库文件信息
+   * @param {number|string} fileId - 文件ID
+   * @param {Object} data - 更新数据 { fileName, description }
+   */
+  updateFile: (fileId, data) => put(`/ai/knowledge/${fileId}`, data),
+
+  /**
+   * 删除知识库文件（级联删除）
+   * @param {number|string} fileId - 文件ID
+   */
+  deleteFile: (fileId) => del(`/ai/knowledge/${fileId}`),
+
+  /**
+   * 批量删除知识库文件
+   * @param {Array} fileIds - 文件ID列表
+   */
+  batchDelete: (fileIds) => post('/ai/knowledge/batch-delete', { fileIds })
 }
 
 export default {

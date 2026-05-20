@@ -16,9 +16,6 @@ public class CommentNotificationMessage {
     /** 父评论 ID（回复评论时不为 null） */
     private Long parentId;
 
-    /**评论id**/
-    private Long bizId;
-
     /** 评论内容 */
     private String content;
 

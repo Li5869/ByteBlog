@@ -12,13 +12,13 @@
   <img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/LangGraph-0.3+-1C3C3C?style=flat-square&logo=langchain&logoColor=white" alt="LangGraph">
 </p>
-
 <p align="center">
-  <img src="https://img.shields.io/badge/PostgreSQL-16+-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL">
-  <img src="https://img.shields.io/badge/pgvector-0.2+-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="pgvector">
+  <img src="https://img.shields.io/badge/PostgreSQL-18-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/pgvector-0.82-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="pgvector">
   <img src="https://img.shields.io/badge/Elasticsearch-8.x-005571?style=flat-square&logo=elasticsearch&logoColor=white" alt="Elasticsearch">
   <img src="https://img.shields.io/badge/Nacos-2.x-00BFFF?style=flat-square&logo=nacos&logoColor=white" alt="Nacos">
 </p>
+
 </div>
 
 ---

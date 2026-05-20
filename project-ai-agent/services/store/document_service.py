@@ -40,7 +40,7 @@ class DocumentService:
     async def parent_child_add_documents(
         self,
         documents: List[Document]
-    ) -> None:
+    ) -> tuple[List[str], int]:
         """
         异步：使用 Parent-Child 策略批量入库
 
@@ -52,6 +52,9 @@ class DocumentService:
 
         Args:
             documents: LangChain Document 列表
+
+        Returns:
+            (parent_ids, chunk_count): Parent ID 列表和 Child 切片总数
         """
         from services.store.parent_store import get_parent_store
 
@@ -82,6 +85,8 @@ class DocumentService:
             f"Parent-Child 入库完成：{len(parent_ids)} 个 Parent, "
             f"{len(all_children)} 个 Child"
         )
+
+        return parent_ids, len(all_children)
 
 
 _document_service: "DocumentService | None" = None

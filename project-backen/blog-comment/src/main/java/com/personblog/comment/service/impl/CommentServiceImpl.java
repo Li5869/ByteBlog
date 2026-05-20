@@ -277,7 +277,6 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
                 .articleId(dto.getArticleId())
                 .parentId(dto.getParentId())
                 .content(dto.getContent().trim())
-                .bizId(comment.getId())
                 .commentId(comment.getId())
                 .userId(userId)
                 .articleTitle(dto.getArticleTitle())

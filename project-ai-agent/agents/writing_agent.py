@@ -148,8 +148,6 @@ class WritingAgent:
     async def _execute_node(self, state: WritingAgentState) -> dict:
         """
         Execute 节点：并行执行标题+标签→摘要→正文
-
-        并行优化（P2）：
           title 和 tags 都只依赖 plan，互不依赖 → 通过 asyncio.gather 并行执行。
           summary 依赖 title，content 依赖 title + summary → 保持串行。
 

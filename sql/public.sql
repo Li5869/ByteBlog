@@ -12,7 +12,7 @@
  Target Server Version : 180003 (180003)
  File Encoding         : 65001
 
- Date: 05/05/2026 21:46:33
+ Date: 20/05/2026 15:29:11
 */
 
 
@@ -3299,6 +3299,13 @@ CREATE INDEX "idx_article_likes" ON "public"."tb_article" USING btree (
 );
 CREATE INDEX "idx_article_status" ON "public"."tb_article" USING btree (
   "status" "pg_catalog"."int2_ops" ASC NULLS LAST
+);
+CREATE INDEX "idx_article_top_filter" ON "public"."tb_article" USING btree (
+  "is_top" "pg_catalog"."bool_ops" DESC NULLS FIRST,
+  "status" "pg_catalog"."int2_ops" ASC NULLS LAST,
+  "is_deleted" "pg_catalog"."bool_ops" ASC NULLS LAST,
+  "review" COLLATE "pg_catalog"."default" "pg_catalog"."text_ops" ASC NULLS LAST,
+  "is_hot" "pg_catalog"."bool_ops" ASC NULLS LAST
 );
 CREATE INDEX "idx_article_views" ON "public"."tb_article" USING btree (
   "views" "pg_catalog"."int8_ops" ASC NULLS LAST
