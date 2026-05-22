@@ -4,6 +4,7 @@
 
 import asyncio
 import json
+import re
 import uuid
 from typing import List
 
@@ -148,6 +149,20 @@ async def stream_message(request: ChatRequest):
                     ))
                     full_thinking += event.content
                     yield f"data: {json.dumps({'type': 'tool_call', 'content': event.content.strip(), 'tool_name': event.tool_name}, ensure_ascii=False)}\n\n"
+
+                elif event.event_type == "tool_result":
+                    # 工具执行结果 → 更新对应的 ToolCall
+                    tool_name = event.tool_name
+                    result = event.extra.get("result", "") if event.extra else ""
+                    # 找到最后一个匹配的 ToolCall（支持同名工具多次调用）
+                    for tc in reversed(tool_calls_list):
+                        if tc.name == tool_name and tc.result is None:
+                            tc.result = result
+                            break
+                    # 提取触发标记发送到前端，不显示在思考块中
+                    trigger_match = re.search(r'<!-- WRITING_TRIGGER: \{.*\} -->', result)
+                    content_to_send = trigger_match.group(0) if trigger_match else ""
+                    yield f"data: {json.dumps({'type': 'tool_result', 'content': content_to_send, 'tool_name': tool_name}, ensure_ascii=False)}\n\n"
 
                 elif event.event_type == "done":
                     final_content = event.content or full_response

@@ -19,6 +19,7 @@ class ToolCall(BaseModel):
     id: int = Field(..., description="工具调用ID")
     name: str = Field(..., description="工具名称")
     args: dict = Field(default_factory=dict, description="工具参数")
+    result: Optional[str] = Field(default=None, description="工具执行结果")
 
 
 class MessageItem(BaseModel):
@@ -166,8 +167,15 @@ class RedisMemoryService:
                     context_parts.append(f"AI思考: {msg.thinking}")
                 
                 if msg.tool_calls:
-                    tool_info = ", ".join([tc.name for tc in msg.tool_calls])
-                    context_parts.append(f"AI: [调用工具: {tool_info}] {msg.content or ''}")
+                    tool_parts = []
+                    for tc in msg.tool_calls:
+                        tool_str = f"{tc.name}({tc.args})"
+                        if tc.result:
+                            # 截取结果前200字符，避免上下文过长
+                            result_preview = tc.result[:200] + "..." if len(tc.result) > 200 else tc.result
+                            tool_str += f" => {result_preview}"
+                        tool_parts.append(tool_str)
+                    context_parts.append(f"AI: [工具调用: {', '.join(tool_parts)}] {msg.content or ''}")
                 else:
                     context_parts.append(f"AI: {msg.content}")
 

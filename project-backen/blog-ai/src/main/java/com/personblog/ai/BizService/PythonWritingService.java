@@ -120,21 +120,6 @@ public class PythonWritingService {
                         .build()));
     }
 
-    /**
-     * 获取任务状态
-     *
-     * @param taskId 任务ID
-     * @return 任务状态
-     */
-    public Mono<String> getTaskStatus(String taskId) {
-        return pythonAiWebClient.get()
-                .uri(STATUS, taskId)
-                .retrieve()
-                .bodyToMono(Map.class)
-                .map(response -> extractDataField(response, Fields.STATUS))
-                .doOnError(e -> log.error("[Writing] 获取任务状态失败: {}", e.getMessage()));
-    }
-
     // ==================== 内部方法 ====================
 
     /**

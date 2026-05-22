@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     openai_api_key_deepseek: str = ""
 
     # ===== Agent 行为控制 =====
-    max_iterations: int = 10
+    max_iterations: int = 20
     writing_max_revisions: int = 3
     writing_reflection_threshold: float = 7.0
 
@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     # ===== 博客后端 API =====
     backend_api_base: str = "http://localhost:8080/api"
     backend_api_key: str = ""
+    
+    # ===== 前端域名（用于生成成果链接）=====
+    frontend_base_url: str = "https://your-domain.com"
 
     # ===== Nacos 服务发现 =====
     nacos_enabled: bool = False

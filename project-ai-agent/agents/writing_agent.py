@@ -458,7 +458,7 @@ class WritingAgent:
         """
         config = {"configurable": {"thread_id": thread_id}}
 
-        yield {"type": "phase", "data": {"phase": "planning", "step": "generating_plan"}}
+        yield {"type": "phase", "data": {"phase": "planning", "step": "planning"}}
 
         async for event in self.graph.astream(initial_state, config):
             if "plan" in event:

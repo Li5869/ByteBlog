@@ -30,6 +30,17 @@ public class WritingTaskInternalController {
     private final IWritingTaskService writingTaskService;
     private final IWritingDraftService writingDraftService;
 
+    @Operation(summary = "创建写作任务", description = "SmartAgent调用此接口创建写作任务")
+    @PostMapping("/task")
+    public JsonData<Long> createTask(@RequestBody Map<String, Object> request) {
+        Long userId = request.get("user_id") != null ? Long.parseLong(request.get("user_id").toString()) : null;
+        String userRequest = (String) request.get("user_request");
+        
+        WritingTask task = writingTaskService.createTask(userId, userRequest);
+        log.info("[WritingInternal] 创建任务成功, taskId={}, userId={}", task.getId(), userId);
+        return JsonData.buildSuccess(task.getId());
+    }
+
     @Operation(summary = "更新任务状态", description = "Python服务调用此接口更新任务状态")
     @PutMapping("/task/{taskId}/status")
     public JsonData<Void> updateStatus(

@@ -10,6 +10,7 @@
 实现 thinking → token 事件类型的动态切换，避免思考与回答内容重复。
 """
 
+import re
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from typing import TypedDict, List, Optional, Any, Literal
@@ -30,10 +31,11 @@ ANSWER_MARKER = "[ANSWER]"
 @dataclass
 class StreamEvent:
     """流式事件"""
-    event_type: str  # "thinking" | "token" | "tool_call" | "done"
+    event_type: str  # "thinking" | "token" | "tool_call" | "tool_result" | "done"
     content: str = ""
     tool_name: str = ""
     tool_args: dict = field(default_factory=dict)
+    extra: dict = field(default_factory=dict)  # 额外数据
 
 
 class AgentState(TypedDict):
@@ -181,9 +183,22 @@ class SmartAgent:
                 if tool.name == tool_name:
                     try:
                         result = await tool.ainvoke(tool_args)
+                        # 发射工具执行结果事件
+                        await self._emit(StreamEvent(
+                            event_type="tool_result",
+                            content=f"\n✅ 工具执行完成: {tool_name}",
+                            tool_name=tool_name,
+                            extra={"result": str(result)}
+                        ))
                     except Exception as e:
                         result = f"工具执行错误: {e}"
                         logger.error(f"[Tool] 工具执行失败: {tool_name}, error={e}")
+                        await self._emit(StreamEvent(
+                            event_type="tool_result",
+                            content=f"\n❌ 工具执行失败: {tool_name}",
+                            tool_name=tool_name,
+                            extra={"result": str(result), "error": True}
+                        ))
                     return ToolMessage(content=str(result), tool_call_id=tc.get("id", ""))
 
             return ToolMessage(content=f"未找到工具: {tool_name}", tool_call_id=tc.get("id", ""))

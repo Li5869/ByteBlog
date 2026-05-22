@@ -28,7 +28,6 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
-import static com.personblog.ai.config.mqConfig.AiMqConfig.AI_EXCHANGE;
 import static com.personblog.ai.config.mqConfig.AiMqConfig.AI_TITLE_KEY;
 import static com.personblog.ai.constants.AiBusinessConstants.Defaults;
 import static com.personblog.ai.constants.ChatEventTypeEnum.DATA;
@@ -37,6 +36,7 @@ import static com.personblog.ai.constants.LLMType.ASSISTANT;
 import static com.personblog.ai.constants.LLMType.USER;
 import static com.personblog.ai.constants.PythonAiApiConstants.Chat.STREAM;
 import static com.personblog.ai.constants.PythonAiApiConstants.*;
+import static com.personblog.common.constant.MqRoutingConstants.AI_EXCHANGE;
 import static com.personblog.common.constant.RedisKeys.REDIS_MEMORY_PREFIX;
 
 @Slf4j
@@ -197,7 +197,7 @@ public class PythonAiChatService {
         }
 
         return switch (event.getType()) {
-            case SseEvent.THINKING, SseEvent.TOOL_CALL -> ChatEventVO.builder()
+            case SseEvent.THINKING, SseEvent.TOOL_CALL, SseEvent.TOOL_RESULT -> ChatEventVO.builder()
                     .eventType(PARAM.getValue())
                     .eventData(event.getContent())
                     .build();
@@ -205,10 +205,6 @@ public class PythonAiChatService {
                     .eventType(DATA.getValue())
                     .eventData(event.getContent())
                     .build();
-            case SseEvent.TOOL_RESULT -> {
-                log.debug("工具执行结果: {}", event.getContent());
-                yield null;
-            }
             case SseEvent.DONE -> ChatEventVO.STOP_EVENT;
             case SseEvent.ERROR -> {
                 log.error("Python AI 返回错误: {}", event.getContent());

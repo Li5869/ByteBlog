@@ -26,6 +26,12 @@ from tools.blog_tool import (
 )
 from tools.user_tool import get_current_user_id, get_current_user_info, set_current_user_id
 from tools.skill_tool import get_skill_details, list_available_skills
+from tools.writing_tool import (
+    writing_start,
+    writing_status,
+    writing_action,
+    writing_result,
+)
 
 # ==================== 工具分组 ====================
 
@@ -46,6 +52,11 @@ _base_tools = [
     # Skill 工具（渐进式披露）
     get_skill_details,
     list_available_skills,
+    # 写作助手工具（4个）
+    writing_start,
+    writing_status,
+    writing_action,
+    writing_result,
 ]
 
 _tavily_tools = [search_external_tech_blogs]
