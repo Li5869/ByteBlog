@@ -1,6 +1,5 @@
 package com.personblog.ai.vo;
 
-import com.personblog.ai.constants.ChatEventTypeEnum;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,11 +11,11 @@ import lombok.NoArgsConstructor;
 @Builder
 public class ChatEventVO {
 
-    public static final ChatEventVO STOP_EVENT = ChatEventVO.builder()
-            .eventType(ChatEventTypeEnum.STOP.getValue())
+    public static final ChatEventVO DONE_EVENT = ChatEventVO.builder()
+            .type("done")
             .build();
 
-    private Object eventData;
+    private Object data;
 
-    private int eventType;
+    private String type;
 }

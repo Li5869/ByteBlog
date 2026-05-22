@@ -1,4 +1,4 @@
-package com.personblog.ai.dto;
+package com.personblog.ai.dto.pythonRequest;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;

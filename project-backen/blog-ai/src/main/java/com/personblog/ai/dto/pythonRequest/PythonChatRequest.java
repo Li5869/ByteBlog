@@ -1,4 +1,4 @@
-package com.personblog.ai.dto;
+package com.personblog.ai.dto.pythonRequest;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;

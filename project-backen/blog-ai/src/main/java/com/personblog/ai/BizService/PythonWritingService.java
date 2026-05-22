@@ -2,7 +2,7 @@ package com.personblog.ai.BizService;
 
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import com.personblog.ai.dto.PythonWritingRequest;
+import com.personblog.ai.dto.pythonRequest.PythonWritingRequest;
 import com.personblog.ai.vo.WritingEventVO;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;

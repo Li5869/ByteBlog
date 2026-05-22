@@ -351,19 +351,24 @@ const sendMessage = async () => {
             try {
               const event = JSON.parse(jsonStr)
               
-              if (event.eventType === 1) {
-                if (event.eventData && typeof event.eventData === 'string' && event.eventData.length > 0) {
-                  messages.value[assistantIdx].content += event.eventData
+              if (event.type === 'chunk') {
+                if (event.data && typeof event.data === 'string' && event.data.length > 0) {
+                  messages.value[assistantIdx].content += event.data
                   await nextTick()
                   scrollToBottom()
                   addCopyButtons()
                 }
-              } else if (event.eventType === 2) {
+              } else if (event.type === 'done') {
                 break
-              } else if (event.eventType === 3) {
-                if (event.eventData && typeof event.eventData === 'string') {
-                  // 检测写作进度触发标记（tool_result 事件中包含）
-                  const triggerMatch = event.eventData.match(/<!-- WRITING_TRIGGER: (\{.*\}) -->/)
+              } else if (event.type === 'error') {
+                if (event.data && typeof event.data === 'string') {
+                  messages.value[assistantIdx].content = event.data
+                }
+                break
+              } else if (event.type === 'thinking' || event.type === 'tool_call') {
+                if (event.data && typeof event.data === 'string') {
+                  // 检测写作进度触发标记（tool_call 结果中包含）
+                  const triggerMatch = event.data.match(/<!-- WRITING_TRIGGER: (\{.*\}) -->/)
                   if (triggerMatch) {
                     try {
                       const trigger = JSON.parse(triggerMatch[1])
@@ -378,7 +383,7 @@ const sendMessage = async () => {
                       console.warn('[WritingProgress] 解析触发标记失败:', e)
                     }
                   } else {
-                    messages.value[assistantIdx].thinking += event.eventData
+                    messages.value[assistantIdx].thinking += event.data
                     expandedThinking.value[messages.value[assistantIdx].id] = true
                     await nextTick()
                     scrollToBottom()

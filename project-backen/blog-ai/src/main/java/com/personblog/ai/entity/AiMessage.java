@@ -36,7 +36,7 @@ public class AiMessage {
     /** 消息内容 */
     private String content;
 
-    /** 工具调用信息,json格式字符串 */
+    /** 工具调用信息*/
     private String toolCalls;
 
     /** 创建时间 */
