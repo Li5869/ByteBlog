@@ -30,6 +30,7 @@ from tools.writing_tool import (
     writing_status,
     writing_action,
     writing_result,
+    writing_publish,
 )
 
 # ==================== 工具分组 ====================
@@ -50,11 +51,12 @@ _base_tools = [
     # Skill 工具（渐进式披露）
     get_skill_details,
     list_available_skills,
-    # 写作助手工具（4个）
+    # 写作助手工具（5个）
     writing_start,
     writing_status,
     writing_action,
     writing_result,
+    writing_publish,
 ]
 
 _tavily_tools = [search_external_tech_blogs]

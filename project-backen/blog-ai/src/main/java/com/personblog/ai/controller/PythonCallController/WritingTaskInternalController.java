@@ -1,6 +1,7 @@
-package com.personblog.ai.controller;
+package com.personblog.ai.controller.PythonCallController;
 
 import com.personblog.ai.dto.WritingTaskUpdateDTO;
+import com.personblog.ai.entity.WritingDraft;
 import com.personblog.ai.entity.WritingPlan;
 import com.personblog.ai.entity.WritingTask;
 import com.personblog.ai.service.IWritingDraftService;
@@ -95,8 +96,8 @@ public class WritingTaskInternalController {
         Long userId = request.get("user_id") != null ? Long.parseLong(request.get("user_id").toString()) : null;
         @SuppressWarnings("unchecked")
         Map<String, Object> draftData = (Map<String, Object>) request.get("draft_data");
-        
-        var draft = writingDraftService.saveDraft(taskId, userId, draftData);
+
+        WritingDraft draft = writingDraftService.saveDraft(taskId, userId, draftData);
         log.info("[WritingDraft] 保存草稿成功, draftId={}, taskId={}", draft.getId(), taskId);
         return JsonData.buildSuccess(draft.getId());
     }

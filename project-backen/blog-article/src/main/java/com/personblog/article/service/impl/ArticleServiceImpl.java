@@ -12,7 +12,7 @@ import com.personblog.api.AIAPI.AiArticleDraftApi;
 import com.personblog.api.AIwritingAPI.WritingTaskApi;
 import com.personblog.api.adminAPI.TagApi;
 import com.personblog.api.adminAPI.TagVO;
-import com.personblog.api.articleAPI.ArticleInfoAPI;
+import com.personblog.api.articleAPI.ArticleAPI;
 import com.personblog.api.interactionAPI.BrowseHistoryApi;
 import com.personblog.api.interactionAPI.FollowApi;
 import com.personblog.api.interactionAPI.LikeApi;
@@ -89,7 +89,7 @@ import static com.personblog.search.config.mqConfig.SearchMqConfig.*;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> implements IArticleService, ArticleInfoAPI {
+public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> implements IArticleService, ArticleAPI {
     private final ICategoryService categoryService;
     private final IArticleTagService articleTagService;
     private final TagApi tagApi;

@@ -1,6 +1,6 @@
 package com.personblog.interaction.mqHandler;
 
-import com.personblog.api.articleAPI.ArticleInfoAPI;
+import com.personblog.api.articleAPI.ArticleAPI;
 import com.personblog.common.dto.MqMessage.Interaction.BrowseHistoryMessage;
 import com.personblog.interaction.entity.BrowseHistory;
 import com.personblog.interaction.mapper.BrowseHistoryMapper;
@@ -24,7 +24,7 @@ import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.BRO
 @RequiredArgsConstructor
 public class BrowseHistoryMqHandler {
 
-    private final ArticleInfoAPI articleInfoAPI;
+    private final ArticleAPI articleAPI;
     private final BrowseHistoryMapper browseHistoryMapper;
 
     @RabbitListener(queues = BROWSE_HISTORY_QUEUE, containerFactory = "rabbitListenerContainerFactory")
@@ -50,7 +50,7 @@ public class BrowseHistoryMqHandler {
             }
             
             if (!countList.isEmpty()) {
-                articleInfoAPI.updateBrowseCount(countList);
+                articleAPI.updateBrowseCount(countList);
                 log.info("文章浏览数更新完成，共 {} 条", countList.size());
             }
             

@@ -1,4 +1,4 @@
-package com.personblog.ai.controller;
+package com.personblog.ai.controller.PythonCallController;
 
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.common.dto.User.UserDTO;

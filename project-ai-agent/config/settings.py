@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     backend_api_key: str = ""
     
     # ===== 前端域名（用于生成成果链接）=====
-    frontend_base_url: str = "https://your-domain.com"
+    frontend_base_url: str = "http://localhost:3000"
 
     # ===== Nacos 服务发现 =====
     nacos_enabled: bool = False

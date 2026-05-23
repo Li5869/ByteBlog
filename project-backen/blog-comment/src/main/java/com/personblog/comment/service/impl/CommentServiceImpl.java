@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.personblog.api.articleAPI.ArticleInfoAPI;
+import com.personblog.api.articleAPI.ArticleAPI;
 import com.personblog.api.interactionAPI.CommentApi;
 import com.personblog.api.interactionAPI.LikeApi;
 import com.personblog.api.usrAPI.UseApi;
@@ -57,7 +57,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     private final UseApi useApi;
     private final LikeApi likeApi;
-    private final ArticleInfoAPI articleInfoAPI;
+    private final ArticleAPI articleAPI;
     private final RabbitTemplate rabbitTemplate;
 
     // 本地缓存 - 评论分页
@@ -548,7 +548,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         Map<Long, String> map = new HashMap<>();
         for (Long articleId : articleIds) {
             try {
-                String title = articleInfoAPI.getArticleTitle(articleId);
+                String title = articleAPI.getArticleTitle(articleId);
                 map.put(articleId, title);
             } catch (Exception e) {
                 log.warn("获取文章标题失败: articleId={}", articleId);

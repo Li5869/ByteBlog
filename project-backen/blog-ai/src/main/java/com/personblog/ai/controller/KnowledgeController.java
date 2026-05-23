@@ -6,7 +6,6 @@ import com.personblog.ai.BizService.KnowledgeService;
 import com.personblog.ai.dto.KnowledgeFileBatchDeleteDTO;
 import com.personblog.ai.dto.KnowledgeFileQueryDTO;
 import com.personblog.ai.dto.KnowledgeFileUpdateDTO;
-import com.personblog.ai.entity.KnowledgeFile;
 import com.personblog.ai.service.IKnowledgeFileService;
 import com.personblog.ai.vo.*;
 import com.personblog.common.result.JsonData;
@@ -16,9 +15,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 知识库管理 Controller
@@ -54,16 +50,8 @@ public class KnowledgeController {
     @Operation(summary = "分页查询知识库文件列表")
     @GetMapping("/list")
     public JsonData<Page<KnowledgeFileListVO>> getFileList(KnowledgeFileQueryDTO dto) {
-        Page<KnowledgeFile> page = knowledgeFileService.getFilePage(dto);
-
-        // 转换为 ListVO
-        Page<KnowledgeFileListVO> resultPage = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
-        List<KnowledgeFileListVO> records = page.getRecords().stream()
-                .map(this::convertToListVO)
-                .collect(Collectors.toList());
-        resultPage.setRecords(records);
-
-        return JsonData.buildSuccess(resultPage);
+        Page<KnowledgeFileListVO> page = knowledgeFileService.getFilePage(dto);
+        return JsonData.buildSuccess(page);
     }
 
     @Operation(summary = "获取知识库文件详情")
@@ -105,24 +93,5 @@ public class KnowledgeController {
                 .deletedChildCount(0)
                 .build();
         return JsonData.buildSuccess(vo);
-    }
-
-    /**
-     * 转换为列表 VO
-     */
-    private KnowledgeFileListVO convertToListVO(KnowledgeFile file) {
-        return KnowledgeFileListVO.builder()
-                .id(file.getId())
-                .fileName(file.getFileName())
-                .description(file.getDescription())
-                .fileUrl(file.getFileUrl())
-                .fileSize(file.getFileSize())
-                .chunkCount(file.getChunkCount())
-                .source(file.getSource())
-                .category(file.getCategory())
-                .uploaderId(file.getUploaderId())
-                .createdAt(file.getCreatedAt())
-                .updatedAt(file.getUpdatedAt())
-                .build();
     }
 }

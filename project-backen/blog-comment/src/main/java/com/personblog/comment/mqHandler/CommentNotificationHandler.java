@@ -1,6 +1,6 @@
 package com.personblog.comment.mqHandler;
 
-import com.personblog.api.articleAPI.ArticleInfoAPI;
+import com.personblog.api.articleAPI.ArticleAPI;
 import com.personblog.api.interactionAPI.NotificationApi;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.comment.entity.Comment;
@@ -36,7 +36,7 @@ public class CommentNotificationHandler {
 
     private final ICommentService commentService;
     private final UseApi useApi;
-    private final ArticleInfoAPI articleInfoAPI;
+    private final ArticleAPI articleAPI;
     private final NotificationApi notificationApi;
     private final SseEmitterManager sseEmitterManager;
     private final RabbitTemplate rabbitTemplate;
@@ -47,7 +47,7 @@ public class CommentNotificationHandler {
         try {
             // 1. 更新文章评论数
             if (message.getDelta() != null) {
-                articleInfoAPI.updateCommentCount(message.getArticleId(), message.getDelta());
+                articleAPI.updateCommentCount(message.getArticleId(), message.getDelta());
                 log.debug("文章评论数已更新, articleId={}, delta={}", message.getArticleId(), message.getDelta());
             }
 
@@ -59,7 +59,7 @@ public class CommentNotificationHandler {
             }
 
             // 获取文章作者 ID
-            Long authorId = articleInfoAPI.getArticleAuthorId(message.getArticleId());
+            Long authorId = articleAPI.getArticleAuthorId(message.getArticleId());
             //发送ai审核消息
             AiModerateMessage aiModerateMessage = new AiModerateMessage();
             aiModerateMessage.setAuthorId(message.getUserId());

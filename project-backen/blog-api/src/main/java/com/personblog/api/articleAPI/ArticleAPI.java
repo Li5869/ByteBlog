@@ -6,7 +6,7 @@ import com.personblog.common.dto.MqMessage.Interaction.LikeMessage;
 
 import java.util.List;
 
-public interface ArticleInfoAPI {
+public interface ArticleAPI {
     /**
      * 更新文章点赞数
      * @param dtoList 点赞消息DTO列表
@@ -54,5 +54,6 @@ public interface ArticleInfoAPI {
      * 根据综合热度分（浏览量+点赞+收藏+评论）计算 Top N 并更新 is_hot 字段
      */
     void refreshHotArticles();
+
 
 }

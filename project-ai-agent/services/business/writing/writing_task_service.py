@@ -266,6 +266,27 @@ class WritingTaskService(NacosAwareClient):
             logger.error(f"[WritingTask] 保存草稿失败: {e}")
             return None
 
+    async def get_draft(self, task_id: int) -> Optional[Dict[str, Any]]:
+        """
+        获取写作草稿
+
+        Args:
+            task_id: 任务 ID
+
+        Returns:
+            草稿信息
+        """
+        try:
+            response = await self.client.get(
+                f"{await self._get_base_url()}/ai/writing/{task_id}/draft"
+            )
+            response.raise_for_status()
+            json_data = response.json()
+            return json_data.get("data")
+        except Exception as e:
+            logger.error(f"[WritingTask] 获取草稿失败: {e}")
+            return None
+
     async def close(self):
         """关闭 HTTP 客户端"""
         await self.client.aclose()
