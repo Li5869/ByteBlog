@@ -17,6 +17,7 @@ from typing import Optional
 from models.writing_models import WritingPlan
 from config.prompts.smart_agent_prompts import (
     get_smart_agent_system_prompt as _get_smart_agent_system_prompt,
+    get_answer_prompt as _get_answer_prompt,
 )
 from config.prompts.writing_prompts import (
     get_writing_plan_prompt as _get_writing_plan_prompt,
@@ -46,6 +47,18 @@ class PromptManager:
         定义位置：prompts/smart_agent_prompts.py
         """
         return _get_smart_agent_system_prompt()
+
+    @staticmethod
+    def get_answer_prompt() -> str:
+        """
+        获取 SmartAgent answer 节点的提示词
+
+        answer 节点基于对话历史（含工具结果）生成最终回答，
+        此提示词指导模型如何组织回答内容。
+
+        定义位置：prompts/smart_agent_prompts.py
+        """
+        return _get_answer_prompt()
 
     # ==================== WritingAgent ====================
 
