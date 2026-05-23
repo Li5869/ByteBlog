@@ -1,6 +1,6 @@
 package com.personblog.api.interactionAPI;
 
-import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
+import com.personblog.common.dto.MqMessage.notifaction.NotificationMessage;
 
 /**
  * 用户业务通知API接口
@@ -16,5 +16,5 @@ public interface NotificationApi {
      * @param dto 通知消息
      * @return 通知ID
      */
-    Long saveNotification(NotificationMessageDTO dto);
+    Long saveNotification(NotificationMessage dto);
 }

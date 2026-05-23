@@ -1,6 +1,6 @@
 package com.personblog.push.websocket;
 
-import com.personblog.common.api.TokenValidationApi;
+import com.personblog.api.usrAPI.TokenValidationApi;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

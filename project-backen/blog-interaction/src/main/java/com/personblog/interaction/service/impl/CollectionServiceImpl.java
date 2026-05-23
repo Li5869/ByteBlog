@@ -3,11 +3,10 @@ package com.personblog.interaction.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.personblog.api.interactionAPI.CollectedApi;
 import com.personblog.api.interactionAPI.NotificationApi;
 import com.personblog.api.usrAPI.UseApi;
-import com.personblog.common.dto.Interaction.CollectionMessageDTO;
-import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
+import com.personblog.common.dto.MqMessage.Interaction.CollectionMessage;
+import com.personblog.common.dto.MqMessage.notifaction.NotificationMessage;
 import com.personblog.common.dto.User.UserDTO;
 import com.personblog.common.exception.BizException;
 import com.personblog.common.utils.UserContextHolder;
@@ -31,12 +30,12 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.COLLECTION_KEY;
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.INTERACTION_EXCHANGE;
 import static com.personblog.common.constant.RedisKeys.COLLECTION_TIMES_KEY_PREFIX;
 import static com.personblog.common.constant.RedisKeys.COLLECTION_USER_KEY_PREFIX;
 import static com.personblog.common.constant.TargetTypeConstant.ARTICLE;
 import static com.personblog.common.enums.BizCodeEnum.ERROR_OPERATION;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.COLLECTION_KEY;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.INTERACTION_EXCHANGE;
 
 /**
  * <p>
@@ -49,7 +48,7 @@ import static com.personblog.common.enums.BizCodeEnum.ERROR_OPERATION;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class CollectionServiceImpl extends ServiceImpl<CollectionMapper, Collection> implements CollectionService, CollectedApi {
+public class CollectionServiceImpl extends ServiceImpl<CollectionMapper, Collection> implements CollectionService {
     private final StringRedisTemplate redisTemplate;
     private final RabbitTemplate rabbitTemplate;
     private final NotificationApi notificationApi;
@@ -67,7 +66,7 @@ public class CollectionServiceImpl extends ServiceImpl<CollectionMapper, Collect
         double s = isCollection?-1:1;
         Double score = redisTemplate.opsForZSet().incrementScore(COLLECTION_TIMES_KEY_PREFIX, dto.getArticleId().toString(), s);
 
-        CollectionMessageDTO message = CollectionMessageDTO.builder()
+        CollectionMessage message = CollectionMessage.builder()
                 .articleId(dto.getArticleId())
                 .collectionTimes(score.longValue())
                 .userId(userId)
@@ -93,7 +92,7 @@ public class CollectionServiceImpl extends ServiceImpl<CollectionMapper, Collect
                     UserDTO sender = users.isEmpty() ? null : users.getFirst();
                     
                     // 构建通知消息
-                    NotificationMessageDTO messageDTO = NotificationMessageDTO.builder()
+                    NotificationMessage messageDTO = NotificationMessage.builder()
                             .userId(authorId)
                             .actionType("collection")
                             .targetType(ARTICLE)

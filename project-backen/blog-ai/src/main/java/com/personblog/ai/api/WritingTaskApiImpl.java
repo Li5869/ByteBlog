@@ -1,7 +1,7 @@
 package com.personblog.ai.api;
 
 import com.personblog.ai.service.IWritingTaskService;
-import com.personblog.api.writingAPI.WritingTaskApi;
+import com.personblog.api.AIwritingAPI.WritingTaskApi;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

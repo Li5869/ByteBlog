@@ -1,8 +1,8 @@
 package com.personblog.api.articleAPI;
 
-import com.personblog.common.dto.Interaction.BrowseHistoryMessageDTO;
-import com.personblog.common.dto.Interaction.CollectionMessageDTO;
-import com.personblog.common.dto.Interaction.LikeMessageDTO;
+import com.personblog.common.dto.MqMessage.Interaction.BrowseHistoryMessage;
+import com.personblog.common.dto.MqMessage.Interaction.CollectionMessage;
+import com.personblog.common.dto.MqMessage.Interaction.LikeMessage;
 
 import java.util.List;
 
@@ -11,17 +11,17 @@ public interface ArticleInfoAPI {
      * 更新文章点赞数
      * @param dtoList 点赞消息DTO列表
      */
-    void updateLikeCount(List<LikeMessageDTO> dtoList);
+    void updateLikeCount(List<LikeMessage> dtoList);
     /**
      * 更新文章收藏数
      * @param dto 收藏消息DTO
      */
-    void updateCollectionCount(CollectionMessageDTO dto);
+    void updateCollectionCount(CollectionMessage dto);
     /**
      * 更新文章浏览数
      * @param dtoList 浏览历史消息DTO列表
      */
-    void updateBrowseCount(List<BrowseHistoryMessageDTO> dtoList);
+    void updateBrowseCount(List<BrowseHistoryMessage> dtoList);
     /**
      * 更新文章评论数
      * @param articleId 文章ID
@@ -55,10 +55,4 @@ public interface ArticleInfoAPI {
      */
     void refreshHotArticles();
 
-    /**
-     * 更新文章状态，目前用于审核
-     * @param articleId
-     * @param statue
-     */
-    void updateArticleState(Long articleId,Integer statue);
 }

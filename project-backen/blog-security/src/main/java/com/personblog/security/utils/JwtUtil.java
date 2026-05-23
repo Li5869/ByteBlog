@@ -1,6 +1,6 @@
 package com.personblog.security.utils;
 
-import com.personblog.common.api.TokenValidationApi;
+import com.personblog.api.usrAPI.TokenValidationApi;
 import com.personblog.security.config.JwtProperties;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;

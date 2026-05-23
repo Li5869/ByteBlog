@@ -1,12 +1,12 @@
 package com.personblog.question.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.personblog.admin.entity.Tag;
+import com.personblog.admin.mapper.TagMapper;
 import com.personblog.api.searchAPI.QuestionSearchDataApi;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.common.dto.Search.QuestionSearchDTO;
 import com.personblog.common.dto.User.UserDTO;
-import com.personblog.common.entity.Tag;
-import com.personblog.common.mapper.TagMapper;
 import com.personblog.question.entity.Question;
 import com.personblog.question.entity.QuestionTag;
 import com.personblog.question.mapper.QuestionMapper;

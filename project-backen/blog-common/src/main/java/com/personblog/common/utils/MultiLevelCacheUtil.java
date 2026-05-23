@@ -3,7 +3,9 @@ package com.personblog.common.utils;
 import cn.hutool.core.bean.BeanUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -15,32 +17,42 @@ import java.util.function.Function;
 public class MultiLevelCacheUtil {
     private final RedisTemplate<String, Object> redisTemplate;
 
-    private static final String CACHE_PREFIX = "cache";
-
     /** 空值占位，用于缓存穿透防护 */
     private static final String NULL_VALUE = "NULL_VALUE";
 
-    /** 空值本地缓存过期时间（秒） */
-    private static final long NULL_VALUE_LOCAL_TTL = 15;
+    /** 本地缓存最大容量（可通过配置文件动态配置） */
+    @Value("${cache.local.max-size:2000}")
+    private long localCacheMaxSize;
 
-    /** 空值 Redis 缓存过期时间（秒） */
-    private static final long NULL_VALUE_REDIS_TTL = 30;
+    /** 空值本地缓存过期时间（秒），可通过配置文件动态配置 */
+    @Value("${cache.local.null-ttl:15}")
+    private long nullValueLocalTtl;
+
+    /** 空值 Redis 缓存过期时间（秒），可通过配置文件动态配置 */
+    @Value("${cache.redis.null-ttl:30}")
+    private long nullValueRedisTtl;
 
     /** L1 本地缓存：Caffeine，按条目独立控制 TTL */
-    private static final Cache<String, CacheEntry> localCache =
-            Caffeine.newBuilder()
-                    .maximumSize(1000)
-                    .recordStats()
-                    .build();
+    private Cache<String, CacheEntry> localCache;
 
     public MultiLevelCacheUtil(RedisTemplate<String, Object> redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
 
+    /** 初始化本地缓存（在依赖注入完成后执行） */
+    @PostConstruct
+    public void init() {
+        localCache = Caffeine.newBuilder()
+                .maximumSize(localCacheMaxSize)
+                .recordStats()
+                .build();
+        log.info("多级缓存初始化完成，本地缓存最大容量: {}", localCacheMaxSize);
+    }
+
     /**
      * 获取缓存数据（L1 本地 -> L2 Redis -> DB 三级回源）
      *
-     * @param key        缓存键
+     * @param key        缓存键（完整的 Redis Key，如 article:metadata:123）
      * @param dataLoader DB 回源加载函数
      * @param ttl        Redis 过期时间（秒）
      * @param localTtl   本地缓存过期时间（秒）
@@ -49,8 +61,6 @@ public class MultiLevelCacheUtil {
     public <T> T get(String key,
                      Function<String, T> dataLoader,
                      long ttl, long localTtl, Class<T> clazz) {
-        String redisKey = CACHE_PREFIX + ":" + key;
-
         // L1: 查本地缓存
         CacheEntry entry = localCache.getIfPresent(key);
         if (entry != null && !entry.isExpired()) {
@@ -64,7 +74,7 @@ public class MultiLevelCacheUtil {
         }
 
         // L1 未命中，通过 Caffeine 原子加载 L2 -> DB（防缓存击穿）
-        CacheEntry newEntry = localCache.get(key, k -> loadFromRedisOrDB(k, redisKey, dataLoader, ttl, localTtl));
+        CacheEntry newEntry = localCache.get(key, k -> loadFromRedisOrDB(k, key, dataLoader, ttl, localTtl));
         if (newEntry == null || newEntry.getData() == NULL_VALUE) {
             return null;
         }
@@ -105,11 +115,11 @@ public class MultiLevelCacheUtil {
 
         // 缓存空值，防缓存穿透
         try {
-            redisTemplate.opsForValue().set(redisKey, NULL_VALUE, NULL_VALUE_REDIS_TTL, TimeUnit.SECONDS);
+            redisTemplate.opsForValue().set(redisKey, NULL_VALUE, nullValueRedisTtl, TimeUnit.SECONDS);
         } catch (Exception e) {
             log.warn("Redis写入空值标记失败: {}", redisKey, e);
         }
-        return new CacheEntry(NULL_VALUE, NULL_VALUE_LOCAL_TTL);
+        return new CacheEntry(NULL_VALUE, nullValueLocalTtl);
     }
 
     /** 安全类型转换，类型不匹配时清除缓存并降级返回 null */
@@ -120,26 +130,30 @@ public class MultiLevelCacheUtil {
             log.error("缓存数据类型不匹配, key={}, expected={}, actual={}", key, clazz.getSimpleName(), data.getClass().getSimpleName(), e);
             localCache.invalidate(key);
             try {
-                redisTemplate.delete(CACHE_PREFIX + ":" + key);
+                // 直接使用 key 删除 Redis 缓存
+                redisTemplate.delete(key);
             } catch (Exception ignored) {
             }
             return null;
         }
     }
 
-    /** 删除缓存（同时清除 L1 本地和 L2 Redis） */
+    /**
+     * 删除缓存（同时清除 L1 本地和 L2 Redis）
+     *
+     * @param key 缓存键（完整的 Redis Key，如 article:metadata:123）
+     */
     public void evict(String key) {
-        String redisKey = CACHE_PREFIX + ":" + key;
-
+        // 直接使用传入的 key 作为 Redis Key
         localCache.invalidate(key);
 
         try {
-            redisTemplate.delete(redisKey);
+            redisTemplate.delete(key);
         } catch (Exception e) {
-            log.warn("Redis删除失败: {}", redisKey, e);
+            log.warn("Redis删除失败: {}", key, e);
         }
 
-        log.debug("缓存删除: {}", redisKey);
+        log.debug("缓存删除: {}", key);
     }
 
     /** 清除所有本地缓存 */

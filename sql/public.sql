@@ -12,7 +12,7 @@
  Target Server Version : 180003 (180003)
  File Encoding         : 65001
 
- Date: 05/05/2026 21:46:33
+ Date: 22/05/2026 18:52:57
 */
 
 
@@ -279,6 +279,17 @@ START 1
 CACHE 1;
 
 -- ----------------------------
+-- Sequence structure for tb_knowledge_file_id_seq
+-- ----------------------------
+DROP SEQUENCE IF EXISTS "public"."tb_knowledge_file_id_seq";
+CREATE SEQUENCE "public"."tb_knowledge_file_id_seq" 
+INCREMENT 1
+MINVALUE  1
+MAXVALUE 9223372036854775807
+START 1
+CACHE 1;
+
+-- ----------------------------
 -- Sequence structure for tb_like_id_seq
 -- ----------------------------
 DROP SEQUENCE IF EXISTS "public"."tb_like_id_seq";
@@ -506,7 +517,7 @@ CREATE TABLE "public"."tb_ai_message" (
   "conversation_id" int8 NOT NULL,
   "role" varchar(20) COLLATE "pg_catalog"."default" NOT NULL,
   "content" text COLLATE "pg_catalog"."default" NOT NULL,
-  "tool_calls" jsonb,
+  "tool_calls" text COLLATE "pg_catalog"."default",
   "created_at" timestamp(6) DEFAULT CURRENT_TIMESTAMP,
   "thinking" text COLLATE "pg_catalog"."default"
 )
@@ -897,6 +908,26 @@ COMMENT ON COLUMN "public"."tb_follow"."follower_id" IS '关注者ID，逻辑外
 COMMENT ON COLUMN "public"."tb_follow"."following_id" IS '被关注者ID，逻辑外键关联tb_user';
 COMMENT ON COLUMN "public"."tb_follow"."created_at" IS '创建时间';
 COMMENT ON TABLE "public"."tb_follow" IS '关注表';
+
+-- ----------------------------
+-- Table structure for tb_knowledge_file
+-- ----------------------------
+DROP TABLE IF EXISTS "public"."tb_knowledge_file";
+CREATE TABLE "public"."tb_knowledge_file" (
+  "id" int8 NOT NULL DEFAULT nextval('tb_knowledge_file_id_seq'::regclass),
+  "file_name" varchar(255) COLLATE "pg_catalog"."default" NOT NULL,
+  "original_name" varchar(255) COLLATE "pg_catalog"."default" NOT NULL,
+  "description" varchar(500) COLLATE "pg_catalog"."default" DEFAULT ''::character varying,
+  "file_url" varchar(1024) COLLATE "pg_catalog"."default" DEFAULT ''::character varying,
+  "file_size" int8 NOT NULL DEFAULT 0,
+  "chunk_count" int4 NOT NULL DEFAULT 0,
+  "parent_ids" text COLLATE "pg_catalog"."default" DEFAULT '[]'::text,
+  "source" varchar(50) COLLATE "pg_catalog"."default" DEFAULT 'file_upload'::character varying,
+  "uploader_id" int8 NOT NULL DEFAULT 0,
+  "created_at" timestamp(6) DEFAULT now(),
+  "updated_at" timestamp(6) DEFAULT now()
+)
+;
 
 -- ----------------------------
 -- Table structure for tb_message
@@ -3083,6 +3114,13 @@ SELECT setval('"public"."tb_follow_id_seq"', 1, false);
 -- ----------------------------
 -- Alter sequences owned by
 -- ----------------------------
+ALTER SEQUENCE "public"."tb_knowledge_file_id_seq"
+OWNED BY "public"."tb_knowledge_file"."id";
+SELECT setval('"public"."tb_knowledge_file_id_seq"', 8, true);
+
+-- ----------------------------
+-- Alter sequences owned by
+-- ----------------------------
 SELECT setval('"public"."tb_like_id_seq"', 6, true);
 
 -- ----------------------------
@@ -3299,6 +3337,13 @@ CREATE INDEX "idx_article_likes" ON "public"."tb_article" USING btree (
 );
 CREATE INDEX "idx_article_status" ON "public"."tb_article" USING btree (
   "status" "pg_catalog"."int2_ops" ASC NULLS LAST
+);
+CREATE INDEX "idx_article_top_filter" ON "public"."tb_article" USING btree (
+  "is_top" "pg_catalog"."bool_ops" DESC NULLS FIRST,
+  "status" "pg_catalog"."int2_ops" ASC NULLS LAST,
+  "is_deleted" "pg_catalog"."bool_ops" ASC NULLS LAST,
+  "review" COLLATE "pg_catalog"."default" "pg_catalog"."text_ops" ASC NULLS LAST,
+  "is_hot" "pg_catalog"."bool_ops" ASC NULLS LAST
 );
 CREATE INDEX "idx_article_views" ON "public"."tb_article" USING btree (
   "views" "pg_catalog"."int8_ops" ASC NULLS LAST
@@ -3646,6 +3691,21 @@ ALTER TABLE "public"."tb_follow" ADD CONSTRAINT "tb_follow_follower_following_un
 -- Primary Key structure for table tb_follow
 -- ----------------------------
 ALTER TABLE "public"."tb_follow" ADD CONSTRAINT "tb_follow_pkey" PRIMARY KEY ("id");
+
+-- ----------------------------
+-- Indexes structure for table tb_knowledge_file
+-- ----------------------------
+CREATE INDEX "idx_knowledge_file_created" ON "public"."tb_knowledge_file" USING btree (
+  "created_at" "pg_catalog"."timestamp_ops" DESC NULLS FIRST
+);
+CREATE INDEX "idx_knowledge_file_uploader" ON "public"."tb_knowledge_file" USING btree (
+  "uploader_id" "pg_catalog"."int8_ops" ASC NULLS LAST
+);
+
+-- ----------------------------
+-- Primary Key structure for table tb_knowledge_file
+-- ----------------------------
+ALTER TABLE "public"."tb_knowledge_file" ADD CONSTRAINT "tb_knowledge_file_pkey" PRIMARY KEY ("id");
 
 -- ----------------------------
 -- Indexes structure for table tb_message

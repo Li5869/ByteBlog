@@ -2,7 +2,7 @@ package com.personblog.interaction.mqHandler;
 
 import com.personblog.api.articleAPI.ArticleInfoAPI;
 import com.personblog.api.usrAPI.UseApi;
-import com.personblog.common.dto.Interaction.CollectionMessageDTO;
+import com.personblog.common.dto.MqMessage.Interaction.CollectionMessage;
 import com.personblog.interaction.service.CollectionService;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.COLLECTION_QUEUE;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.COLLECTION_QUEUE;
 
 @Slf4j
 @Component
@@ -24,7 +24,7 @@ public class CollectionMqHandler {
     private final UseApi useApi;
     private final CollectionService collectionService;
     @RabbitListener(queues = COLLECTION_QUEUE, containerFactory = "rabbitListenerContainerFactory")
-    public void handlerCollectionMessage(CollectionMessageDTO dto, Channel channel,
+    public void handlerCollectionMessage(CollectionMessage dto, Channel channel,
                                          @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
             log.info("开始处理收藏数更新，文章ID: {}, 收藏数: {}, 用户ID: {}, 增量: {}", 

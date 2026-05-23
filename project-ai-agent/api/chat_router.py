@@ -4,6 +4,7 @@
 
 import asyncio
 import json
+import re
 import uuid
 from typing import List
 
@@ -149,6 +150,19 @@ async def stream_message(request: ChatRequest):
                     full_thinking += event.content
                     yield f"data: {json.dumps({'type': 'tool_call', 'content': event.content.strip(), 'tool_name': event.tool_name}, ensure_ascii=False)}\n\n"
 
+                elif event.event_type == "tool_result":
+                    # 工具执行结果 → 更新到 tool_calls_list（后续持久化到 Redis）
+                    tool_name = event.tool_name
+                    result = event.extra.get("result", "") if event.extra else ""
+                    for tc in reversed(tool_calls_list):
+                        if tc.name == tool_name and tc.result is None:
+                            tc.result = result
+                            break
+                    # 提取 WRITING_TRIGGER 标记，以 tool_call 类型发送到前端
+                    trigger_match = re.search(r'<!-- WRITING_TRIGGER: \{.*\} -->', result)
+                    if trigger_match:
+                        yield f"data: {json.dumps({'type': 'tool_call', 'content': trigger_match.group(0), 'tool_name': tool_name}, ensure_ascii=False)}\n\n"
+
                 elif event.event_type == "done":
                     final_content = event.content or full_response
                     await memory_service.add_message(
@@ -158,7 +172,7 @@ async def stream_message(request: ChatRequest):
                         tool_calls=tool_calls_list or None,
                     )
                     saved = True
-                    yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id}, ensure_ascii=False)}\n\n"
+                    yield f"data: {json.dumps({'type': 'done', 'conversation_id': conversation_id, 'tool_calls': [tc.model_dump() for tc in tool_calls_list]}, ensure_ascii=False)}\n\n"
 
         except GeneratorExit:
             await _save_partial()

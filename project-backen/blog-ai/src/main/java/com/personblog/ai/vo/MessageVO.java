@@ -51,5 +51,8 @@ public class MessageVO {
 
         @Schema(description = "工具参数")
         private String args;
+
+        @Schema(description = "工具执行结果")
+        private String result;
     }
 }

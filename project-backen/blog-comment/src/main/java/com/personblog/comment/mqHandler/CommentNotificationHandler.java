@@ -5,9 +5,9 @@ import com.personblog.api.interactionAPI.NotificationApi;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.comment.entity.Comment;
 import com.personblog.comment.service.ICommentService;
-import com.personblog.common.dto.Comment.CommentNotificationMessage;
-import com.personblog.common.dto.Moderate.AiModerateMessage;
-import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
+import com.personblog.common.dto.MqMessage.AIModerate.AiModerateMessage;
+import com.personblog.common.dto.MqMessage.Comment.CommentNotificationMessage;
+import com.personblog.common.dto.MqMessage.notifaction.NotificationMessage;
 import com.personblog.common.dto.User.UserDTO;
 import com.personblog.push.sse.SseEmitterManager;
 import com.rabbitmq.client.Channel;
@@ -24,9 +24,9 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
-import static com.personblog.common.config.mqConfig.AiMqConfig.AI_EXCHANGE;
-import static com.personblog.common.config.mqConfig.AiMqConfig.AI_MODERATE_KEY;
-import static com.personblog.common.config.mqConfig.CommentMqConfig.COMMENT_NOTIFICATION_QUEUE;
+import static com.personblog.comment.config.mqConfig.CommentMqConfig.COMMENT_NOTIFICATION_QUEUE;
+import static com.personblog.common.constant.MqRoutingConstants.AI_EXCHANGE;
+import static com.personblog.common.constant.MqRoutingConstants.AI_MODERATE_KEY;
 import static com.personblog.common.constant.TargetTypeConstant.*;
 
 @Slf4j
@@ -64,7 +64,7 @@ public class CommentNotificationHandler {
             AiModerateMessage aiModerateMessage = new AiModerateMessage();
             aiModerateMessage.setAuthorId(message.getUserId());
             aiModerateMessage.setContent(message.getContent());
-            aiModerateMessage.setBizId(message.getBizId());
+            aiModerateMessage.setBizId(message.getCommentId());
             aiModerateMessage.setBizType(COMMENT);
             rabbitTemplate.convertAndSend(AI_EXCHANGE, AI_MODERATE_KEY, aiModerateMessage);
             // 获取评论者信息
@@ -102,7 +102,7 @@ public class CommentNotificationHandler {
                     relatedId = message.getCommentId();
                 }
 
-                NotificationMessageDTO notificationDTO = NotificationMessageDTO.builder()
+                NotificationMessage notificationDTO = NotificationMessage.builder()
                         .userId(receiverId)
                         .actionType(actionType)
                         .targetType(targetType)

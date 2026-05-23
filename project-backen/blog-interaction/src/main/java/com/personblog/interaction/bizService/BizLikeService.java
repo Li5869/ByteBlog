@@ -2,12 +2,12 @@ package com.personblog.interaction.bizService;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.personblog.api.interactionAPI.LikeApi;
-import com.personblog.common.dto.Interaction.LikeMessageDTO;
+import com.personblog.common.dto.MqMessage.Interaction.LikeMessage;
+import com.personblog.common.dto.MqMessage.Interaction.LikeSaveDBMessage;
+import com.personblog.common.dto.MqMessage.Interaction.SyncLikeCacheMessage;
 import com.personblog.common.exception.BizException;
 import com.personblog.common.utils.UserContextHolder;
 import com.personblog.interaction.dto.LikedDTO;
-import com.personblog.interaction.dto.MqMessage.LikeSaveDBMessageDTO;
-import com.personblog.interaction.dto.MqMessage.SyncLikeCacheMessageDTO;
 import com.personblog.interaction.mapper.ArticleLikeMapper;
 import com.personblog.interaction.service.AnswerLikeService;
 import com.personblog.interaction.service.ArticleLikeService;
@@ -32,11 +32,11 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.*;
 import static com.personblog.common.constant.RedisKeys.LIKES_TIMES_KEY_PREFIX;
 import static com.personblog.common.constant.RedisKeys.LIKE_BIZ_KEY_PREFIX;
 import static com.personblog.common.constant.TargetTypeConstant.*;
 import static com.personblog.common.enums.BizCodeEnum.LIKE_ERROR;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.*;
 
 @Service
 @RequiredArgsConstructor
@@ -66,7 +66,7 @@ public class BizLikeService implements LikeApi {
             result = likeStrategy.getIsLike(userId,targetId);
             if(result){
                 // 使用 MQ 异步同步缓存
-                SyncLikeCacheMessageDTO messageDTO = SyncLikeCacheMessageDTO.builder()
+                SyncLikeCacheMessage messageDTO = SyncLikeCacheMessage.builder()
                         .targetType(targetType)
                         .build();
                 rabbitTemplate.convertAndSend(INTERACTION_EXCHANGE, LIKE_SYNC_CACHE_KEY, messageDTO);
@@ -130,14 +130,14 @@ public class BizLikeService implements LikeApi {
     public void readLikesTimesAnd2DB(String TargetType, int maxSize) {
         String key = LIKES_TIMES_KEY_PREFIX + TargetType;
         Set<ZSetOperations.@NonNull TypedTuple<String>> typedTuples = redisTemplate.opsForZSet().popMin(key, maxSize);
-        List<LikeMessageDTO> messages = new ArrayList<>();
+        List<LikeMessage> messages = new ArrayList<>();
         for (ZSetOperations.TypedTuple<String> typedTuple : typedTuples) {
             String value = typedTuple.getValue();
             Double score = typedTuple.getScore();
             if (score == null||value==null) {
                 continue;
             }
-            messages.add(LikeMessageDTO.builder()
+            messages.add(com.personblog.common.dto.MqMessage.Interaction.LikeMessage.builder()
                     .likeTimes(score.longValue())
                     .id(Long.valueOf(value))
                     .targetType(TargetType)
@@ -156,7 +156,7 @@ public class BizLikeService implements LikeApi {
         Long size = redisTemplate.opsForSet()
                 .size(peopleTimesKey);
         redisTemplate.opsForZSet().add(key, dto.getTargetId().toString(), size);
-        LikeSaveDBMessageDTO dbMessageDTO = LikeSaveDBMessageDTO.builder()
+        LikeSaveDBMessage dbMessageDTO = LikeSaveDBMessage.builder()
                 .targetId(dto.getTargetId())
                 .userId(UserContextHolder.getUserId())
                 .targetType(dto.getTargetType())
@@ -170,7 +170,7 @@ public class BizLikeService implements LikeApi {
         
         return LikedVO.builder().likes(size).build();
     }
-    public void save2DB(LikeSaveDBMessageDTO dtos) {
+    public void save2DB(LikeSaveDBMessage dtos) {
         LikeStrategy likeStrategy = likeStrategyMap.get(dtos.getTargetType());
         if (likeStrategy == null) {
             throw new BizException(LIKE_ERROR);

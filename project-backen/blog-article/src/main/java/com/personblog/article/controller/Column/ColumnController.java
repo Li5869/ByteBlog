@@ -1,14 +1,14 @@
 package com.personblog.article.controller.Column;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.personblog.article.dto.ColumnCreateDTO;
-import com.personblog.article.dto.ColumnUpdateDTO;
+import com.personblog.article.dto.column.ColumnCreateDTO;
+import com.personblog.article.dto.column.ColumnQueryDTO;
+import com.personblog.article.dto.column.ColumnUpdateDTO;
 import com.personblog.article.service.IColumnService;
 import com.personblog.article.vo.ColumnCreateVO;
 import com.personblog.article.vo.ColumnDetailVO;
 import com.personblog.article.vo.ColumnListVO;
 import com.personblog.article.vo.MyColumnVO;
-import com.personblog.common.dto.Column.ColumnQueryDTO;
 import com.personblog.common.result.JsonData;
 import com.personblog.common.utils.UserContextHolder;
 import io.swagger.v3.oas.annotations.Operation;

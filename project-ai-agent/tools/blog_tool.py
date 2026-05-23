@@ -26,36 +26,11 @@ async def get_category_list() -> List[dict] | str:
         return categories
     except Exception as e:
         return f"获取分类列表失败：{str(e)}"
-
-
-@tool
-async def get_hot_tag_list(limit: int = 20) -> List[dict] | str:
-    """
-    获取热门标签列表
-
-    获取博客系统中使用频率最高的标签。
-    适用于用户想要了解热门话题或按标签浏览文章。
-
-    Args:
-        limit: 返回数量限制，默认20条
-
-    Returns:
-        热门标签列表，每个标签包含 id、name、count 等字段；
-        失败时返回友好错误提示字符串
-    """
-    try:
-        blog_service = get_blog_service()
-        tags = await blog_service.get_hot_tags(limit)
-        return tags
-    except Exception as e:
-        return f"获取热门标签失败：{str(e)}"
-
-
 def get_blog_tools() -> List:
     """
     获取博客工具列表
 
     Returns:
-        博客工具列表，包含 get_category_list 和 get_hot_tag_list
+        博客工具列表
     """
-    return [get_category_list, get_hot_tag_list]
+    return [get_category_list]

@@ -13,6 +13,7 @@
 
     <modules>
         <module>blog-common</module>
+        <module>blog-admin</module>
         <module>blog-security</module>
         <module>blog-article</module>
         <module>blog-comment</module>
@@ -24,6 +25,8 @@
         <module>blog-application</module>
         <module>blog-api</module>
         <module>blog-push</module>
+        <module>blog-notification</module>
+        <module>blog-message</module>
     </modules>
 
     <properties>

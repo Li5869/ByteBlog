@@ -1,6 +1,6 @@
 package com.personblog.article.controller.Column;
 
-import com.personblog.article.dto.ColumnArticleDTO;
+import com.personblog.article.dto.column.ColumnArticleDTO;
 import com.personblog.article.service.IColumnService;
 import com.personblog.article.vo.MyArticleVO;
 import com.personblog.common.result.JsonData;

@@ -1,9 +1,8 @@
 package com.personblog.ai.BizService;
 
-import com.personblog.ai.constants.ChatEventTypeEnum;
+import cn.hutool.json.JSONUtil;
 import com.personblog.ai.dto.AiConversationSendDTO;
-import com.personblog.ai.dto.PythonChatRequest;
-import com.personblog.ai.dto.PythonStreamEvent;
+import com.personblog.ai.dto.pythonRequest.PythonChatRequest;
 import com.personblog.ai.entity.AiConversation;
 import com.personblog.ai.entity.AiMessage;
 import com.personblog.ai.service.IAiConversationService;
@@ -28,15 +27,12 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
-import static com.personblog.ai.constants.AiBusinessConstants.Defaults;
-import static com.personblog.ai.constants.ChatEventTypeEnum.DATA;
-import static com.personblog.ai.constants.ChatEventTypeEnum.PARAM;
+import static com.personblog.ai.config.mqConfig.AiMqConfig.AI_TITLE_KEY;
 import static com.personblog.ai.constants.LLMType.ASSISTANT;
 import static com.personblog.ai.constants.LLMType.USER;
 import static com.personblog.ai.constants.PythonAiApiConstants.Chat.STREAM;
 import static com.personblog.ai.constants.PythonAiApiConstants.*;
-import static com.personblog.common.config.mqConfig.AiMqConfig.AI_EXCHANGE;
-import static com.personblog.common.config.mqConfig.AiMqConfig.AI_TITLE_KEY;
+import static com.personblog.common.constant.MqRoutingConstants.AI_EXCHANGE;
 import static com.personblog.common.constant.RedisKeys.REDIS_MEMORY_PREFIX;
 
 @Slf4j
@@ -77,10 +73,9 @@ public class PythonAiChatService {
 
         log.info("调用 Python AI 服务，会话ID: {}", conversationId);
 
-        // 分别收集最终回答和思考过程
         StringBuilder answer = new StringBuilder();
         StringBuilder thinking = new StringBuilder();
-
+        String[] toolCallsJsonHolder = {null};
         return pythonAiWebClient.post()
                 .uri(STREAM)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -92,27 +87,25 @@ public class PythonAiChatService {
                 .filter(Objects::nonNull)
                 // 按事件类型分流收集
                 .doOnNext(event -> {
-                    String eventData = (String) event.getEventData();
+                    String eventData = (String) event.getData();
                     if (eventData == null) {
                         return;
                     }
-                    int eventType = event.getEventType();
-                    if (eventType == DATA.getValue()) {
-                        // chunk 文本 → 最终回答
+                    String type = event.getType();
+                    if (SseEvent.CHUNK.equals(type)) {
                         answer.append(eventData);
-                    } else if (eventType == PARAM.getValue()) {
-                        // thinking 分析 + tool_call 描述 → 思考过程
+                    } else if (SseEvent.THINKING.equals(type) || SseEvent.TOOL_CALL.equals(type)) {
                         thinking.append(eventData);
                     }
                 })
-                // 流完成后异步保存消息（回答 + 思考过程）
+                // 流完成后异步保存消息（回答 + 思考过程 + 工具调用）
                 .doOnComplete(() -> {
                     String answers = answer.toString();
                     String reasonings = thinking.toString();
                     if (StringUtils.hasText(answers) || StringUtils.hasText(reasonings)) {
                         CompletableFuture.runAsync(() -> {
                             try {
-                                saveMessageAndUpdateCount(conversationId, answers, reasonings);
+                                saveMessageAndUpdateCount(conversationId, answers, reasonings, toolCallsJsonHolder[0]);
                             } catch (Exception e) {
                                 log.error("保存消息失败，会话ID: {}", conversationId, e);
                             }
@@ -120,23 +113,25 @@ public class PythonAiChatService {
                     }
                 })
                 .doOnNext(event -> {
-                    if (event.getEventType() == ChatEventTypeEnum.STOP.getValue() && event.getEventData() != null) {
+                    if (SseEvent.DONE.equals(event.getType())) {
                         log.info("Python AI 流式响应完成，会话ID: {}", conversationId);
+                        toolCallsJsonHolder[0] = (String) event.getData();
                     }
                 })
                 .doOnError(e -> log.error("调用 Python AI 服务失败: {}", e.getMessage()))
                 .onErrorResume(e -> Flux.just(ChatEventVO.builder()
-                        .eventType(ChatEventTypeEnum.STOP.getValue())
-                        .eventData(Msg.SERVICE_ERROR + e.getMessage())
+                        .type(SseEvent.ERROR)
+                        .data(Msg.SERVICE_ERROR + e.getMessage())
                         .build()));
     }
 
-    private void saveMessageAndUpdateCount(Long conversationId, String answers, String reasonings) {
+    private void saveMessageAndUpdateCount(Long conversationId, String answers, String reasonings, String toolCallsJson) {
         AiMessage aiMessage = new AiMessage();
         aiMessage.setConversationId(conversationId);
         aiMessage.setRole(ASSISTANT);
         aiMessage.setContent(answers);
         aiMessage.setThinking(reasonings);
+        aiMessage.setToolCalls(toolCallsJson);
         aiConversationService.lambdaUpdate()
                 .set(AiConversation::getLastMessage, answers)
                 .setSql("message_count = message_count + " + 1)
@@ -175,52 +170,33 @@ public class PythonAiChatService {
 
             String type = (String) dataMap.get(Fields.TYPE);
             String content = (String) dataMap.get(Fields.CONTENT);
-            String conversationId = dataMap.get(Fields.CONVERSATION_ID) != null
-                    ? dataMap.get(Fields.CONVERSATION_ID).toString()
-                    : null;
 
-            PythonStreamEvent streamEvent = new PythonStreamEvent();
-            streamEvent.setType(type);
-            streamEvent.setContent(content);
-            streamEvent.setConversationId(conversationId);
+            if (SseEvent.ERROR.equals(type)) {
+                log.error("Python AI 返回错误: {}", content);
+                return ChatEventVO.builder()
+                        .type(SseEvent.ERROR)
+                        .data(Msg.ERROR_PREFIX + content)
+                        .build();
+            }
 
-            return convertEvent(streamEvent);
+            if (SseEvent.DONE.equals(type)) {
+                Object toolCallsObj = dataMap.get("tool_calls");
+                if (toolCallsObj != null) {
+                    return ChatEventVO.builder()
+                            .type(SseEvent.DONE)
+                            .data(JSONUtil.toJsonStr(toolCallsObj))
+                            .build();
+                }
+                return ChatEventVO.DONE_EVENT;
+            }
+
+            return ChatEventVO.builder()
+                    .type(type)
+                    .data(content)
+                    .build();
         } catch (Exception e) {
             log.warn("解析SSE事件失败: {} | 原始数据: {}", e.getMessage(), event.data());
             return null;
         }
-    }
-
-    private ChatEventVO convertEvent(PythonStreamEvent event) {
-        if (event == null || event.getType() == null) {
-            return null;
-        }
-
-        return switch (event.getType()) {
-            case SseEvent.THINKING, SseEvent.TOOL_CALL -> ChatEventVO.builder()
-                    .eventType(PARAM.getValue())
-                    .eventData(event.getContent())
-                    .build();
-            case SseEvent.CHUNK -> ChatEventVO.builder()
-                    .eventType(DATA.getValue())
-                    .eventData(event.getContent())
-                    .build();
-            case SseEvent.TOOL_RESULT -> {
-                log.debug("工具执行结果: {}", event.getContent());
-                yield null;
-            }
-            case SseEvent.DONE -> ChatEventVO.STOP_EVENT;
-            case SseEvent.ERROR -> {
-                log.error("Python AI 返回错误: {}", event.getContent());
-                yield ChatEventVO.builder()
-                        .eventType(ChatEventTypeEnum.STOP.getValue())
-                        .eventData(Msg.ERROR_PREFIX + event.getContent())
-                        .build();
-            }
-            default -> ChatEventVO.builder()
-                    .eventType(DATA.getValue())
-                    .eventData(event.getContent() != null ? event.getContent() : Defaults.EMPTY)
-                    .build();
-        };
     }
 }

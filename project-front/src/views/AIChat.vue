@@ -9,6 +9,7 @@ import {modal} from '@/utils/modal'
 import {useUserStore} from '@/stores/user'
 import {AI_USER_ID, DEFAULT_AVATAR} from '@/utils/defaults'
 import {formatRelativeTime} from '@/utils/format'
+import WritingProgressPanel from '@/components/WritingProgressPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -28,6 +29,11 @@ const messagesContainer = ref(null)
 const currentReader = ref(null)
 const currentAbortController = ref(null)
 const sidebarCollapsed = ref(false)
+
+// ==================== 写作进度面板 ====================
+const showWritingProgress = ref(false)
+const writingTaskId = ref('')
+const writingProgressRef = ref(null)
 
 /** AI 助手头像 */
 const aiAssistantAvatar = ref('')
@@ -226,6 +232,10 @@ const selectConversation = async (conversation) => {
     return
   }
   
+  // 切换对话时关闭写作进度面板
+  closeWritingProgress()
+  writingTaskId.value = ''
+  
   messages.value = []
   messagesLoading.value = true
   currentConversation.value = conversation
@@ -341,21 +351,43 @@ const sendMessage = async () => {
             try {
               const event = JSON.parse(jsonStr)
               
-              if (event.eventType === 1) {
-                if (event.eventData && typeof event.eventData === 'string' && event.eventData.length > 0) {
-                  messages.value[assistantIdx].content += event.eventData
+              if (event.type === 'chunk') {
+                if (event.data && typeof event.data === 'string' && event.data.length > 0) {
+                  messages.value[assistantIdx].content += event.data
                   await nextTick()
                   scrollToBottom()
                   addCopyButtons()
                 }
-              } else if (event.eventType === 2) {
+              } else if (event.type === 'done') {
                 break
-              } else if (event.eventType === 3) {
-                if (event.eventData && typeof event.eventData === 'string') {
-                  messages.value[assistantIdx].thinking += event.eventData
-                  expandedThinking.value[messages.value[assistantIdx].id] = true
-                  await nextTick()
-                  scrollToBottom()
+              } else if (event.type === 'error') {
+                if (event.data && typeof event.data === 'string') {
+                  messages.value[assistantIdx].content = event.data
+                }
+                break
+              } else if (event.type === 'thinking' || event.type === 'tool_call') {
+                if (event.data && typeof event.data === 'string') {
+                  // 检测写作进度触发标记（tool_call 结果中包含）
+                  const triggerMatch = event.data.match(/<!-- WRITING_TRIGGER: (\{.*\}) -->/)
+                  if (triggerMatch) {
+                    try {
+                      const trigger = JSON.parse(triggerMatch[1])
+                      writingTaskId.value = trigger.task_id
+                      showWritingProgress.value = true
+                      if (trigger.action === 'start_execute') {
+                        await nextTick()
+                        writingProgressRef.value?.startExecutePhase()
+                      }
+                      console.log('[WritingProgress] 检测到触发标记:', trigger)
+                    } catch (e) {
+                      console.warn('[WritingProgress] 解析触发标记失败:', e)
+                    }
+                  } else {
+                    messages.value[assistantIdx].thinking += event.data
+                    expandedThinking.value[messages.value[assistantIdx].id] = true
+                    await nextTick()
+                    scrollToBottom()
+                  }
                 }
               }
             } catch (e) {
@@ -453,6 +485,17 @@ const toggleThinking = (messageId) => {
 // 判断会话是否活跃
 const isActiveConversation = (conversation) => {
   return currentConversation.value && String(currentConversation.value.id) === String(conversation.id)
+}
+
+// ==================== 写作进度面板 ====================
+
+const closeWritingProgress = () => {
+  showWritingProgress.value = false
+}
+
+const viewWritingResult = (taskId) => {
+  router.push(`/writing/${taskId}/result`)
+  closeWritingProgress()
 }
 
 // ==================== 生命周期 ====================
@@ -668,6 +711,15 @@ onMounted(async () => {
             </div>
           </template>
         </div>
+
+        <!-- 写作进度面板（固定在输入区域上方） -->
+        <WritingProgressPanel
+          ref="writingProgressRef"
+          :visible="showWritingProgress"
+          :task-id="writingTaskId"
+          @close="closeWritingProgress"
+          @view-result="viewWritingResult"
+        />
 
         <!-- 输入区域 -->
         <div class="input-area">
@@ -1355,6 +1407,7 @@ onMounted(async () => {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(20px);
   border-top: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 0 0 12px 12px;
 }
 
 .dark .input-area {

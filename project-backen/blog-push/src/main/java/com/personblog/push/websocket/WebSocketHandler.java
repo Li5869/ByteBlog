@@ -1,7 +1,7 @@
 package com.personblog.push.websocket;
 
 import cn.hutool.json.JSONUtil;
-import com.personblog.common.api.FollowerApi;
+import com.personblog.api.interactionAPI.FollowApi;
 import com.personblog.push.constant.PushConstants;
 import com.personblog.push.onlineMessage.PushMessage;
 import com.personblog.push.service.OnlineStateService;
@@ -32,7 +32,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     // 处理用户连接建立
     private final OnlineStateService onlineStatusApi;
     // 粉丝查询接口，由 blog-interaction 模块实现
-    private final FollowerApi followerApi;
+    private final FollowApi followApi;
     // 跨节点消息推送服务
     private final PushChannelService pushChannelService;
     // 存储用户会话
@@ -145,7 +145,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     }
     // 通知用户的粉丝（通过 SSE 广播在线状态，SSE 单向推送足够，无需重复走 WebSocket）
     private void broadcastToFollowers(Long userId, WebSocketMessage message) {
-        List<Long> followerIds = followerApi.getFollowerIds(userId);
+        List<Long> followerIds = followApi.getFollowerIds(userId);
         if (followerIds.isEmpty()) {
             return;
         }

@@ -2,9 +2,9 @@ package com.personblog.article.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.personblog.article.dto.column.ColumnQueryDTO;
 import com.personblog.article.entity.Column;
 import com.personblog.article.vo.*;
-import com.personblog.common.dto.Column.ColumnQueryDTO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 

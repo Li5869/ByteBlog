@@ -2,7 +2,7 @@ package com.personblog.ai.BizService;
 
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import com.personblog.ai.dto.PythonWritingRequest;
+import com.personblog.ai.dto.pythonRequest.PythonWritingRequest;
 import com.personblog.ai.vo.WritingEventVO;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
@@ -118,21 +118,6 @@ public class PythonWritingService {
                         .type(SseEvent.ERROR)
                         .data(Msg.SERVICE_ERROR + e.getMessage())
                         .build()));
-    }
-
-    /**
-     * 获取任务状态
-     *
-     * @param taskId 任务ID
-     * @return 任务状态
-     */
-    public Mono<String> getTaskStatus(String taskId) {
-        return pythonAiWebClient.get()
-                .uri(STATUS, taskId)
-                .retrieve()
-                .bodyToMono(Map.class)
-                .map(response -> extractDataField(response, Fields.STATUS))
-                .doOnError(e -> log.error("[Writing] 获取任务状态失败: {}", e.getMessage()));
     }
 
     // ==================== 内部方法 ====================

@@ -4,12 +4,11 @@ import cn.hutool.core.collection.CollectionUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.personblog.api.interactionAPI.FollowApi;
-import com.personblog.common.api.FollowerApi;
+import com.personblog.common.dto.MqMessage.Interaction.FollowMessage;
 import com.personblog.common.exception.BizException;
 import com.personblog.common.utils.MultiLevelCacheUtil;
 import com.personblog.common.utils.UserContextHolder;
 import com.personblog.interaction.dto.FollowDTO;
-import com.personblog.interaction.dto.MqMessage.FollowMessageDTO;
 import com.personblog.interaction.entity.Follow;
 import com.personblog.interaction.mapper.FollowMapper;
 import com.personblog.interaction.service.FollowService;
@@ -24,13 +23,13 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.*;
 import static com.personblog.common.constant.RedisKeys.*;
 import static com.personblog.common.enums.BizCodeEnum.FOLLOW_ERROR;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.*;
 
 @Service
 @RequiredArgsConstructor
-public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> implements FollowService, FollowApi, FollowerApi {
+public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> implements FollowService, FollowApi {
     private final RabbitTemplate rabbitTemplate;
     private final MultiLevelCacheUtil cacheUtil;
     private final StringRedisTemplate redisTemplate;
@@ -76,7 +75,7 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
         boolean isSuccess = dto.getIsFollow() ? unFollow(dto.getFollowingId(), userId) : followed(dto.getFollowingId(), userId);
         if(!isSuccess) throw new BizException(FOLLOW_ERROR);
         
-        FollowMessageDTO messageDTO = FollowMessageDTO.builder()
+        FollowMessage messageDTO = FollowMessage.builder()
                 .followingId(dto.getFollowingId())
                 .isFollow(dto.getIsFollow())
                 .followerId(userId)

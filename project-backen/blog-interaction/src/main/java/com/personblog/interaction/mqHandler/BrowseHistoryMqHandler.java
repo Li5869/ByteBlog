@@ -1,7 +1,7 @@
 package com.personblog.interaction.mqHandler;
 
 import com.personblog.api.articleAPI.ArticleInfoAPI;
-import com.personblog.common.dto.Interaction.BrowseHistoryMessageDTO;
+import com.personblog.common.dto.MqMessage.Interaction.BrowseHistoryMessage;
 import com.personblog.interaction.entity.BrowseHistory;
 import com.personblog.interaction.mapper.BrowseHistoryMapper;
 import com.rabbitmq.client.Channel;
@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.BROWSE_HISTORY_QUEUE;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.BROWSE_HISTORY_QUEUE;
 
 @Slf4j
 @Component
@@ -29,15 +29,15 @@ public class BrowseHistoryMqHandler {
 
     @RabbitListener(queues = BROWSE_HISTORY_QUEUE, containerFactory = "rabbitListenerContainerFactory")
     @Transactional(rollbackFor = Exception.class)
-    public void handleBrowseHistoryMessage(List<BrowseHistoryMessageDTO> dtoList, Channel channel,
+    public void handleBrowseHistoryMessage(List<BrowseHistoryMessage> dtoList, Channel channel,
                                            @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
             log.info("开始处理浏览历史消息，共 {} 条记录", dtoList.size());
             
-            List<BrowseHistoryMessageDTO> countList = new ArrayList<>();
+            List<BrowseHistoryMessage> countList = new ArrayList<>();
             List<BrowseHistory> historyList = new ArrayList<>();
             
-            for (BrowseHistoryMessageDTO dto : dtoList) {
+            for (BrowseHistoryMessage dto : dtoList) {
                 if (dto.getViews() != null && dto.getViews() > 0) {
                     countList.add(dto);
                 } else if (dto.getUserId() != null && dto.getArticleId() != null && dto.getBrowseTime() != null) {

@@ -2,12 +2,12 @@ package com.personblog.article.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.personblog.article.dto.ColumnArticleDTO;
-import com.personblog.article.dto.ColumnCreateDTO;
-import com.personblog.article.dto.ColumnUpdateDTO;
+import com.personblog.article.dto.column.ColumnArticleDTO;
+import com.personblog.article.dto.column.ColumnCreateDTO;
+import com.personblog.article.dto.column.ColumnQueryDTO;
+import com.personblog.article.dto.column.ColumnUpdateDTO;
 import com.personblog.article.entity.Column;
 import com.personblog.article.vo.*;
-import com.personblog.common.dto.Column.ColumnQueryDTO;
 
 import java.util.List;
 
@@ -63,19 +63,6 @@ public interface IColumnService extends IService<Column> {
      * @return 专栏列表
      */
     List<MyColumnVO> getMyColumns(Long userId);
-    /**
-     * 获取专栏标题
-     * @param columnId 专栏ID
-     * @return 专栏标题
-     */
-    String getColumnTitle(Long columnId);
-
-    /**
-     * 更新专栏文章数量
-     * @param columnId 专栏ID
-     */
-    void updateColumnArticleCount(Long columnId);
-
     /**
      * 添加文章到专栏（业务方法）
      * 包含登录校验、权限校验、文章数量上限校验等

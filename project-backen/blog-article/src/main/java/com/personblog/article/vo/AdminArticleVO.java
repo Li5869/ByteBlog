@@ -2,7 +2,7 @@ package com.personblog.article.vo;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
-import com.personblog.common.vo.TagVO;
+import com.personblog.api.adminAPI.TagVO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

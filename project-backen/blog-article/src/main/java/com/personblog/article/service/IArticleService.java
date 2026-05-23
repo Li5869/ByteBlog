@@ -3,11 +3,11 @@ package com.personblog.article.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.personblog.article.dto.AdminArticleQueryDTO;
-import com.personblog.article.dto.ArticlePublishDTO;
+import com.personblog.article.dto.article.AdminArticleQueryDTO;
+import com.personblog.article.dto.article.ArticlePublishDTO;
+import com.personblog.article.dto.article.ArticleQueryDTO;
 import com.personblog.article.entity.Article;
 import com.personblog.article.vo.*;
-import com.personblog.common.dto.Article.ArticleQueryDTO;
 
 import java.util.List;
 

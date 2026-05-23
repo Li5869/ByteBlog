@@ -151,7 +151,8 @@ public class ChatServiceImpl implements ChatService {
                         .map(tc -> new MessageVO.ToolCallVO(
                                 tc.get("id") != null ? ((Number) tc.get("id")).intValue() : null,
                                 (String) tc.get("name"),
-                                tc.get("args") != null ? JSONUtil.toJsonStr(tc.get("args")) : null
+                                tc.get("args") != null ? JSONUtil.toJsonStr(tc.get("args")) : null,
+                                (String) tc.get("result")
                         ))
                         .toList();
                 builder.toolCalls(toolCalls);

@@ -1,7 +1,7 @@
 package com.personblog.security.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.personblog.common.dto.User.UserLikeMessageDTO;
+import com.personblog.common.dto.MqMessage.user.UserLikeMessageDTO;
 import com.personblog.security.entity.User;
 import org.apache.ibatis.annotations.Mapper;
 

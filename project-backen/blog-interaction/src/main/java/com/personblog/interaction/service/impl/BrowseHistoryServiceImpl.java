@@ -3,7 +3,7 @@ package com.personblog.interaction.service.impl;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.personblog.api.interactionAPI.BrowseHistoryApi;
-import com.personblog.common.dto.Interaction.BrowseHistoryMessageDTO;
+import com.personblog.common.dto.MqMessage.Interaction.BrowseHistoryMessage;
 import com.personblog.interaction.entity.BrowseHistory;
 import com.personblog.interaction.mapper.BrowseHistoryMapper;
 import com.personblog.interaction.service.BrowseHistoryService;
@@ -22,9 +22,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.BROWSE_HISTORY_KEY;
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.INTERACTION_EXCHANGE;
 import static com.personblog.common.constant.RedisKeys.*;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.BROWSE_HISTORY_KEY;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.INTERACTION_EXCHANGE;
 
 @Service
 @Slf4j
@@ -69,14 +69,14 @@ public class BrowseHistoryServiceImpl extends ServiceImpl<BrowseHistoryMapper, B
             return;
         }
         
-        List<BrowseHistoryMessageDTO> countMessageList = new ArrayList<>();
+        List<BrowseHistoryMessage> countMessageList = new ArrayList<>();
         for (Map.Entry<Object, Object> entry : browseCountMap.entrySet()) {
             String articleIdStr = (String) entry.getKey();
             String countStr = (String) entry.getValue();
             if (articleIdStr != null && countStr != null) {
                 Long articleId = Long.valueOf(articleIdStr);
                 Long views = Long.valueOf(countStr);
-                countMessageList.add(BrowseHistoryMessageDTO.builder()
+                countMessageList.add(BrowseHistoryMessage.builder()
                         .articleId(articleId)
                         .views(views)
                         .build());
@@ -91,7 +91,7 @@ public class BrowseHistoryServiceImpl extends ServiceImpl<BrowseHistoryMapper, B
         
         Set<String> activeUsers = redisTemplate.opsForSet().members(BROWSE_ACTIVE_USERS);
         if (activeUsers != null && !activeUsers.isEmpty()) {
-            List<BrowseHistoryMessageDTO> historyMessageList = new ArrayList<>();
+            List<BrowseHistoryMessage> historyMessageList = new ArrayList<>();
             List<String> keysToDelete = new ArrayList<>();
             
             for (String userIdStr : activeUsers) {
@@ -117,7 +117,7 @@ public class BrowseHistoryServiceImpl extends ServiceImpl<BrowseHistoryMapper, B
                             LocalDateTime browseTime = LocalDateTime.ofEpochSecond(
                                     timestamp / 1000, 0, ZoneOffset.ofHours(8));
                             
-                            historyMessageList.add(BrowseHistoryMessageDTO.builder()
+                            historyMessageList.add(BrowseHistoryMessage.builder()
                                     .userId(userId)
                                     .articleId(articleId)
                                     .browseTime(browseTime)

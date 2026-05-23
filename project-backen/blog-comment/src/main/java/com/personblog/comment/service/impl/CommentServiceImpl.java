@@ -16,8 +16,8 @@ import com.personblog.comment.entity.Comment;
 import com.personblog.comment.mapper.CommentMapper;
 import com.personblog.comment.service.ICommentService;
 import com.personblog.comment.vo.*;
-import com.personblog.common.dto.Comment.CommentNotificationMessage;
-import com.personblog.common.dto.Interaction.LikeMessageDTO;
+import com.personblog.common.dto.MqMessage.Comment.CommentNotificationMessage;
+import com.personblog.common.dto.MqMessage.Interaction.LikeMessage;
 import com.personblog.common.dto.User.UserDTO;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
@@ -34,8 +34,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.personblog.common.config.mqConfig.CommentMqConfig.COMMENT_EXCHANGE;
-import static com.personblog.common.config.mqConfig.CommentMqConfig.COMMENT_NOTIFICATION_KEY;
+import static com.personblog.comment.config.mqConfig.CommentMqConfig.COMMENT_EXCHANGE;
+import static com.personblog.comment.config.mqConfig.CommentMqConfig.COMMENT_NOTIFICATION_KEY;
 import static com.personblog.common.constant.RedisKeys.COMMENT_PAGE;
 import static com.personblog.common.constant.StatusConstant.APPROVED;
 import static com.personblog.common.constant.StatusConstant.PENDING;
@@ -219,9 +219,9 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateLikeCount(List<LikeMessageDTO> dtoList) {
+    public void updateLikeCount(List<LikeMessage> dtoList) {
         List<Comment> list = new ArrayList<>(dtoList.size());
-        for (LikeMessageDTO likeMessageDTO : dtoList) {
+        for (LikeMessage likeMessageDTO : dtoList) {
             Comment comment = new Comment();
             comment.setLikes(likeMessageDTO.getLikeTimes());
             comment.setId(likeMessageDTO.getId());
@@ -229,13 +229,6 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         }
         updateBatchById(list);
     }
-
-    @Override
-    public Long getCommentAuthorId(Long commentId) {
-        Comment comment = getById(commentId);
-        return comment != null ? comment.getAuthorId() : null;
-    }
-
     @Override
     public void updateReviewStatue(Long commentId, String statue) {
         boolean update = lambdaUpdate()
@@ -284,7 +277,6 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
                 .articleId(dto.getArticleId())
                 .parentId(dto.getParentId())
                 .content(dto.getContent().trim())
-                .bizId(comment.getId())
                 .commentId(comment.getId())
                 .userId(userId)
                 .articleTitle(dto.getArticleTitle())

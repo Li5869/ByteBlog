@@ -1,10 +1,9 @@
 package com.personblog.article.mqHandler;
 
+import com.personblog.api.adminAPI.TagApi;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.article.service.ICategoryService;
-import com.personblog.common.dto.Article.ArticleStatsMessage;
-import com.personblog.common.entity.Tag;
-import com.personblog.common.service.ITagService;
+import com.personblog.common.dto.MqMessage.article.ArticleStatsMessage;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,12 +15,9 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
-import static com.personblog.common.config.mqConfig.ArticleStatsMqConfig.ARTICLE_STATS_QUEUE;
+import static com.personblog.article.config.mqConfig.ArticleStatsMqConfig.ARTICLE_STATS_QUEUE;
 
 /**
  * 文章统计更新 MQ 消费者
@@ -43,9 +39,10 @@ import static com.personblog.common.config.mqConfig.ArticleStatsMqConfig.ARTICLE
 @RabbitListener(queues = ARTICLE_STATS_QUEUE, containerFactory = "rabbitListenerContainerFactory")
 public class ArticleStatsMqHandler {
 
-    private final ITagService tagService;
+    private final TagApi tagApi;
     private final ICategoryService categoryService;
     private final UseApi useApi;
+
     @RabbitHandler
     public void handleStatsUpdate(ArticleStatsMessage message, Message amqpMessage, Channel channel,
                                    @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {
@@ -66,11 +63,11 @@ public class ArticleStatsMqHandler {
             // 2. 更新标签使用次数
             if (oldTagIds != null) {
                 // 更新场景：通过差集计算新增和移除的标签
-                Set<Long> toSub = new HashSet<>(oldTagIds);
+                Set<Long> toSub = new java.util.HashSet<>(oldTagIds);
                 toSub.removeAll(tagIds);
                 updateTagUseCount(toSub, -1);
 
-                Set<Long> toAdd = new HashSet<>(tagIds);
+                Set<Long> toAdd = new java.util.HashSet<>(tagIds);
                 toAdd.removeAll(oldTagIds);
                 updateTagUseCount(toAdd, 1);
             } else {
@@ -84,7 +81,7 @@ public class ArticleStatsMqHandler {
             }
 
             // 4. 清理标签缓存
-            tagService.invalidateTagCache();
+            tagApi.invalidateTagCache();
 
             // 手动 ACK
             channel.basicAck(deliveryTag, false);
@@ -101,22 +98,12 @@ public class ArticleStatsMqHandler {
     }
 
     /**
-     * 更新标签使用次数（与 ArticleServiceImpl.updateTagUseCount 逻辑一致）
-     * <p>
-     * 先查询当前使用次数，再累加 delta，下限保护不低于 0。
+     * 更新标签使用次数
      */
     private void updateTagUseCount(Set<Long> tagIds, int delta) {
         if (tagIds == null || tagIds.isEmpty()) {
             return;
         }
-        List<Tag> tags = tagService.listByIds(tagIds);
-        List<Tag> updateList = tags.stream().map(tag -> {
-            Tag updateTag = new Tag();
-            updateTag.setId(tag.getId());
-            long current = tag.getUseCount() == null ? 0L : tag.getUseCount();
-            updateTag.setUseCount(Math.max(0L, current + delta));
-            return updateTag;
-        }).collect(Collectors.toList());
-        tagService.updateBatchById(updateList);
+        tagApi.batchUpdateTagUseCount(tagIds, delta);
     }
 }

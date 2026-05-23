@@ -9,7 +9,7 @@ import com.personblog.ai.vo.ContentModerationVO;
 import com.personblog.api.articleAPI.ArticleInfoAPI;
 import com.personblog.api.interactionAPI.CommentApi;
 import com.personblog.api.interactionAPI.SystemNotificationApi;
-import com.personblog.common.dto.Notification.sse.NotificationMessageDTO;
+import com.personblog.common.dto.MqMessage.notifaction.NotificationMessage;
 import com.personblog.push.sse.SseEmitterManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -122,7 +122,7 @@ public class ContentModerationService{
         try {
             String actionType = APPROVED.equals(reviewStatus) ? Moderation.ACTION_APPROVED : Moderation.ACTION_REJECTED;
 
-            NotificationMessageDTO notificationDTO = NotificationMessageDTO.builder()
+            NotificationMessage notificationDTO = NotificationMessage.builder()
                     .userId(dto.getAuthorId())
                     .actionType(actionType)
                     .targetType(dto.getContentType())

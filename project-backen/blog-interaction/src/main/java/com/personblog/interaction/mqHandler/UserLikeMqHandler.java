@@ -1,7 +1,7 @@
 package com.personblog.interaction.mqHandler;
 
 import com.personblog.api.usrAPI.UseApi;
-import com.personblog.common.dto.User.UserLikeMessageDTO;
+import com.personblog.common.dto.MqMessage.user.UserLikeMessageDTO;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.List;
 
-import static com.personblog.common.config.mqConfig.InteractionMqConfig.USER_LIKE_QUEUE;
+import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.USER_LIKE_QUEUE;
 
 @Slf4j
 @Component
