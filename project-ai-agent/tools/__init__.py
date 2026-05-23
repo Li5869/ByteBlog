@@ -22,7 +22,6 @@ from tools.author_tool import (
 )
 from tools.blog_tool import (
     get_category_list,
-    get_hot_tag_list,
 )
 from tools.user_tool import get_current_user_id, get_current_user_info, set_current_user_id
 from tools.skill_tool import get_skill_details, list_available_skills
@@ -45,7 +44,6 @@ _base_tools = [
     get_hot_authors,
     get_author_by_id,
     get_category_list,
-    get_hot_tag_list,
     get_the_time,
     get_current_user_id,
     get_current_user_info,

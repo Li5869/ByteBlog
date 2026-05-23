@@ -97,10 +97,20 @@ class PgVectorStore:
     async def asimilarity_search(
             self,
             query: str,
-            k: int = 5
+            k: int = 5,
+            filter: Optional[dict] = None
     ) -> List[Document]:
-        """异步：相似度搜索"""
+        """
+        异步：相似度搜索
+
+        Args:
+            query: 搜索查询
+            k: 返回结果数量
+            filter: metadata 过滤条件，如 {"category": "project"}
+        """
         store = self._ensure_initialized()
+        if filter:
+            return await store.asimilarity_search(query, k=k, filter=filter)
         return await store.asimilarity_search(query, k=k)
 
 

@@ -23,10 +23,10 @@ async def structured_generate(
     max_retries: int = 3,
 ) -> T:
     """
-    兼容 DeepSeek 的结构化生成方法
+    结构化生成方法
 
-    使用 DeepSeek 官方推荐的 json_object 模式（response_format），
-    替代 OpenAI 专有的 with_structured_output（底层依赖 function/tool calling，DeepSeek 不支持）。
+    使用 json_object 模式（response_format），强制 LLM 输出合法 JSON。
+    相比 with_structured_output（底层依赖 function calling），此方式更简单直接。
 
     Args:
         prompt: 提示词（需在 prompt 中说明输出格式，json_object 模式会强制 LLM 输出合法 JSON）

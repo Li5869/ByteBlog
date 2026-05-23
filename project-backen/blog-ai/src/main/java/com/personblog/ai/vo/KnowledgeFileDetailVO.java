@@ -48,8 +48,11 @@ public class KnowledgeFileDetailVO {
     @Schema(description = "关联的 Parent Chunk ID 列表")
     private List<String> parentIds;
 
-    @Schema(description = "来源：file_upload / article_sync")
+    @Schema(description = "来源：file_upload")
     private String source;
+
+    @Schema(description = "知识库分类：project / interview / general")
+    private String category;
 
     @Schema(description = "上传者用户ID")
     @JsonSerialize(using = ToStringSerializer.class)

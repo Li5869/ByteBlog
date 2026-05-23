@@ -27,7 +27,6 @@ description: "综合搜索工具，自动协调站内文章搜索和外部技术
 | `search_articles_by_keyword(keyword, limit=5)` | 单独使用站内 ES 搜索，适合纯站内场景 | `tools/article_tool.py` |
 | `search_external_tech_blogs(query)` | 单独使用 Tavily 外部搜索，限定国内技术社区域名 | `tools/article_tool.py` |
 | `get_category_list()` | 获取分类列表，辅助限定搜索范围 | `tools/blog_tool.py` |
-| `get_hot_tag_list(limit=20)` | 获取热门标签，辅助扩展搜索关键词 | `tools/blog_tool.py` |
 
 ## 工作流程
 

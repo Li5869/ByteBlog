@@ -21,6 +21,9 @@ public class KnowledgeFileQueryDTO {
     @Schema(description = "搜索关键字（按文件名模糊搜索）")
     private String keyword;
 
-    @Schema(description = "按来源筛选：file_upload / article_sync")
+    @Schema(description = "按来源筛选：file_upload")
     private String source;
+
+    @Schema(description = "按知识库分类筛选：project / interview / general")
+    private String category;
 }

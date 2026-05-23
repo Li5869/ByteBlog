@@ -56,6 +56,10 @@ public class KnowledgeFileServiceImpl extends ServiceImpl<KnowledgeFileMapper, K
             wrapper.eq(KnowledgeFile::getSource, dto.getSource());
         }
 
+        if (StringUtils.isNotBlank(dto.getCategory())) {
+            wrapper.eq(KnowledgeFile::getCategory, dto.getCategory());
+        }
+
         wrapper.orderByDesc(KnowledgeFile::getCreatedAt);
 
         return knowledgeFileMapper.selectPage(page, wrapper);
@@ -174,6 +178,7 @@ public class KnowledgeFileServiceImpl extends ServiceImpl<KnowledgeFileMapper, K
                 .chunkCount(file.getChunkCount())
                 .parentIds(parseParentIds(file.getParentIds()))
                 .source(file.getSource())
+                .category(file.getCategory())
                 .uploaderId(file.getUploaderId())
                 .createdAt(file.getCreatedAt())
                 .updatedAt(file.getUpdatedAt())

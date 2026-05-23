@@ -1,11 +1,11 @@
 """
 Redis 记忆服务
-文件：project-ai-agent/services/memory_service.py
+文件：project-ai-agent/services/core/memory_service.py
 """
 
 import redis.asyncio as redis
 import json
-from typing import List, Optional, Any
+from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
 from loguru import logger
@@ -63,15 +63,6 @@ class RedisMemoryService:
                 decode_responses=True
             )
         return self._redis_client
-
-    @property
-    def redis_client(self) -> redis.Redis:
-        """兼容旧代码的属性访问"""
-        import asyncio
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            raise RuntimeError("请使用 await 获取异步客户端")
-        return asyncio.get_event_loop().run_until_complete(self._get_client())
 
     def _get_key(self, conversation_id: str) -> str:
         """生成 Redis key"""
@@ -162,20 +153,18 @@ class RedisMemoryService:
             if msg.role == "user":
                 context_parts.append(f"用户: {msg.content}")
             elif msg.role == "assistant":
-                # 不拼接思考内容到上下文（符合 DeepSeek 官方建议）
                 if include_thinking and msg.thinking:
                     context_parts.append(f"AI思考: {msg.thinking}")
                 
                 if msg.tool_calls:
-                    tool_parts = []
                     for tc in msg.tool_calls:
-                        tool_str = f"{tc.name}({tc.args})"
+                        args_str = json.dumps(tc.args, ensure_ascii=False)
+                        context_parts.append(f"AI: [调用工具: {tc.name}({args_str})]")
                         if tc.result:
-                            # 截取结果前200字符，避免上下文过长
-                            result_preview = tc.result[:200] + "..." if len(tc.result) > 200 else tc.result
-                            tool_str += f" => {result_preview}"
-                        tool_parts.append(tool_str)
-                    context_parts.append(f"AI: [工具调用: {', '.join(tool_parts)}] {msg.content or ''}")
+                            context_parts.append(f"工具结果: {tc.result}")
+                    
+                    if msg.content:
+                        context_parts.append(f"AI: {msg.content}")
                 else:
                     context_parts.append(f"AI: {msg.content}")
 
@@ -186,23 +175,6 @@ class RedisMemoryService:
         client = await self._get_client()
         key = self._get_key(conversation_id)
         await client.delete(key)
-
-    async def get_conversation_summary(
-        self,
-        conversation_id: str
-    ) -> dict:
-        """获取会话摘要信息"""
-        client = await self._get_client()
-        key = self._get_key(conversation_id)
-
-        count = await client.llen(key)
-        ttl = await client.ttl(key)
-
-        return {
-            "conversation_id": conversation_id,
-            "message_count": count,
-            "ttl_seconds": ttl
-        }
 
     async def close(self):
         """关闭 Redis 连接"""

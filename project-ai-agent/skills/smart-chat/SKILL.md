@@ -31,7 +31,6 @@ description: "智能对话助手，支持多轮对话和工具调用。当用户
 | `get_hot_authors(limit=10)` | 热门博主 | `tools/author_tool.py` |
 | `get_author_by_id(author_id)` | 博主详情 | `tools/author_tool.py` |
 | `get_category_list()` | 分类列表 | `tools/blog_tool.py` |
-| `get_hot_tag_list(limit=20)` | 热门标签 | `tools/blog_tool.py` |
 | `search_external_tech_blogs(query)` | 外部搜索 | `tools/article_tool.py` |
 | `get_the_time()` | 获取当前时间 | `tools/common_tool.py` |
 | `get_current_user_id()` | 当前用户 ID | `tools/user_tool.py` |
@@ -79,7 +78,7 @@ description: "智能对话助手，支持多轮对话和工具调用。当用户
 | 搜索博主 | `search_authors_by_keyword` |
 | 获取时间 | `get_the_time` |
 | 综合查询 | `smart_search_references` |
-| 平台功能查询 | `get_category_list` + `get_hot_tag_list` |
+| 平台功能查询 | `get_category_list` |
 
 ## 使用示例
 
@@ -87,13 +86,11 @@ description: "智能对话助手，支持多轮对话和工具调用。当用户
 
 ```
 用户：你好，请问这个博客平台主要关注哪些技术领域？
-AI：你好！让我查一下博客的分类和标签情况...
+AI：你好！让我查一下博客的分类情况...
 [调用 get_category_list()]
-[调用 get_hot_tag_list(limit=20)]
 根据查询结果，本博客平台主要关注以下技术领域：
 
 📂 **分类**：后端开发、前端开发、AI、数据库、运维
-🏷️ **热门标签**：Spring Boot、Vue 3、Python、Docker、LangChain
 
 你可以根据这些分类浏览感兴趣的内容！
 ```

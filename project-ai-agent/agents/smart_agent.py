@@ -113,10 +113,11 @@ class SmartAgent:
         messages = state["messages"]
 
         full_response = None
-        buffer = ""
         marker_found = False
-        thinking_content = ""
         answer_content = ""
+        thinking_content = ""
+        # 缓冲区：标记前所有内容暂存于此，不发射；找到标记后切换为流式模式
+        _detect_buffer = ""
 
         async for chunk in llm_with_tools.astream(messages):
             full_response = chunk if full_response is None else full_response + chunk
@@ -124,49 +125,65 @@ class SmartAgent:
                 continue
 
             if marker_found:
+                # 标记已找到，后续内容直接作为 token 流式输出
                 answer_content += chunk.content
                 await self._emit(StreamEvent(event_type="token", content=chunk.content))
             else:
-                buffer += chunk.content
-                idx = buffer.find(ANSWER_MARKER)
+                # 标记未找到时，所有内容先缓存不发射，避免思考内容泄露到回答中
+                _detect_buffer += chunk.content
+                idx = _detect_buffer.find(ANSWER_MARKER)
                 if idx >= 0:
+                    # 检测到 [ANSWER] 标记：缓冲区一次性处理
                     marker_found = True
-                    thinking_content = buffer[:idx]
-                    answer_content = buffer[idx + len(ANSWER_MARKER):]
-                    buffer = ""
+                    thinking_content = _detect_buffer[:idx]
+                    answer_content = _detect_buffer[idx + len(ANSWER_MARKER):]
+                    _detect_buffer = ""
+                    # 思考内容一次性发射（非流式）
                     if thinking_content:
                         await self._emit(StreamEvent(event_type="thinking", content=thinking_content))
+                    # 回答内容开始流式输出
                     if answer_content:
                         await self._emit(StreamEvent(event_type="token", content=answer_content))
 
         tool_calls = full_response.tool_calls if full_response and hasattr(full_response, "tool_calls") else []
 
         if tool_calls:
-            if not marker_found:
-                thinking_content = buffer
-                if thinking_content:
-                    await self._emit(StreamEvent(event_type="thinking", content=thinking_content))
-            
+            # 无论 marker_found 与否，都需要将 buffer 中残余的思考内容发射出去
+            # 否则用户只能看到工具调用，看不到模型的推理过程
+            if not marker_found and _detect_buffer:
+                await self._emit(StreamEvent(event_type="thinking", content=_detect_buffer))
+
             for tc in tool_calls:
                 await self._emit(StreamEvent(
                     event_type="tool_call", content=f"\n🔧 调用工具: {tc['name']}",
                     tool_name=tc["name"], tool_args=tc["args"],
                 ))
             new_messages = list(state["messages"]) + [
-                AIMessage(content=thinking_content, tool_calls=tool_calls)
+                AIMessage(content=thinking_content or _detect_buffer, tool_calls=tool_calls)
             ]
             return {"messages": new_messages, "iteration": state.get("iteration", 0) + 1}
 
+        actually_streamed = False
         if not marker_found:
-            answer_content = buffer
+            # 流结束时仍未找到标记：缓冲区包含全部内容，统一作为 token 发射
+            # 兜底检测：防止标记恰好在流结束边界处
+            strip_idx = _detect_buffer.find(ANSWER_MARKER)
+            if strip_idx >= 0:
+                thinking_part = _detect_buffer[:strip_idx]
+                answer_content = _detect_buffer[strip_idx + len(ANSWER_MARKER):]
+                if thinking_part:
+                    await self._emit(StreamEvent(event_type="thinking", content=thinking_part))
+            else:
+                answer_content = _detect_buffer
             if answer_content:
                 await self._emit(StreamEvent(event_type="token", content=answer_content))
+            actually_streamed = bool(answer_content.strip())
 
         return {
             "messages": state["messages"],
             "iteration": state.get("iteration", 0) + 1,
             "final_answer": answer_content.strip(),
-            "answer_already_streamed": True,
+            "answer_already_streamed": actually_streamed or marker_found,
         }
 
     async def _execute_tools_node(self, state: AgentState) -> dict:
@@ -219,7 +236,7 @@ class SmartAgent:
 
         if final_answer and already_streamed:
             logger.debug("[Answer] 已在 think 节点流式输出，跳过")
-        elif final_answer:
+        elif final_answer and not already_streamed:
             logger.info("[Answer] 兜底：将内容作为 token 事件发射")
             await self._emit(StreamEvent(event_type="token", content=final_answer))
         else:

@@ -14,6 +14,7 @@ const totalPages = ref(0)
 // 搜索筛选
 const searchQuery = ref('')
 const sourceFilter = ref('all')
+const categoryFilter = ref('all')
 
 // 批量操作
 const selectedIds = ref([])
@@ -30,6 +31,7 @@ const editForm = ref({ fileName: '', description: '' })
 const fileInput = ref(null)
 const selectedUploadFile = ref(null)
 const uploadDescription = ref('')
+const uploadCategory = ref('general')
 const fileDragOver = ref(false)
 const uploadLoading = ref(false)
 const uploadSuccess = ref(false)
@@ -38,8 +40,22 @@ const uploadMessage = ref('')
 // ==================== 来源选项 ====================
 const sourceOptions = [
   { label: '全部来源', value: 'all' },
-  { label: '文件上传', value: 'file_upload' },
-  { label: '文章同步', value: 'article_sync' }
+  { label: '文件上传', value: 'file_upload' }
+]
+
+// ==================== 知识库分类选项 ====================
+const categoryOptions = [
+  { label: '项目知识库', value: 'project', description: '项目实现、系统架构、代码逻辑' },
+  { label: '面试知识库', value: 'interview', description: '技术原理、底层机制、面试题' },
+  { label: '通用知识库', value: 'general', description: '通用技术知识、学习资料' }
+]
+
+// ==================== 分类筛选选项 ====================
+const categoryFilterOptions = [
+  { label: '全部分类', value: 'all' },
+  { label: '项目知识库', value: 'project' },
+  { label: '面试知识库', value: 'interview' },
+  { label: '通用知识库', value: 'general' }
 ]
 
 // ==================== 计算属性 ====================
@@ -60,6 +76,10 @@ const fetchFiles = async () => {
 
     if (sourceFilter.value !== 'all') {
       params.source = sourceFilter.value
+    }
+
+    if (categoryFilter.value !== 'all') {
+      params.category = categoryFilter.value
     }
 
     const res = await knowledgeApi.getList(params)
@@ -90,6 +110,12 @@ const onSearch = () => {
 
 const onSourceChange = (source) => {
   sourceFilter.value = source
+  currentPage.value = 1
+  fetchFiles()
+}
+
+const onCategoryChange = (category) => {
+  categoryFilter.value = category
   currentPage.value = 1
   fetchFiles()
 }
@@ -266,7 +292,7 @@ const uploadFile = async () => {
   uploadSuccess.value = false
 
   try {
-    const result = await knowledgeApi.uploadFile(selectedUploadFile.value, uploadDescription.value)
+    const result = await knowledgeApi.uploadFile(selectedUploadFile.value, uploadDescription.value, uploadCategory.value)
 
     uploadSuccess.value = true
     uploadMessage.value = `文件 "${result.fileName}" 上传成功！共生成 ${result.chunkCount} 个文本块`
@@ -274,6 +300,7 @@ const uploadFile = async () => {
     // 重置上传表单
     selectedUploadFile.value = null
     uploadDescription.value = ''
+    uploadCategory.value = 'general'
     if (fileInput.value) {
       fileInput.value.value = ''
     }
@@ -298,16 +325,33 @@ const formatFileSize = (bytes) => {
 }
 
 const getSourceText = (source) => {
-  const map = { file_upload: '文件上传', article_sync: '文章同步' }
+  const map = { file_upload: '文件上传' }
   return map[source] || source
 }
 
 const getSourceClass = (source) => {
   const map = {
-    file_upload: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
-    article_sync: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400'
+    file_upload: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
   }
   return map[source] || ''
+}
+
+const getCategoryText = (category) => {
+  const map = { 
+    project: '项目', 
+    interview: '面试', 
+    general: '通用' 
+  }
+  return map[category] || category
+}
+
+const getCategoryClass = (category) => {
+  const map = {
+    project: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
+    interview: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400',
+    general: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+  }
+  return map[category] || ''
 }
 
 // ==================== 生命周期 ====================
@@ -428,6 +472,33 @@ onMounted(() => {
               />
             </div>
 
+            <!-- 知识库分类 -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                知识库分类
+              </label>
+              <div class="grid grid-cols-3 gap-3">
+                <button
+                  v-for="option in categoryOptions"
+                  :key="option.value"
+                  @click="uploadCategory = option.value"
+                  :class="[
+                    'px-4 py-3 rounded-lg border-2 text-left transition-all',
+                    uploadCategory === option.value
+                      ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                      : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                  ]"
+                >
+                  <p class="text-sm font-medium" :class="uploadCategory === option.value ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'">
+                    {{ option.label }}
+                  </p>
+                  <p class="text-xs mt-0.5" :class="uploadCategory === option.value ? 'text-red-500 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'">
+                    {{ option.description }}
+                  </p>
+                </button>
+              </div>
+            </div>
+
             <!-- 上传按钮 -->
             <div class="flex justify-end">
               <button
@@ -465,6 +536,19 @@ onMounted(() => {
                   class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
                 />
               </div>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+              <button
+                v-for="option in categoryFilterOptions"
+                :key="option.value"
+                @click="onCategoryChange(option.value)"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                :class="categoryFilter === option.value
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+              >
+                {{ option.label }}
+              </button>
             </div>
             <div class="flex gap-2 flex-wrap">
               <button
@@ -517,6 +601,7 @@ onMounted(() => {
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">文件名</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">大小</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">Chunk数</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">分类</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">来源</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">上传时间</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">操作</th>
@@ -553,6 +638,14 @@ onMounted(() => {
                 <td class="px-4 py-4 whitespace-nowrap hidden sm:table-cell">
                   <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
                     {{ file.chunkCount }} 个
+                  </span>
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <span
+                    class="inline-flex px-2 py-1 text-xs font-medium rounded-full"
+                    :class="getCategoryClass(file.category)"
+                  >
+                    {{ getCategoryText(file.category) }}
                   </span>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap">
@@ -807,6 +900,15 @@ onMounted(() => {
                 <div class="flex justify-between py-3 border-b border-gray-100 dark:border-gray-700">
                   <span class="text-sm text-gray-500 dark:text-gray-400">Chunk 数量</span>
                   <span class="text-sm font-medium text-gray-900 dark:text-white">{{ selectedFile.chunkCount }} 个</span>
+                </div>
+                <div class="flex justify-between py-3 border-b border-gray-100 dark:border-gray-700">
+                  <span class="text-sm text-gray-500 dark:text-gray-400">知识库分类</span>
+                  <span
+                    class="inline-flex px-2 py-1 text-xs font-medium rounded-full"
+                    :class="getCategoryClass(selectedFile.category)"
+                  >
+                    {{ getCategoryText(selectedFile.category) }}
+                  </span>
                 </div>
                 <div class="flex justify-between py-3 border-b border-gray-100 dark:border-gray-700">
                   <span class="text-sm text-gray-500 dark:text-gray-400">来源</span>

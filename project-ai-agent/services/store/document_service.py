@@ -76,6 +76,8 @@ class DocumentService:
             for child in child_docs:
                 child.metadata["doc_id"] = parent_doc.metadata["doc_id"]
                 child.metadata["title"] = parent_doc.metadata.get("title", "")
+                if "category" in parent_doc.metadata:
+                    child.metadata["category"] = parent_doc.metadata["category"]
             all_children.extend(child_docs)
 
         # Step 4: Child 入库（向量化）

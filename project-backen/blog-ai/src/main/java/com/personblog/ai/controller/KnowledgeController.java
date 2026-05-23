@@ -40,13 +40,14 @@ public class KnowledgeController {
     @RecordLog(Type = "create", businessType = "knowledge", description = "上传知识库文件")
     public JsonData<KnowledgeFileUploadVO> uploadFile(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "description", required = false) String description) {
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "category", required = false, defaultValue = "general") String category) {
         String filename = file.getOriginalFilename();
         if (filename == null || !filename.endsWith(".md")) {
             return JsonData.buildError("仅支持 .md 格式的 Markdown 文件");
         }
 
-        KnowledgeFileUploadVO result = knowledgeService.uploadFile(file, description);
+        KnowledgeFileUploadVO result = knowledgeService.uploadFile(file, description, category);
         return JsonData.buildSuccess(result);
     }
 
@@ -118,6 +119,7 @@ public class KnowledgeController {
                 .fileSize(file.getFileSize())
                 .chunkCount(file.getChunkCount())
                 .source(file.getSource())
+                .category(file.getCategory())
                 .uploaderId(file.getUploaderId())
                 .createdAt(file.getCreatedAt())
                 .updatedAt(file.getUpdatedAt())

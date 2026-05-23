@@ -25,7 +25,7 @@ def get_skill_details(skill_name: str) -> str:
             - knowledge-qa: 知识库问答
             - smart-chat: 智能对话
             - smart-search: 综合搜索
-    
+            - writing-assistant 文章写作
     Returns:
         该 Skill 的完整 Markdown 内容
     """

@@ -460,13 +460,17 @@ export const knowledgeApi = {
    * 上传文件到知识库
    * @param {File} file - 文件对象
    * @param {string} description - 文件描述（可选）
+   * @param {string} category - 知识库分类：project/interview/general（可选，默认 general）
    */
-  uploadFile: async (file, description) => {
+  uploadFile: async (file, description, category) => {
     const token = getToken()
     const formData = new FormData()
     formData.append('file', file)
     if (description) {
       formData.append('description', description)
+    }
+    if (category) {
+      formData.append('category', category)
     }
 
     const response = await fetch(`${BASE_URL}/ai/knowledge/file`, {

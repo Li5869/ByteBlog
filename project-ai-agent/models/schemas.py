@@ -59,14 +59,3 @@ class UserInfoDTO(BaseModel):
             f"头像: {self.avatar or '未设置'}",
         ]
         return "\n".join(parts)
-
-
-class ArticleSyncRequest(BaseModel):
-    """文章同步请求"""
-    id: int = Field(..., description="文章ID")
-    title: str = Field(..., description="标题")
-    content: str = Field(..., description="内容")
-    summary: Optional[str] = Field(None, description="摘要")
-    author_id: Optional[int] = Field(None, description="作者ID")
-    category_id: Optional[int] = Field(None, description="分类ID")
-    tags: Optional[List[str]] = Field(None, description="标签")

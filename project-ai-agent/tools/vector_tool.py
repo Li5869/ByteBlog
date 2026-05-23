@@ -7,10 +7,12 @@
 2. 从 Child metadata 提取 doc_id
 3. 根据 doc_id 从 PostgreSQL 获取完整的 Parent Document
 4. 返回丰富上下文的内容
+
+支持按 category 隔离知识库
 """
 
 from langchain_core.tools import tool
-from typing import List
+from typing import List, Optional
 from loguru import logger
 
 from vectorstore.pgvector_store import get_vector_store
@@ -19,6 +21,7 @@ from vectorstore.pgvector_store import get_vector_store
 @tool
 async def search_knowledge_base(
     query: str,
+    category: Optional[str] = None,
     top_k: int = 5
 ) -> List[dict]:
     """
@@ -31,15 +34,26 @@ async def search_knowledge_base(
 
     Args:
         query: 搜索查询
+        category: 知识库分类过滤
+            - 'project': 项目知识库（项目实现、系统架构、代码逻辑）
+            - 'interview': 面试知识库（技术原理、底层机制、面试题）
+            - None: 全库搜索
         top_k: 返回结果数量，默认5
 
     Returns:
         相关文档内容列表（完整的 Parent Document 上下文）
     """
     try:
-        # Step 1: 向量检索 Child Chunks
         vector_store = await get_vector_store()
-        child_docs = await vector_store.asimilarity_search(query, k=top_k)
+
+        filter_dict = None
+        if category:
+            filter_dict = {"category": category}
+            logger.info(f"知识库搜索: query='{query}', category='{category}', top_k={top_k}")
+        else:
+            logger.info(f"知识库搜索: query='{query}', top_k={top_k} (全库)")
+
+        child_docs = await vector_store.asimilarity_search(query, k=top_k, filter=filter_dict)
 
         if not child_docs:
             logger.info("知识库搜索无结果")

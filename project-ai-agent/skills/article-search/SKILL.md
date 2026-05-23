@@ -27,7 +27,6 @@ description: "搜索博客文章、获取热门文章、查看文章详情和正
 | `get_article_by_id(article_id)` | 获取文章基本信息（标题、作者、分类、标签、点赞数、收藏数等） | `tools/article_tool.py` |
 | `get_article_content_by_id(article_id)` | 从数据库获取文章正文 Markdown 内容 | `tools/article_tool.py` |
 | `get_category_list()` | 获取文章分类列表，用于按分类筛选 | `tools/blog_tool.py` |
-| `get_hot_tag_list(limit=20)` | 获取热门标签，用于按标签筛选 | `tools/blog_tool.py` |
 
 ## 工作流程
 

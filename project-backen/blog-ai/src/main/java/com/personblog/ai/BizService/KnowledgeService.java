@@ -50,10 +50,11 @@ public class KnowledgeService {
      *
      * @param file        文件
      * @param description 文件描述（可选）
+     * @param category    知识库分类：project/interview/general
      * @return 上传结果
      */
     @Transactional(rollbackFor = Exception.class)
-    public KnowledgeFileUploadVO uploadFile(MultipartFile file, String description) {
+    public KnowledgeFileUploadVO uploadFile(MultipartFile file, String description, String category) {
         String filename = file.getOriginalFilename();
         log.info("上传文件到知识库: {}", filename);
 
@@ -83,6 +84,10 @@ public class KnowledgeService {
                     .filename(Objects.requireNonNull(filename))
                     .contentType(MediaType.parseMediaType(Objects.requireNonNull(file.getContentType())));
 
+            if (category != null && !category.isEmpty()) {
+                builder.part("category", category);
+            }
+
             Map<String, Object> response = pythonAiWebClient.post()
                     .uri(Knowledge.FILE_UPLOAD)
                     .contentType(MediaType.MULTIPART_FORM_DATA)
@@ -106,6 +111,7 @@ public class KnowledgeService {
             knowledgeFile.setChunkCount(chunkCount != null ? chunkCount : 0);
             knowledgeFile.setParentIds(parentIds != null ? toJson(parentIds) : "[]");
             knowledgeFile.setSource("file_upload");
+            knowledgeFile.setCategory(category != null ? category : "general");
             knowledgeFile.setUploaderId(UserContextHolder.getUserId());
             knowledgeFile.setCreatedAt(LocalDateTime.now());
             knowledgeFile.setUpdatedAt(LocalDateTime.now());

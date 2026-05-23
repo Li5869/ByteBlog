@@ -58,9 +58,14 @@ public class KnowledgeFile {
     private String parentIds;
 
     /**
-     * 来源：file_upload / article_sync
+     * 来源：file_upload
      */
     private String source;
+
+    /**
+     * 知识库分类：project(项目知识库) / interview(面试知识库) / general(通用)
+     */
+    private String category;
 
     /**
      * 上传者用户ID

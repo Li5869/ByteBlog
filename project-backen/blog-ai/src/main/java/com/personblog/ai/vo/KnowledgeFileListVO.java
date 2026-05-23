@@ -41,8 +41,11 @@ public class KnowledgeFileListVO {
     @Schema(description = "Parent Chunk 数量")
     private Integer chunkCount;
 
-    @Schema(description = "来源：file_upload / article_sync")
+    @Schema(description = "来源：file_upload")
     private String source;
+
+    @Schema(description = "知识库分类：project / interview / general")
+    private String category;
 
     @Schema(description = "上传者用户ID")
     @JsonSerialize(using = ToStringSerializer.class)
