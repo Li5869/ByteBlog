@@ -22,6 +22,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -30,9 +31,11 @@ import java.util.concurrent.Executor;
 import static com.personblog.ai.config.mqConfig.AiMqConfig.AI_TITLE_KEY;
 import static com.personblog.ai.constants.LLMType.ASSISTANT;
 import static com.personblog.ai.constants.LLMType.USER;
+import static com.personblog.ai.constants.PythonAiApiConstants.Chat.STOP;
 import static com.personblog.ai.constants.PythonAiApiConstants.Chat.STREAM;
 import static com.personblog.ai.constants.PythonAiApiConstants.*;
 import static com.personblog.common.constant.MqRoutingConstants.AI_EXCHANGE;
+import static com.personblog.common.constant.RedisKeys.REDIS_KEY_PREFIX;
 import static com.personblog.common.constant.RedisKeys.REDIS_MEMORY_PREFIX;
 
 @Slf4j
@@ -72,7 +75,7 @@ public class PythonAiChatService {
         executor.execute(() -> saveHumanMessage(message, conversationId));
 
         log.info("调用 Python AI 服务，会话ID: {}", conversationId);
-
+        String stopKey = REDIS_KEY_PREFIX + conversationId;
         StringBuilder answer = new StringBuilder();
         StringBuilder thinking = new StringBuilder();
         String[] toolCallsJsonHolder = {null};
@@ -85,6 +88,7 @@ public class PythonAiChatService {
                 .filter(event -> event.data() != null)
                 .map(this::parseEvent)
                 .filter(Objects::nonNull)
+                .doFirst(()-> redisTemplate.opsForValue().append(stopKey,"0"))
                 // 按事件类型分流收集
                 .doOnNext(event -> {
                     String eventData = (String) event.getData();
@@ -111,14 +115,19 @@ public class PythonAiChatService {
                             }
                         });
                     }
+                    redisTemplate.delete(stopKey);
                 })
+                .takeWhile(s -> redisTemplate.hasKey(stopKey))
                 .doOnNext(event -> {
                     if (SseEvent.DONE.equals(event.getType())) {
                         log.info("Python AI 流式响应完成，会话ID: {}", conversationId);
                         toolCallsJsonHolder[0] = (String) event.getData();
                     }
                 })
-                .doOnError(e -> log.error("调用 Python AI 服务失败: {}", e.getMessage()))
+                .doOnError(e -> {
+                    log.error("调用 Python AI 服务失败: {}", e.getMessage());
+                    redisTemplate.delete(stopKey);
+                })
                 .onErrorResume(e -> Flux.just(ChatEventVO.builder()
                         .type(SseEvent.ERROR)
                         .data(Msg.SERVICE_ERROR + e.getMessage())
@@ -197,6 +206,24 @@ public class PythonAiChatService {
         } catch (Exception e) {
             log.warn("解析SSE事件失败: {} | 原始数据: {}", e.getMessage(), event.data());
             return null;
+        }
+    }
+
+
+    public void stopChat(Long conversationId) {
+        // 删除 Redis 停止标记，触发 Flux.takeWhile 立即停止 SSE 流转发
+        String key = REDIS_KEY_PREFIX + conversationId;
+        redisTemplate.delete(key);
+
+        // 通知 Python 端取消正在执行的 asyncio Task，确保 LLM 调用及时中断
+        try {
+            pythonAiWebClient.post()
+                    .uri(STOP, conversationId.toString())
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block(Duration.ofSeconds(3));
+        } catch (Exception e) {
+            log.warn("通知 Python 停止对话失败 (conversationId={}): {}", conversationId, e.getMessage());
         }
     }
 }

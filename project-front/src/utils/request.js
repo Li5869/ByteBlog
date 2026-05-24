@@ -708,9 +708,9 @@ export const aiApi = {
 
   /**
    * 停止对话（通知后端终止流式输出，保存已生成内容）
-   * @param {string} sessionId - 会话ID（即 conversationId）
+   * @param {string} conversationId - 会话ID
    */
-  stopChat: (sessionId) => post(`/ai/chat/stop?sessionId=${sessionId}`, {}),
+  stopChat: (conversationId) => post(`/ai/chat/stop?conversationId=${conversationId}`, {}),
 
   /**
    * 发送消息（SSE 流式响应）

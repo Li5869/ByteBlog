@@ -4,16 +4,14 @@ import com.personblog.ai.BizService.PythonAiChatService;
 import com.personblog.ai.dto.ChatMessageDTO;
 import com.personblog.ai.vo.ChatEventVO;
 import com.personblog.common.monitor.BusinessMetrics;
+import com.personblog.common.result.JsonData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 
 @Tag(name = "AI聊天", description = "AI智能问答相关接口，包括会话管理和流式对话")
@@ -29,5 +27,12 @@ public class SmartAgentController {
     public Flux<ChatEventVO> agentChatStream(@Valid @RequestBody ChatMessageDTO dto) {
         businessMetrics.recordAiCall();
         return pythonAiChatService.streamChat(dto.getConversationId(), dto.getContent());
+    }
+
+    @Operation(summary = "停止对话",description = "打断对话")
+    @PostMapping("/stop")
+    public JsonData<Void> stopStream(@RequestParam Long conversationId){
+        pythonAiChatService.stopChat(conversationId);
+        return JsonData.buildSuccess();
     }
 }

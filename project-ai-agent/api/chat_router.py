@@ -6,7 +6,7 @@ import asyncio
 import json
 import re
 import uuid
-from typing import List
+from typing import Dict, List
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -18,6 +18,9 @@ from services.core.memory_service import get_memory_service, ToolCall
 from tools import ALL_TOOLS
 
 router = APIRouter()
+
+# 活跃对话任务注册表，用于外部取消（参考 writing_router 的 _writing_tasks）
+_chat_tasks: Dict[str, asyncio.Task] = {}
 
 
 # ==================== API 端点 ====================
@@ -109,6 +112,11 @@ async def stream_message(request: ChatRequest):
         tool_calls_list: List[ToolCall] = []
         saved = False
 
+        # 注册当前任务，供外部 stop 端点取消
+        current_task = asyncio.current_task()
+        if current_task:
+            _chat_tasks[conversation_id] = current_task
+
         async def _save_partial():
             """中断时保存部分响应"""
             nonlocal saved
@@ -180,13 +188,17 @@ async def stream_message(request: ChatRequest):
 
         except asyncio.CancelledError:
             await _save_partial()
-            logger.warning(f"[中断] 客户端断开连接 (conversation: {conversation_id})")
+            logger.warning(f"[中断] 对话被取消 (conversation: {conversation_id})")
             raise
 
         except Exception as e:
             logger.error(f"流式对话失败: {e}")
             await _save_partial()
             yield f"data: {json.dumps({'type': 'error', 'content': str(e)}, ensure_ascii=False)}\n\n"
+
+        finally:
+            # 清理任务注册表
+            _chat_tasks.pop(conversation_id, None)
 
     return StreamingResponse(
         generate(),
@@ -197,3 +209,14 @@ async def stream_message(request: ChatRequest):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.post("/stop/{conversation_id}")
+async def stop_chat(conversation_id: str):
+    """停止正在进行的对话（取消 asyncio Task）"""
+    task = _chat_tasks.get(conversation_id)
+    if task and not task.done():
+        task.cancel()
+        logger.info(f"[停止] 已取消对话任务 (conversation: {conversation_id})")
+        return ApiResponse(msg="对话已停止")
+    return ApiResponse(code=404, msg="没有正在进行的对话")

@@ -10,6 +10,8 @@ public final class PythonAiApiConstants {
     public static final class Chat {
         /** 流式对话接口 */
         public static final String STREAM = "/api/v1/chat/stream";
+        /** 停止对话接口（占位符 {conversationId} 替换为会话ID） */
+        public static final String STOP = "/api/v1/chat/stop/{conversationId}";
 
         private Chat() {}
     }
@@ -61,6 +63,7 @@ public final class PythonAiApiConstants {
         /** ID列表字段 */
         public static final String IDS = "ids";
 
+
         private Fields() {}
     }
 
@@ -72,8 +75,6 @@ public final class PythonAiApiConstants {
         public static final String CHUNK = "chunk";
         /** ReAct 循环中的工具调用 */
         public static final String TOOL_CALL = "tool_call";
-        /** 工具执行结果 */
-        public static final String TOOL_RESULT = "tool_result";
         /** 流式响应完成 */
         public static final String DONE = "done";
         /** 流式响应异常 */

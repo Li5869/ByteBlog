@@ -2,7 +2,7 @@
 import {nextTick, onMounted, ref} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {marked} from 'marked'
-import {NButton, NEmpty, NSpin} from 'naive-ui'
+import {NButton, NEmpty, NPagination, NSpin} from 'naive-ui'
 import {aiApi, isLoggedIn, userApi} from '@/utils/request'
 import {toast} from '@/utils/toast'
 import {modal} from '@/utils/modal'
@@ -51,9 +51,12 @@ const fetchAiAssistantInfo = async () => {
 // 分页配置
 const pagination = ref({
   current: 1,
-  size: 20,
+  size: 10,
   total: 0
 })
+
+// 会话列表滚动容器引用
+const conversationsListRef = ref(null)
 
 // ==================== 工具方法 ====================
 
@@ -139,6 +142,16 @@ const fetchConversations = async () => {
     toast.error('获取会话列表失败')
   } finally {
     conversationsLoading.value = false
+  }
+}
+
+// 分页切换处理
+const handlePageChange = async (page) => {
+  pagination.value.current = page
+  await fetchConversations()
+  // 滚动到列表顶部
+  if (conversationsListRef.value) {
+    conversationsListRef.value.scrollTop = 0
   }
 }
 
@@ -536,7 +549,7 @@ onMounted(async () => {
       </div>
 
       <!-- 会话列表 -->
-      <div v-if="!sidebarCollapsed" class="conversations-list">
+      <div v-if="!sidebarCollapsed" ref="conversationsListRef" class="conversations-list">
         <div v-if="conversationsLoading" class="loading-state">
           <n-spin size="medium" />
         </div>
@@ -549,7 +562,7 @@ onMounted(async () => {
             @click="selectConversation(conversation)"
           >
             <div class="conversation-icon">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg fill="none" stroke="currentColor" viewBox="0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
@@ -568,6 +581,16 @@ onMounted(async () => {
             </button>
           </div>
           <n-empty v-if="conversations.length === 0" description="暂无对话" />
+          <!-- 分页组件 -->
+          <div v-if="pagination.total > pagination.size" class="pagination-wrapper">
+            <n-pagination
+              v-model:page="pagination.current"
+              :page-count="Math.ceil(pagination.total / pagination.size)"
+              :page-slot="5"
+              size="small"
+              @update:page="handlePageChange"
+            />
+          </div>
         </template>
       </div>
 
@@ -974,6 +997,19 @@ onMounted(async () => {
 .delete-btn svg {
   width: 16px;
   height: 16px;
+}
+
+/* ==================== 分页组件 ==================== */
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 8px;
+  margin-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.dark .pagination-wrapper {
+  border-top-color: rgba(255, 255, 255, 0.05);
 }
 
 /* ==================== 折叠按钮 ==================== */
