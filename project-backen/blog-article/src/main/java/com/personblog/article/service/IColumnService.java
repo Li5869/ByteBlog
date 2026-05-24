@@ -7,7 +7,8 @@ import com.personblog.article.dto.column.ColumnCreateDTO;
 import com.personblog.article.dto.column.ColumnQueryDTO;
 import com.personblog.article.dto.column.ColumnUpdateDTO;
 import com.personblog.article.entity.Column;
-import com.personblog.article.vo.*;
+import com.personblog.article.vo.Article.MyArticleVO;
+import com.personblog.article.vo.Column.*;
 
 import java.util.List;
 

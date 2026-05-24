@@ -1,4 +1,4 @@
-package com.personblog.article.vo;
+package com.personblog.article.vo.Admin;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * 管理端分类VO
+ * 管理端最近文章VO
  *
  * @author LSH
  */
@@ -19,21 +19,21 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "管理端分类详情")
-public class AdminCategoryVO {
+@Schema(description = "管理端最近文章")
+public class AdminRecentArticleVO {
 
-    @Schema(description = "分类ID")
+    @Schema(description = "文章ID")
     @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
-    @Schema(description = "分类名称")
-    private String name;
+    @Schema(description = "文章标题")
+    private String title;
 
-    @Schema(description = "排序值（数字越小越靠前）")
-    private Integer sort;
+    @Schema(description = "状态：published/draft")
+    private String status;
 
-    @Schema(description = "该分类下的文章数")
-    private Long articleCount;
+    @Schema(description = "浏览量")
+    private Long views;
 
     @Schema(description = "创建时间")
     private LocalDateTime createdAt;

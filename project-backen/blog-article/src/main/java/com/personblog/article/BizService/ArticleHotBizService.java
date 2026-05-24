@@ -6,7 +6,7 @@ import com.personblog.api.articleAPI.HotArticleAPI;
 import com.personblog.article.entity.Article;
 import com.personblog.article.mapper.ArticleMapper;
 import com.personblog.article.service.IArticleService;
-import com.personblog.article.vo.HotArticleVO;
+import com.personblog.article.vo.Article.HotArticleVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;

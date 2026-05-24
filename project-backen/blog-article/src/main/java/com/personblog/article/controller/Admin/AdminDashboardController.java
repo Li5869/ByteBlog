@@ -1,9 +1,9 @@
 package com.personblog.article.controller.Admin;
 
 import com.personblog.article.BizService.ArticleAdminBizService;
-import com.personblog.article.vo.AdminDashboardVO;
-import com.personblog.article.vo.AdminRecentArticleVO;
-import com.personblog.article.vo.AdminTrendsVO;
+import com.personblog.article.vo.Admin.AdminDashboardVO;
+import com.personblog.article.vo.Admin.AdminRecentArticleVO;
+import com.personblog.article.vo.Admin.AdminTrendsVO;
 import com.personblog.common.result.JsonData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

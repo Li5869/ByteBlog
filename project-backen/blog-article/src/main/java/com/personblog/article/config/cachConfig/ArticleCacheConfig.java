@@ -3,9 +3,9 @@ package com.personblog.article.config.cachConfig;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.personblog.article.vo.ArticleListVO;
-import com.personblog.article.vo.BannerVO;
-import com.personblog.article.vo.HotArticleVO;
+import com.personblog.article.vo.Article.ArticleListVO;
+import com.personblog.article.vo.Article.BannerVO;
+import com.personblog.article.vo.Article.HotArticleVO;
 import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Configuration;
 

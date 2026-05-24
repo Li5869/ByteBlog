@@ -1,4 +1,4 @@
-package com.personblog.article.vo;
+package com.personblog.article.vo.Admin;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;

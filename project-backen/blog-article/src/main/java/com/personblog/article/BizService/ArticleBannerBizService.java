@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.personblog.article.entity.Article;
 import com.personblog.article.service.IArticleService;
-import com.personblog.article.vo.BannerVO;
+import com.personblog.article.vo.Article.BannerVO;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

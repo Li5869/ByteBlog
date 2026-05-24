@@ -1,4 +1,4 @@
-package com.personblog.article.vo;
+package com.personblog.article.vo.Article;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;

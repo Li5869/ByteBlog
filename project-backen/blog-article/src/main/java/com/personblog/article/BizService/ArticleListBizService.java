@@ -15,7 +15,7 @@ import com.personblog.article.mapper.ArticleMapper;
 import com.personblog.article.service.IArticleService;
 import com.personblog.article.service.IArticleTagService;
 import com.personblog.article.service.ICategoryService;
-import com.personblog.article.vo.ArticleListVO;
+import com.personblog.article.vo.Article.ArticleListVO;
 import com.personblog.common.dto.User.UserDTO;
 import com.personblog.common.utils.UserContextHolder;
 import lombok.RequiredArgsConstructor;

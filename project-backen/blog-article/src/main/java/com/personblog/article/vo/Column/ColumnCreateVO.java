@@ -1,4 +1,4 @@
-package com.personblog.article.vo;
+package com.personblog.article.vo.Column;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;

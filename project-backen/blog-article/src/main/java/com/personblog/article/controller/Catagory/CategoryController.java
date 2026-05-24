@@ -1,7 +1,7 @@
 package com.personblog.article.controller.Catagory;
 
 import com.personblog.article.service.ICategoryService;
-import com.personblog.article.vo.CategoryVO;
+import com.personblog.article.vo.Category.CategoryVO;
 import com.personblog.common.result.JsonData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

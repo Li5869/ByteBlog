@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.personblog.admin.aspect.RecordLog;
 import com.personblog.article.BizService.ArticleAdminBizService;
 import com.personblog.article.dto.article.AdminArticleQueryDTO;
-import com.personblog.article.vo.AdminArticleVO;
+import com.personblog.article.vo.Admin.AdminArticleVO;
 import com.personblog.common.result.JsonData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

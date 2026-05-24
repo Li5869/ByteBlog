@@ -2,7 +2,7 @@ package com.personblog.article.controller.pythonCall;
 
 import com.personblog.article.BizService.ArticlePublishBizService;
 import com.personblog.article.dto.article.ArticlePublishDTO;
-import com.personblog.article.vo.ArticlePublishVO;
+import com.personblog.article.vo.Article.ArticlePublishVO;
 import com.personblog.common.result.JsonData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

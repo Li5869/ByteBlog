@@ -3,7 +3,7 @@
 <mapper namespace="com.personblog.article.mapper.ColumnMapper">
 
     <!-- 分页查询专栏列表 -->
-    <select id="selectColumnPage" resultType="com.personblog.article.vo.ColumnListVO">
+    <select id="selectColumnPage" resultType="com.personblog.article.vo.Column.ColumnListVO">
         SELECT
             c.id,
             c.title,
@@ -54,7 +54,7 @@
     </select>
 
     <!-- 查询专栏文章列表 -->
-    <select id="selectColumnArticles" resultType="com.personblog.article.vo.ColumnDetailVO$ColumnArticleVO">
+    <select id="selectColumnArticles" resultType="com.personblog.article.vo.Column.ColumnDetailVO$ColumnArticleVO">
         SELECT
             a.id,
             a.title,
@@ -73,7 +73,7 @@
     </select>
 
     <!-- 查询可添加到专栏的文章 -->
-    <select id="selectAvailableArticles" resultType="com.personblog.article.vo.MyArticleVO">
+    <select id="selectAvailableArticles" resultType="com.personblog.article.vo.Article.MyArticleVO">
         SELECT
             a.id,
             a.title,
@@ -98,7 +98,7 @@
     </select>
 
     <!-- 查询用户订阅的专栏列表 -->
-    <select id="selectSubscriptions" resultType="com.personblog.article.vo.SubscriptionVO">
+    <select id="selectSubscriptions" resultType="com.personblog.article.vo.Column.SubscriptionVO">
         SELECT
             c.id AS columnId,
             c.title AS columnTitle,
@@ -116,7 +116,7 @@
     </select>
 
     <!-- 查询专栏的订阅用户列表 -->
-    <select id="selectSubscribers" resultType="com.personblog.article.vo.SubscriberVO">
+    <select id="selectSubscribers" resultType="com.personblog.article.vo.Column.SubscriberVO">
         SELECT
             u.id AS userId,
             u.nickname,
@@ -130,7 +130,7 @@
     </select>
 
     <!-- 查询热门专栏列表 -->
-    <select id="selectHotColumns" resultType="com.personblog.article.vo.ColumnListVO">
+    <select id="selectHotColumns" resultType="com.personblog.article.vo.Column.ColumnListVO">
         SELECT
             c.id,
             c.title,

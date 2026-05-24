@@ -2,8 +2,8 @@ package com.personblog.article.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.personblog.article.entity.Category;
-import com.personblog.article.vo.AdminCategoryVO;
-import com.personblog.article.vo.CategoryVO;
+import com.personblog.article.vo.Admin.AdminCategoryVO;
+import com.personblog.article.vo.Category.CategoryVO;
 
 import java.util.List;
 

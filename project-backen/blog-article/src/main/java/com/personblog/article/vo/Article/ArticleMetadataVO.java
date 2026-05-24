@@ -1,4 +1,4 @@
-package com.personblog.article.vo;
+package com.personblog.article.vo.Article;
 
 import lombok.Data;
 
