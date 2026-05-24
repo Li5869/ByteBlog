@@ -31,6 +31,7 @@ public class ArticleStatsBizService implements ArticleMqAPI {
     private final RabbitTemplate rabbitTemplate;
     private final IArticleService articleService;
     private final MultiLevelCacheUtil cacheUtil;
+    private final CommonArticleService commonArticleService;
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateLikeCount(List<LikeMessage> dtoList) {
@@ -71,8 +72,7 @@ public class ArticleStatsBizService implements ArticleMqAPI {
             rabbitTemplate.convertAndSend(INTERACTION_EXCHANGE, USER_LIKE_KEY, userLikeMessages);
         }
 
-        // 清理文章详情缓存
-        evictArticleDetailCaches(articleIds);
+        commonArticleService.evictArticleDetailCaches(articleIds);
     }
 
     @Override
@@ -115,8 +115,7 @@ public class ArticleStatsBizService implements ArticleMqAPI {
                 .collect(Collectors.toList());
         articleService.updateBatchById(articles);
 
-        // 清理文章详情缓存
-        evictArticleDetailCaches(articleIds);
+        commonArticleService.evictArticleDetailCaches(articleIds);
     }
 
     @Override
@@ -126,14 +125,5 @@ public class ArticleStatsBizService implements ArticleMqAPI {
                 .eq(Article::getId,articleId)
                 .setSql("comments = comments + {0}", dealt)
                 .update();
-    }
-    /**
-     * 批量清除文章详情的多级缓存
-     * @param articleIds 文章ID列表
-     */
-    private void evictArticleDetailCaches(List<Long> articleIds) {
-        for (Long articleId : articleIds) {
-            cacheUtil.evict(ARTICLE_DETAIL + articleId);
-        }
     }
 }

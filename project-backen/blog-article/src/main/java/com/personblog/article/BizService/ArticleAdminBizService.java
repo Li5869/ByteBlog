@@ -20,7 +20,6 @@ import com.personblog.article.vo.Admin.AdminRecentArticleVO;
 import com.personblog.article.vo.Admin.AdminTrendsVO;
 import com.personblog.common.dto.MqMessage.article.ArticleStatsMessage;
 import com.personblog.common.dto.User.UserDTO;
-import com.personblog.common.exception.BizException;
 import com.personblog.common.utils.MultiLevelCacheUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +37,7 @@ import static com.personblog.article.config.mqConfig.ArticleStatsMqConfig.ARTICL
 import static com.personblog.article.config.mqConfig.ArticleStatsMqConfig.ARTICLE_STATS_KEY;
 import static com.personblog.common.constant.RedisKeys.ARTICLE_DETAIL;
 import static com.personblog.common.constant.StatusConstant.APPROVED;
-import static com.personblog.common.enums.BizCodeEnum.NOT_ARTICLE;
+import static com.personblog.common.constant.StatusConstant.REJECT;
 import static com.personblog.search.config.mqConfig.SearchMqConfig.OPERATION_DELETE;
 
 @Service
@@ -133,8 +132,9 @@ public class ArticleAdminBizService {
                 .collect(Collectors.toList());
     }
     public Page<AdminArticleVO> getAdminArticlePage(AdminArticleQueryDTO dto) {
-        int current = (dto.getCurrent() == null || dto.getCurrent() <= 0) ? 1 : dto.getCurrent();
-        int size = (dto.getSize() == null || dto.getSize() <= 0) ? 10 : Math.min(dto.getSize(), 50);
+        int[] pageParams = commonArticleService.normalizePageParams(dto.getCurrent(), dto.getSize(), 10, 50);
+        int current = pageParams[0];
+        int size = pageParams[1];
 
         LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Article::getIsDeleted, false);
@@ -264,10 +264,7 @@ public class ArticleAdminBizService {
         return resultPage;
     }
     public AdminArticleVO getAdminArticleDetail(Long id) {
-        Article article = articleService.getById(id);
-        if (article == null || Boolean.TRUE.equals(article.getIsDeleted())) {
-            throw new BizException(NOT_ARTICLE);
-        }
+        Article article = commonArticleService.getArticleIfExists(id);
 
         AdminArticleVO vo = AdminArticleVO.builder()
                 .id(article.getId())
@@ -314,10 +311,7 @@ public class ArticleAdminBizService {
     }
     @Transactional(rollbackFor = Exception.class)
     public void deleteArticleByAdmin(Long id) {
-        Article article = articleService.getById(id);
-        if (article == null || Boolean.TRUE.equals(article.getIsDeleted())) {
-            throw new BizException(NOT_ARTICLE);
-        }
+        Article article = commonArticleService.getArticleIfExists(id);
 
         // 逻辑删除
         Article updateArticle = new Article();
@@ -344,10 +338,7 @@ public class ArticleAdminBizService {
         commonArticleService.removeArticleCache(id, "管理端删除文章后清除缓存: articleId={}");
     }
     public void approveArticle(Long id) {
-        Article article = articleService.getById(id);
-        if (article == null || Boolean.TRUE.equals(article.getIsDeleted())) {
-            throw new BizException(NOT_ARTICLE);
-        }
+        commonArticleService.getArticleIfExists(id);
 
         articleService.lambdaUpdate()
                 .eq(Article::getId, id)
@@ -359,25 +350,20 @@ public class ArticleAdminBizService {
     }
 
     public void rejectArticle(Long id, String reason) {
-        Article article = articleService.getById(id);
-        if (article == null || Boolean.TRUE.equals(article.getIsDeleted())) {
-            throw new BizException(NOT_ARTICLE);
-        }
+        commonArticleService.getArticleIfExists(id);
 
         articleService.lambdaUpdate()
                 .eq(Article::getId, id)
-                .set(Article::getReview, "rejected")
+                .set(Article::getReview, REJECT)
                 .set(Article::getUpdatedAt, LocalDateTime.now())
                 .update();
 
         cacheUtil.evict(ARTICLE_DETAIL + id);
         // TODO: 可以发送通知给作者，告知拒绝原因
+
     }
     public void setArticleTop(Long id, Boolean isTop) {
-        Article article = articleService.getById(id);
-        if (article == null || Boolean.TRUE.equals(article.getIsDeleted())) {
-            throw new BizException(NOT_ARTICLE);
-        }
+        commonArticleService.getArticleIfExists(id);
 
         articleService.lambdaUpdate()
                 .eq(Article::getId, id)

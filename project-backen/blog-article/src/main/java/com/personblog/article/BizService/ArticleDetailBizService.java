@@ -101,7 +101,7 @@ public class ArticleDetailBizService {
     }
 
     public List<RelatedArticleVO> getRelatedArticles(Long articleId, Integer limit) {
-        int size = (limit == null || limit <= 0) ? 3 : Math.min(limit, 10);
+        int size = commonArticleService.normalizeLimitSize(limit, 3, 10);
 
         Article currentArticle = articleService.getById(articleId);
         if (currentArticle == null) {

@@ -22,7 +22,6 @@ import com.personblog.common.dto.MqMessage.AIModerate.AiModerateMessage;
 import com.personblog.common.dto.MqMessage.article.ArticleStatsMessage;
 import com.personblog.common.dto.Tag.TagDTO;
 import com.personblog.common.exception.BizException;
-import com.personblog.common.utils.MultiLevelCacheUtil;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,8 +58,6 @@ public class ArticlePublishBizService {
     private final AiArticleDraftApi draftApi;
     private final IColumnArticleService columnArticleService;
     private final CommonArticleService commonArticleService;
-
-    private final MultiLevelCacheUtil cacheUtil;
     @Resource(name = "ArticleCountExecutor")
     private Executor articleCountExecutor;
     @Transactional(rollbackFor = Exception.class)
@@ -132,7 +129,7 @@ public class ArticlePublishBizService {
         validateCategory(dto.getCategoryId());
         Set<Long> tagIds = resolveTagIds(dto.getTagIds(), dto.getTagNames());
 
-        Article oldArticle = getAndValidateArticle(articleId, userId);
+        Article oldArticle = commonArticleService.getAndValidateArticle(articleId, userId);
 
         Article article = new Article();
         article.setId(articleId);
@@ -190,7 +187,7 @@ public class ArticlePublishBizService {
 
     @Transactional(rollbackFor = Exception.class)
     public void deleteArticle(Long userId, Long articleId) {
-        Article article = getAndValidateArticle(articleId, userId);
+        Article article = commonArticleService.getAndValidateArticle(articleId, userId);
         Set<Long> tagIds = commonArticleService.getTagIdsByArticleId(articleId);
         boolean removeById = articleService.removeById(articleId);
         if (removeById&&article.getStatus()==1){
@@ -210,8 +207,9 @@ public class ArticlePublishBizService {
     }
 
     public Page<MyArticleVO> getMyArticles(Long userId, Integer current, Integer size, Integer status, String orderBy) {
-        int pageNum = (current == null || current <= 0) ? 1 : current;
-        int pageSize = (size == null || size <= 0) ? 10 : Math.min(size, 50);
+        int[] pageParams = commonArticleService.normalizePageParams(current, size, 10, 50);
+        int pageNum = pageParams[0];
+        int pageSize = pageParams[1];
 
         LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Article::getAuthorId, userId)
@@ -246,7 +244,7 @@ public class ArticlePublishBizService {
     }
 
     public ArticleEditVO getEditArticle(Long userId, Long articleId) {
-        Article article = getAndValidateArticle(articleId, userId);
+        Article article = commonArticleService.getAndValidateArticle(articleId, userId);
 
         ArticleEditVO vo = new ArticleEditVO();
         vo.setId(article.getId());
@@ -383,24 +381,5 @@ public class ArticlePublishBizService {
                 .title(article.getTitle())
                 .build();
         rabbitTemplate.convertAndSend(AI_EXCHANGE, AI_MODERATE_KEY, moderateMessage);
-    }
-
-
-
-    /**
-     * 校验文章存在性及作者权限，返回文章实体
-     * @param articleId 文章ID
-     * @param userId 当前用户ID
-     * @return 校验通过的文章实体
-     */
-    private Article getAndValidateArticle(Long articleId, Long userId) {
-        Article article = articleService.getById(articleId);
-        if (article == null || Boolean.TRUE.equals(article.getIsDeleted())) {
-            throw new BizException(NOT_ARTICLE);
-        }
-        if (!Objects.equals(article.getAuthorId(), userId)) {
-            throw new BizException(NO_POWER);
-        }
-        return article;
     }
 }

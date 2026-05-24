@@ -30,13 +30,14 @@ public class ArticleHotBizService implements HotArticleAPI {
     private final IArticleService articleService;
     private final StringRedisTemplate redisTemplate;
     private final ArticleMapper articleMapper;
+    private final CommonArticleService commonArticleService;
     /**
      * 获取热门文章
      * 查询由定时任务 refreshHotArticles 预计算的 is_hot 标记
      * 缓存策略：Caffeine 本地缓存，5分钟
      */
     public List<HotArticleVO> getHotArticles(Integer size) {
-        int limit = (size == null || size <= 0) ? DEFAULT_HOT_SIZE : Math.min(size, MAX_HOT_SIZE);
+        int limit = commonArticleService.normalizeLimitSize(size, DEFAULT_HOT_SIZE, MAX_HOT_SIZE);
         String cacheKey = ARTICLE_HOT + limit;
 
         // 先查本地缓存

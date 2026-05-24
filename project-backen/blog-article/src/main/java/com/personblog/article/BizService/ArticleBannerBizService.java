@@ -24,6 +24,7 @@ import static com.personblog.common.constant.StatusConstant.APPROVED;
 @Slf4j
 public class ArticleBannerBizService {
     private final IArticleService articleService;
+    private final CommonArticleService commonArticleService;
 
 
     @PostConstruct
@@ -36,7 +37,7 @@ public class ArticleBannerBizService {
      * 缓存策略：Caffeine 本地缓存，1小时
      */
     public List<BannerVO> getBanners(Integer size) {
-        int limit = (size == null || size <= 0) ? DEFAULT_BANNER_SIZE : Math.min(size, MAX_BANNER_SIZE);
+        int limit = commonArticleService.normalizeLimitSize(size, DEFAULT_BANNER_SIZE, MAX_BANNER_SIZE);
         String cacheKey = ARTICLE_BANNERS + limit;
 
         // 先查本地缓存

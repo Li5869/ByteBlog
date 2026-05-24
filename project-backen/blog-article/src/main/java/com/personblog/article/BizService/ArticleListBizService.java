@@ -50,8 +50,9 @@ public class ArticleListBizService {
     private final StringRedisTemplate redisTemplate;
     private final CommonArticleService commonArticleService;
     public Page<ArticleListVO> getArticlePage(ArticleQueryDTO queryDTO) {
-        int current = (queryDTO.getCurrent() == null || queryDTO.getCurrent() <= 0) ? 1 : queryDTO.getCurrent();
-        int size = (queryDTO.getSize() == null || queryDTO.getSize() <= 0) ? DEFAULT_PAGE_SIZE : Math.min(queryDTO.getSize(), MAX_PAGE_SIZE);
+        int[] pageParams = commonArticleService.normalizePageParams(queryDTO.getCurrent(), queryDTO.getSize(), DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+        int current = pageParams[0];
+        int size = pageParams[1];
 
         // 关注筛选不走缓存（用户相关）
         if (Boolean.TRUE.equals(queryDTO.getFollow())) {

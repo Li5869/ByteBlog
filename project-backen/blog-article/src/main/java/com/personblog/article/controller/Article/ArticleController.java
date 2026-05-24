@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.personblog.article.BizService.*;
 import com.personblog.article.dto.article.ArticlePublishDTO;
 import com.personblog.article.dto.article.ArticleQueryDTO;
-import com.personblog.article.service.IArticleService;
 import com.personblog.article.vo.Article.*;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
@@ -26,7 +25,6 @@ import java.util.Objects;
 @Tag(name = "文章接口", description = "文章相关接口")
 public class ArticleController {
     private final ArticleHotBizService articleHotBizService;
-    private final IArticleService articleService;
     private final BusinessMetrics businessMetrics;
     private final ArticleBannerBizService articleBannerBizService;
     private final ArticleListBizService articleListBizService;
