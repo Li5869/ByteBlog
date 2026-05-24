@@ -1,7 +1,7 @@
 package com.personblog.article.controller.pythonCall;
 
+import com.personblog.article.BizService.ArticlePublishBizService;
 import com.personblog.article.dto.article.ArticlePublishDTO;
-import com.personblog.article.service.IArticleService;
 import com.personblog.article.vo.ArticlePublishVO;
 import com.personblog.common.result.JsonData;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,14 +22,14 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/ai/article/internal")
 @RequiredArgsConstructor
 public class ArticleOperationController {
-    private final IArticleService articleService;
+    private final ArticlePublishBizService articlePublishBizService;
 
     @PostMapping("/create")
     @Operation(summary = "发布or草稿文章", description = "SmartAgent调用此接口发布文章")
     public JsonData<ArticlePublishVO> createOrDraft(
             @RequestParam("userId") Long userId,
             @RequestBody ArticlePublishDTO dto){
-        ArticlePublishVO article = articleService.createArticle(userId, dto);
+        ArticlePublishVO article = articlePublishBizService.createArticle(userId, dto);
         return JsonData.buildSuccess(article);
     }
 }

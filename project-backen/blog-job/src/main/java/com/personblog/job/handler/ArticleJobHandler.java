@@ -1,6 +1,6 @@
 package com.personblog.job.handler;
 
-import com.personblog.api.articleAPI.ArticleAPI;
+import com.personblog.api.articleAPI.HotArticleAPI;
 import com.xxl.job.core.handler.annotation.XxlJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ArticleJobHandler {
 
-    private final ArticleAPI articleAPI;
+    private final HotArticleAPI articleAPI;
 
     /**
      * 刷新热门文章标记

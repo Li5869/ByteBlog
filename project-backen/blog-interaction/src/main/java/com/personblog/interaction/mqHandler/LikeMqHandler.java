@@ -1,6 +1,6 @@
 package com.personblog.interaction.mqHandler;
 
-import com.personblog.api.articleAPI.ArticleAPI;
+import com.personblog.api.articleAPI.ArticleMqAPI;
 import com.personblog.api.interactionAPI.CommentApi;
 import com.personblog.api.interactionAPI.NotificationApi;
 import com.personblog.api.questionAPI.AnswerApi;
@@ -45,7 +45,7 @@ import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.*;
 @Component
 @RequiredArgsConstructor
 public class LikeMqHandler {
-    private final ArticleAPI articleAPI;
+    private final ArticleMqAPI articleAPI;
     private final CommentApi commentApi;
     private final BizLikeService likeService;
     private final QuestionApi questionApi;

@@ -1,6 +1,7 @@
 package com.personblog.article.controller.Article;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.personblog.article.BizService.*;
 import com.personblog.article.dto.article.ArticlePublishDTO;
 import com.personblog.article.dto.article.ArticleQueryDTO;
 import com.personblog.article.service.IArticleService;
@@ -24,9 +25,13 @@ import java.util.Objects;
 @RequiredArgsConstructor
 @Tag(name = "文章接口", description = "文章相关接口")
 public class ArticleController {
-
+    private final ArticleHotBizService articleHotBizService;
     private final IArticleService articleService;
     private final BusinessMetrics businessMetrics;
+    private final ArticleBannerBizService articleBannerBizService;
+    private final ArticleListBizService articleListBizService;
+    private final ArticleDetailBizService articleDetailBizService;
+    private final ArticlePublishBizService articlePublishBizService;
 
     /**
      * 获取轮播图数据
@@ -39,7 +44,7 @@ public class ArticleController {
     public JsonData<List<BannerVO>> getBanners(
             @Parameter(description = "返回数量，默认3，最大10")
             @RequestParam(required = false) Integer size) {
-        List<BannerVO> banners = articleService.getBanners(size);
+        List<BannerVO> banners = articleBannerBizService.getBanners(size);
         return JsonData.buildSuccess(banners);
     }
 
@@ -51,25 +56,9 @@ public class ArticleController {
     @Operation(summary = "获取文章列表", description = "获取文章分页列表，支持分类、标签筛选和排序")
     @PostMapping("/articles")
     public JsonData<Page<ArticleListVO>> getArticlePage(@RequestBody ArticleQueryDTO dto) {
-        Page<ArticleListVO> page = articleService.getArticlePage(dto);
+        Page<ArticleListVO> page = articleListBizService.getArticlePage(dto);
         return JsonData.buildSuccess(page);
     }
-
-    /**
-     * 获取随机文章列表
-     * 用于首页"换一批"功能，返回随机排序的文章
-     * @param size 返回数量，默认6，最大20
-     * @return 随机文章列表
-     */
-    @Operation(summary = "获取随机文章", description = "获取随机排序的文章列表，用于'换一批'功能")
-    @GetMapping("/articles/random")
-    public JsonData<List<ArticleListVO>> getRandomArticles(
-            @Parameter(description = "返回数量，默认6，最大20")
-            @RequestParam(required = false) Integer size) {
-        List<ArticleListVO> articles = articleService.getRandomArticles(size);
-        return JsonData.buildSuccess(articles);
-    }
-
     /**
      * 获取热门文章列表
      * 按浏览量排序，用于侧边栏展示
@@ -81,21 +70,34 @@ public class ArticleController {
     public JsonData<List<HotArticleVO>> getHotArticles(
             @Parameter(description = "返回数量，默认5，最大20")
             @RequestParam(required = false) Integer size) {
-        List<HotArticleVO> articles = articleService.getHotArticles(size);
+        List<HotArticleVO> articles = articleHotBizService.getHotArticles(size);
         return JsonData.buildSuccess(articles);
     }
 
     @GetMapping("/articles/{id}")
     @Operation(summary = "获取文章基础信息", description = "获取文章基础信息（标题、摘要、正文、分类、标签等可缓存数据）")
     public JsonData<ArticleMetadataVO> getArticleMetadata(@PathVariable Long id) {
-        ArticleMetadataVO vo = articleService.getArticleMetadata(id);
+        ArticleMetadataVO vo = articleDetailBizService.getArticleMetadata(id);
         return JsonData.buildSuccess(vo);
     }
-
+    /**
+     * 获取随机文章列表
+     * 用于首页"换一批"功能，返回随机排序的文章
+     * @param size 返回数量，默认6，最大20
+     * @return 随机文章列表
+     */
+    @Operation(summary = "获取随机文章", description = "获取随机排序的文章列表，用于'换一批'功能")
+    @GetMapping("/articles/random")
+    public JsonData<List<ArticleListVO>> getRandomArticles(
+            @Parameter(description = "返回数量，默认6，最大20")
+            @RequestParam(required = false) Integer size) {
+        List<ArticleListVO> articles = articleListBizService.getRandomArticles(size);
+        return JsonData.buildSuccess(articles);
+    }
     @GetMapping("/articles/{id}/interaction")
     @Operation(summary = "获取文章互动数据", description = "获取实时互动数据（浏览量、点赞、收藏、评论数以及当前用户点赞/收藏状态），不缓存")
     public JsonData<ArticleInteractionVO> getArticleInteraction(@PathVariable Long id) {
-        ArticleInteractionVO vo = articleService.getArticleInteraction(id);
+        ArticleInteractionVO vo = articleDetailBizService.getArticleInteraction(id);
         return JsonData.buildSuccess(vo);
     }
 
@@ -107,7 +109,7 @@ public class ArticleController {
             @Parameter(description = "文章状态筛选：0-草稿，1-已发布，2-已下架") @RequestParam(required = false) Integer status,
             @Parameter(description = "排序字段：created_at-按时间，likes-按点赞数，views-按阅读数") @RequestParam(required = false, defaultValue = "created_at") String orderBy) {
         Long userId = UserContextHolder.getUserId();
-        Page<MyArticleVO> page = articleService.getMyArticles(userId, current, size, status, orderBy);
+        Page<MyArticleVO> page = articlePublishBizService.getMyArticles(userId, current, size, status, orderBy);
         return JsonData.buildSuccess(page);
     }
 
@@ -125,7 +127,7 @@ public class ArticleController {
             @PathVariable Long id,
             @Parameter(description = "返回数量，默认3，最大10")
             @RequestParam(required = false) Integer limit) {
-        List<RelatedArticleVO> articles = articleService.getRelatedArticles(id, limit);
+        List<RelatedArticleVO> articles = articleDetailBizService.getRelatedArticles(id, limit);
         return JsonData.buildSuccess(articles);
     }
 
@@ -136,7 +138,7 @@ public class ArticleController {
         if (userId == null) {
             throw new BizException(BizCodeEnum.NOT_LOGIN);
         }
-        ArticlePublishVO vo = articleService.createArticle(userId, dto);
+        ArticlePublishVO vo = articlePublishBizService.createArticle(userId, dto);
         businessMetrics.recordArticlePublish();
         return JsonData.buildSuccess(vo);
     }
@@ -151,7 +153,7 @@ public class ArticleController {
         if (Objects.equals(id, 0L)) {
             throw new BizException(BizCodeEnum.PARAMETER_ERROR);
         }
-        ArticlePublishVO vo = articleService.updateArticle(userId, id, dto);
+        ArticlePublishVO vo = articlePublishBizService.updateArticle(userId, id, dto);
         return JsonData.buildSuccess(vo);
     }
 
@@ -162,7 +164,7 @@ public class ArticleController {
         if (userId == null) {
             throw new BizException(BizCodeEnum.NOT_LOGIN);
         }
-        ArticleEditVO vo = articleService.getEditArticle(userId, id);
+        ArticleEditVO vo = articlePublishBizService.getEditArticle(userId, id);
         return JsonData.buildSuccess(vo);
     }
 
@@ -173,7 +175,7 @@ public class ArticleController {
         if (userId == null) {
             throw new BizException(BizCodeEnum.NOT_LOGIN);
         }
-        articleService.deleteArticle(userId, id);
+        articlePublishBizService.deleteArticle(userId, id);
         return JsonData.buildSuccess();
     }
 }

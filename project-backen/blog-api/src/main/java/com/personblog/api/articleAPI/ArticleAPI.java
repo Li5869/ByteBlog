@@ -1,33 +1,6 @@
 package com.personblog.api.articleAPI;
 
-import com.personblog.common.dto.MqMessage.Interaction.BrowseHistoryMessage;
-import com.personblog.common.dto.MqMessage.Interaction.CollectionMessage;
-import com.personblog.common.dto.MqMessage.Interaction.LikeMessage;
-
-import java.util.List;
-
 public interface ArticleAPI {
-    /**
-     * 更新文章点赞数
-     * @param dtoList 点赞消息DTO列表
-     */
-    void updateLikeCount(List<LikeMessage> dtoList);
-    /**
-     * 更新文章收藏数
-     * @param dto 收藏消息DTO
-     */
-    void updateCollectionCount(CollectionMessage dto);
-    /**
-     * 更新文章浏览数
-     * @param dtoList 浏览历史消息DTO列表
-     */
-    void updateBrowseCount(List<BrowseHistoryMessage> dtoList);
-    /**
-     * 更新文章评论数
-     * @param articleId 文章ID
-     * @param dealt 评论数
-     */
-    void updateCommentCount(Long articleId,int dealt);
     /**
      * 获取文章作者ID
      * @param articleId 文章ID
@@ -48,12 +21,4 @@ public interface ArticleAPI {
      * @return 文章标题
      */
     String getArticleTitle(Long articleId);
-
-    /**
-     * 刷新热门文章标记
-     * 根据综合热度分（浏览量+点赞+收藏+评论）计算 Top N 并更新 is_hot 字段
-     */
-    void refreshHotArticles();
-
-
 }

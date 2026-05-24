@@ -1,6 +1,7 @@
 package com.personblog.comment.mqHandler;
 
 import com.personblog.api.articleAPI.ArticleAPI;
+import com.personblog.api.articleAPI.ArticleMqAPI;
 import com.personblog.api.interactionAPI.NotificationApi;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.comment.entity.Comment;
@@ -36,6 +37,7 @@ public class CommentNotificationHandler {
 
     private final ICommentService commentService;
     private final UseApi useApi;
+    private final ArticleMqAPI articleMqAPI;
     private final ArticleAPI articleAPI;
     private final NotificationApi notificationApi;
     private final SseEmitterManager sseEmitterManager;
@@ -47,7 +49,7 @@ public class CommentNotificationHandler {
         try {
             // 1. 更新文章评论数
             if (message.getDelta() != null) {
-                articleAPI.updateCommentCount(message.getArticleId(), message.getDelta());
+                articleMqAPI.updateCommentCount(message.getArticleId(), message.getDelta());
                 log.debug("文章评论数已更新, articleId={}, delta={}", message.getArticleId(), message.getDelta());
             }
 

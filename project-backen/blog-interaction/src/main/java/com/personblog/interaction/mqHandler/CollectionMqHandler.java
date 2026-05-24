@@ -1,6 +1,6 @@
 package com.personblog.interaction.mqHandler;
 
-import com.personblog.api.articleAPI.ArticleAPI;
+import com.personblog.api.articleAPI.ArticleMqAPI;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.common.dto.MqMessage.Interaction.CollectionMessage;
 import com.personblog.interaction.service.CollectionService;
@@ -20,7 +20,7 @@ import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.COL
 @Component
 @RequiredArgsConstructor
 public class CollectionMqHandler {
-    private final ArticleAPI articleAPI;
+    private final ArticleMqAPI articleAPI;
     private final UseApi useApi;
     private final CollectionService collectionService;
     @RabbitListener(queues = COLLECTION_QUEUE, containerFactory = "rabbitListenerContainerFactory")
