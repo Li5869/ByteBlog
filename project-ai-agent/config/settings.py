@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     # ===== 向量维度（Embedding）=====
     vector_dimension: int = 1536
 
+    # ===== Skill 向量化 =====
+    skill_vector_table: str = "skill_chunks"
+    skill_chunk_min_results: int = 3
+    skill_similarity_threshold: float = 0.7
+    skill_auto_index_on_startup: bool = False
+
     # ===== 服务 & 端口 =====
     host: str = "0.0.0.0"
     port: int = 8000

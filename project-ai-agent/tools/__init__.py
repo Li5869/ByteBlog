@@ -24,7 +24,7 @@ from tools.blog_tool import (
     get_category_list,
 )
 from tools.user_tool import get_current_user_id, get_current_user_info, set_current_user_id
-from tools.skill_tool import get_skill_details, list_available_skills
+from tools.skill_tool import get_skill_details, list_available_skills, search_skill_guide
 from tools.writing_tool import (
     writing_start,
     writing_status,
@@ -51,6 +51,7 @@ _base_tools = [
     # Skill 工具（渐进式披露）
     get_skill_details,
     list_available_skills,
+    search_skill_guide,
     # 写作助手工具（5个）
     writing_start,
     writing_status,

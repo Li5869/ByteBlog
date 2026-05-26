@@ -528,6 +528,34 @@ export const knowledgeApi = {
   batchDelete: (fileIds) => post('/ai/knowledge/batch-delete', { fileIds })
 }
 
+/**
+ * 技能管理 API
+ * RESTful 接口：
+ * - POST /ai/skill/rebuild  重建索引
+ * - GET  /ai/skill          分页查询 Skill 列表
+ * - GET  /ai/skill/stats    获取统计信息
+ */
+export const skillApi = {
+  /**
+   * 重建 Skill 全量索引
+   * @returns {Promise<Object>} { totalSkills, totalChunks }
+   */
+  rebuildIndex: () => post('/ai/skill/rebuild'),
+
+  /**
+   * 分页查询 Skill 列表
+   * @param {Object} params { current: 1, size: 10 }
+   * @returns {Promise<Object>} Page<SkillItemVO> { records, total, size, current }
+   */
+  getList: (params) => get('/ai/skill', params),
+
+  /**
+   * 获取 Skill 统计信息
+   * @returns {Promise<Object>} { totalSkills, totalChunks }
+   */
+  getStats: () => get('/ai/skill/stats')
+}
+
 export default {
   get,
   post,
@@ -547,6 +575,7 @@ export default {
   adminQuestionApi,
   adminLogApi,
   knowledgeApi,
+  skillApi,
   getToken,
   getRefreshToken,
   getAdminInfo,

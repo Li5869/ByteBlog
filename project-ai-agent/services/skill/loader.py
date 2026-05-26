@@ -1,6 +1,6 @@
 """
 Skills 加载器
-文件：project-ai-agent/skills/loader.py
+文件：project-ai-agent/services/skill/loader.py
 功能：从 skills 目录加载所有 SKILL.md 文件，解析为可用的提示词片段
 """
 
@@ -192,8 +192,6 @@ class SkillLoader:
         skills = self.load()
         return list(skills.keys())
 
-
-# ==================== 单例 ====================
 
 _skill_loader: Optional[SkillLoader] = None
 
