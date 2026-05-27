@@ -6,6 +6,7 @@ import com.personblog.interaction.entity.CommentLike;
 import com.personblog.interaction.mapper.CommentLikeMapper;
 import com.personblog.interaction.service.CommentLikeService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.DefaultStringRedisConnection;
 import org.springframework.data.redis.connection.StringRedisConnection;
 import org.springframework.data.redis.core.RedisCallback;
@@ -25,6 +26,7 @@ import static com.personblog.common.constant.TargetTypeConstant.COMMENT;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CommentLikeServiceImpl extends ServiceImpl<CommentLikeMapper, CommentLike> implements CommentLikeService {
     private final StringRedisTemplate redisTemplate;
 
@@ -53,8 +55,13 @@ public class CommentLikeServiceImpl extends ServiceImpl<CommentLikeMapper, Comme
     }
 
     @Override
-    public void AllSync2Cache() {
+    public void AllSync2Cache(Long bizId) {
+        if (bizId == null) {
+            log.warn("AllSync2Cache: bizId 为空，跳过同步");
+            return;
+        }
         List<CommentLike> list = lambdaQuery().select(CommentLike::getCommentId, CommentLike::getUserId)
+                .eq(CommentLike::getCommentId,bizId)
                 .list();
         // pipeline优化性能
         redisTemplate.executePipelined((RedisCallback<Object>) connection -> {

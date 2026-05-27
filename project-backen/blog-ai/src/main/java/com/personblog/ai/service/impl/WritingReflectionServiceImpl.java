@@ -39,7 +39,7 @@ public class WritingReflectionServiceImpl implements IWritingReflectionService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     @SuppressWarnings("unchecked")
     public WritingReflection saveReflection(Long taskId, Map<String, Object> reflectionData) {
         WritingReflection reflection = new WritingReflection();

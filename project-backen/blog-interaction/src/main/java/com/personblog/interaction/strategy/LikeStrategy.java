@@ -32,5 +32,6 @@ public interface LikeStrategy {
     /**
      * 全量同步点赞相关到缓存
      */
-    void AllSync2Cache();
+    void AllSync2Cache(Long bizId);
+
 }

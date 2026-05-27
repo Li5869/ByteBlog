@@ -39,7 +39,7 @@ public class ChatServiceImpl implements ChatService {
     private final StringRedisTemplate redisTemplate;
     
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Long createConversation() {
         Long userId = UserContextHolder.getUserId();
         AiConversation conversion = conversationService.lambdaQuery()
@@ -180,7 +180,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteConversation(Long conversationId) {
         Long userId = UserContextHolder.getUserId();
 

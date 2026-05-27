@@ -33,7 +33,7 @@ public class WritingDraftServiceImpl implements IWritingDraftService, AiArticleD
         return writingDraftMapper.selectOne(queryWrapper);
     }
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     @SuppressWarnings("unchecked")
     public WritingDraft saveDraft(Long taskId, Long userId, Map<String, Object> draftData) {
         // 先检查是否已存在草稿，存在则更新
@@ -106,7 +106,7 @@ public class WritingDraftServiceImpl implements IWritingDraftService, AiArticleD
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteByTaskId(Long taskId) {
         LambdaQueryWrapper<WritingDraft> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(WritingDraft::getTaskId, taskId);

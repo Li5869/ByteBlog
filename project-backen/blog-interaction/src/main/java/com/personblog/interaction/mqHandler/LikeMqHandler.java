@@ -155,7 +155,7 @@ public class LikeMqHandler {
     public void syncLikeCache(SyncLikeCacheMessage dto, Channel channel,
                               @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         // 同类型点赞缓存同步使用分布式锁串行执行，防止并发
-        RLock lock = redissonClient.getLock(LIKE_SYNC_LOCK_PREFIX + dto.getTargetType());
+        RLock lock = redissonClient.getLock(LIKE_SYNC_LOCK_PREFIX + dto.getTargetType() + ":" + dto.getBizId());
         try {
             boolean tryLock = lock.tryLock(5, 30, TimeUnit.SECONDS);
             if (!tryLock) {
@@ -166,7 +166,7 @@ public class LikeMqHandler {
             log.info("开始同步点赞缓存, targetType={}", dto.getTargetType());
             LikeStrategy likeStrategy = likeStrategyMap.get(dto.getTargetType());
             if (likeStrategy != null) {
-                likeStrategy.AllSync2Cache();
+                likeStrategy.AllSync2Cache(dto.getBizId());
             }
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {

@@ -11,4 +11,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class SyncLikeCacheMessage {
     private String targetType;
+
+    private Long bizId;
 }

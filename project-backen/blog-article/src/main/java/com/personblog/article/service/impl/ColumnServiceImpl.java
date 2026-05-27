@@ -287,7 +287,7 @@ public class ColumnServiceImpl extends ServiceImpl<ColumnMapper, Column> impleme
                 .collect(Collectors.toList());
     }
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateColumnView() {
         Map<Object, Object> viewMap = redisTemplate.opsForHash().entries(COLUMN_READ_COUNT);
         
