@@ -280,7 +280,7 @@ AI: 调用 writing_action(task_id="12345", action="cancel")
 ```
 ✅ 您的文章已完成！
 
-🔗 **点击查看完整文章**：http://localhost:3000/writing/12345/result
+🔗 **点击查看完整文章**：http://localhost:3000/ai/writing/12345/draft
 
 您可以查看并编辑文章内容，或直接发布到博客。
 ```

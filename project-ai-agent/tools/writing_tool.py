@@ -29,7 +29,7 @@ from tools.user_tool import current_user_id
 
 def _generate_result_url(task_id: str) -> str:
     settings = get_settings()
-    return f"{settings.frontend_base_url}/writing/{task_id}/result"
+    return f"{settings.frontend_base_url}/ai/writing/{task_id}/draft"
 
 
 def _parse_json_field(value) -> list:
