@@ -114,7 +114,7 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 
 | 截图 | 内容 | 展示亮点 |
 |------|------|----------|
-| ![首页](docs/images/homepage.png) | 首页文章列表 + 分类导航 + 热门标签 | 整体 UI 风格、响应式布局、Tailwind 设计 |
+| ![主页展示](D:\code\Java\agent-project\ByteBlog\docs\gif\主页展示.gif) | 首页文章列表 + 分类导航 + 热门标签 | 整体 UI 风格、响应式布局、Tailwind 设计 |
 | ![文章详情](docs/gif/文章详情.gif) | 文章详情页（Markdown 渲染 + 评论区 + 点赞/收藏按钮） | 文章阅读体验、评论交互、社交互动 |
 | ![AI 助手全流程写作](docs/gif/AI助手调用写作agent完成全流程写作功能.gif) | SmartAgent调用写作Agent全流程（用户输入需求 → SmartAgent理解意图 → 调用写作Agent → 生成计划 → 人工确认 → 开始写作 → 协作发布） | 多Agent协作、Plan-and-Execute 工作流、SSE 流式输出 |
 | ![AI 润色和发布](docs/gif/ai润色和发布文章.gif) | 用户创作+AI润色（自己撰写内容，使用AI进行润色、生成标题和摘要） | Spring AI 集成、SSE 流式输出、人工创作与AI辅助结合 |

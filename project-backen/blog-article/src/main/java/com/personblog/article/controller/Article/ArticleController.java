@@ -39,10 +39,8 @@ public class ArticleController {
      */
     @Operation(summary = "获取轮播图数据", description = "获取首页轮播图数据，返回热门推荐文章列表")
     @GetMapping("/banners")
-    public JsonData<List<BannerVO>> getBanners(
-            @Parameter(description = "返回数量，默认3，最大10")
-            @RequestParam(required = false) Integer size) {
-        List<BannerVO> banners = articleBannerBizService.getBanners(size);
+    public JsonData<List<BannerVO>> getBanners() {
+        List<BannerVO> banners = articleBannerBizService.getBanners();
         return JsonData.buildSuccess(banners);
     }
 

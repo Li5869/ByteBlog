@@ -5,6 +5,7 @@ import com.personblog.article.entity.Article;
 import com.personblog.article.entity.ArticleTag;
 import com.personblog.article.service.IArticleService;
 import com.personblog.article.service.IArticleTagService;
+import com.personblog.article.vo.Article.BannerVO;
 import com.personblog.common.dto.MqMessage.search.SearchSyncMessageDTO;
 import com.personblog.common.exception.BizException;
 import com.personblog.common.utils.MultiLevelCacheUtil;
@@ -18,8 +19,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.personblog.article.config.cachConfig.ArticleCacheConfig.articlePageCache;
-import static com.personblog.article.config.cachConfig.ArticleCacheConfig.hotArticleCache;
+import static com.personblog.article.config.cachConfig.ArticleCacheConfig.*;
+import static com.personblog.common.constant.RedisKeys.ARTICLE_BANNERS;
 import static com.personblog.common.constant.RedisKeys.ARTICLE_DETAIL;
 import static com.personblog.common.constant.TargetTypeConstant.ARTICLE;
 import static com.personblog.common.enums.BizCodeEnum.NOT_ARTICLE;
@@ -35,8 +36,10 @@ public class CommonArticleService {
     private final IArticleTagService articleTagService;
     private final MultiLevelCacheUtil cacheUtil;
     private final RabbitTemplate rabbitTemplate;
+
     /**
      * 根据排序字段为wrapper添加排序条件
+     *
      * @param wrapper 查询条件构造器
      * @param orderBy 排序字段（views/likes/created_at）
      */
@@ -53,8 +56,10 @@ public class CommonArticleService {
                 break;
         }
     }
+
     /**
      * 根据文章ID查询关联的标签ID集合
+     *
      * @param articleId 文章ID
      * @return 标签ID集合
      */
@@ -72,15 +77,24 @@ public class CommonArticleService {
         hotArticleCache.invalidateAll();
         articlePageCache.invalidateAll();
         cacheUtil.evict(ARTICLE_DETAIL + articleId);
+        List<BannerVO> bannerVOS = bannerCache.getIfPresent(ARTICLE_BANNERS);
+        if (bannerVOS != null) {
+            bannerVOS.forEach(bannerVO -> {
+                        if (bannerVO.getArticleId().equals(articleId)) {
+                            bannerCache.invalidateAll();
+                        }
+                    });
+        }
         log.info(s, articleId);
     }
+
     /**
      * 发送搜索同步消息到 MQ
      *
-     * @param operation  操作类型：sync-同步，delete-删除
-     * @param articleId  文章ID
+     * @param operation 操作类型：sync-同步，delete-删除
+     * @param articleId 文章ID
      */
-   public void sendSearchSyncMessage(String operation, Long articleId) {
+    public void sendSearchSyncMessage(String operation, Long articleId) {
         try {
             SearchSyncMessageDTO message = SearchSyncMessageDTO.builder()
                     .operation(operation)
@@ -96,8 +110,9 @@ public class CommonArticleService {
 
     /**
      * 校验文章存在性及作者权限
+     *
      * @param articleId 文章ID
-     * @param userId 当前用户ID
+     * @param userId    当前用户ID
      * @return 校验通过的文章实体
      * @throws BizException 文章不存在或无权限
      */
@@ -114,6 +129,7 @@ public class CommonArticleService {
 
     /**
      * 校验文章存在性（仅检查文章是否存在）
+     *
      * @param articleId 文章ID
      * @return 校验通过的文章实体
      * @throws BizException 文章不存在
@@ -128,6 +144,7 @@ public class CommonArticleService {
 
     /**
      * 批量清除文章详情缓存
+     *
      * @param articleIds 文章ID列表
      */
     public void evictArticleDetailCaches(List<Long> articleIds) {
@@ -138,10 +155,11 @@ public class CommonArticleService {
 
     /**
      * 规范化分页参数
-     * @param current 当前页码
-     * @param size 每页大小
+     *
+     * @param current     当前页码
+     * @param size        每页大小
      * @param defaultSize 默认每页大小
-     * @param maxSize 最大每页大小
+     * @param maxSize     最大每页大小
      * @return 规范化后的分页参数 [current, size]
      */
     public int[] normalizePageParams(Integer current, Integer size, int defaultSize, int maxSize) {
@@ -152,9 +170,10 @@ public class CommonArticleService {
 
     /**
      * 规范化限制数量参数
-     * @param size 限制数量
+     *
+     * @param size        限制数量
      * @param defaultSize 默认数量
-     * @param maxSize 最大数量
+     * @param maxSize     最大数量
      * @return 规范化后的数量
      */
     public int normalizeLimitSize(Integer size, int defaultSize, int maxSize) {
