@@ -16,8 +16,8 @@ from loguru import logger
 
 from services.business.writing.writing_execution_service import (
     _get_redis, _task_key, _events_key, _plan_key,
-    start_plan_phase, start_execute_phase, start_revise_phase,
-    cancel_task, stop_task, finalize_task,
+    start_plan_phase, cancel_task, stop_task, finalize_task,
+    handle_approve, handle_revise,
 )
 from models.writing_models import (
     StartRequest, ResumeRequest,
@@ -85,42 +85,20 @@ async def resume_writing(task_id: str, request: ResumeRequest):
                 return ApiResponse(code=404, msg="任务不存在，请重新开始写作")
 
         if request.action == "approve":
-            return await _handle_approve(task_id, redis)
+            result = await handle_approve(task_id)
         elif request.action == "revise":
-            return await _handle_revise(task_id, request, redis)
+            result = await handle_revise(task_id, request.feedback or "")
         else:
             return ApiResponse(code=400, msg="无效的action参数，请使用 approve 或 revise")
+
+        if not result["success"]:
+            return ApiResponse(code=500, msg=result["error"])
+        
+        return ApiResponse(data={"task_id": task_id, "status": result["status"]})
 
     except Exception as e:
         logger.error(f"[Writing] 恢复任务失败: {e}")
         return ApiResponse(code=500, msg=str(e))
-
-
-async def _handle_approve(task_id: str, redis):
-    """处理用户批准计划"""
-    plan_json = await redis.get(_plan_key(task_id))
-    if not plan_json:
-        return ApiResponse(code=400, msg="计划不存在，请重新开始")
-
-    success = await start_execute_phase(task_id)
-    if not success:
-        return ApiResponse(code=500, msg="启动执行阶段失败")
-
-    logger.info(f"[Writing] 用户批准计划，开始执行: {task_id}")
-    return ApiResponse(data={"task_id": task_id, "status": "executing"})
-
-
-async def _handle_revise(task_id: str, request: ResumeRequest, redis):
-    """处理用户修改计划"""
-    if not request.feedback:
-        return ApiResponse(code=400, msg="修改意见不能为空")
-
-    success = await start_revise_phase(task_id, request.feedback)
-    if not success:
-        return ApiResponse(code=500, msg="启动计划修改失败")
-
-    logger.info(f"[Writing] 用户要求修改计划: {task_id}")
-    return ApiResponse(data={"task_id": task_id, "status": "planning"})
 
 
 @router.get("/{task_id}/stream")
@@ -135,48 +113,67 @@ async def stream_writing(task_id: str, request: Request):
         async def event_generator():
             last_id = "0"
             terminal_status = None
+            # 心跳计数器，block=1000ms 时，30 次约 30 秒发送一次心跳
+            heartbeat_counter = 0
 
-            while True:
-                if await request.is_disconnected():
-                    logger.info(f"[Writing] 客户端断开连接: {task_id}")
-                    break
+            try:
+                while True:
+                    if await request.is_disconnected():
+                        logger.info(f"[Writing] 客户端断开连接: {task_id}")
+                        break
 
-                events = await redis.xread(
-                    {_events_key(task_id): last_id}, count=10, block=2000
-                )
+                    events = await redis.xread(
+                        {_events_key(task_id): last_id}, count=10, block=1000
+                    )
 
-                if events:
-                    for stream, messages in events:
-                        for msg_id, msg in messages:
-                            last_id = msg_id
-                            event_data = msg["event"]
-                            yield f"data: {event_data}\n\n"
+                    if events:
+                        # 有事件时重置心跳计数器
+                        heartbeat_counter = 0
+                        for stream, messages in events:
+                            for msg_id, msg in messages:
+                                last_id = msg_id
+                                event_data = msg["event"]
+                                yield f"data: {event_data}\n\n"
 
-                            try:
-                                event_obj = json.loads(event_data)
-                                if event_obj.get("type") in ("plan_ready", "done"):
-                                    terminal_status = event_obj["type"]
-                            except Exception:
-                                pass
+                                try:
+                                    event_obj = json.loads(event_data)
+                                    if event_obj.get("type") in ("plan_ready", "done"):
+                                        terminal_status = event_obj["type"]
+                                except Exception:
+                                    pass
+                    else:
+                        # 无事件时累加心跳计数器
+                        heartbeat_counter += 1
+                        if heartbeat_counter >= 30:
+                            yield ': heartbeat\n\n'
+                            heartbeat_counter = 0
 
-                if terminal_status:
-                    break
+                    if terminal_status:
+                        break
 
-                task_status = await redis.hget(_task_key(task_id), "status")
-                if task_status in ("cancelled", "stopped", "error"):
-                    await asyncio.sleep(0.3)
-                    break
+                    task_status = await redis.hget(_task_key(task_id), "status")
+                    if task_status in ("cancelled", "stopped", "error"):
+                        await asyncio.sleep(0.3)
+                        break
 
-            # 清理已完成任务资源
-            # 只有在任务失败、取消或停止时才删除 task 数据
-            # plan_ready 状态需要保留，以便用户可以回来确认计划
-            task_status = await redis.hget(_task_key(task_id), "status")
-            if task_status in ("cancelled", "stopped", "error"):
-                await redis.delete(_events_key(task_id))
-                await redis.delete(_task_key(task_id))
-            elif task_status == "finalized":
-                # 任务完成，清理 events 但保留 task 记录
-                await redis.delete(_events_key(task_id))
+            except Exception as e:
+                logger.error(f"[Writing] SSE 事件生成异常: {e}")
+                yield f'data: {{"type":"error","message":"服务内部错误"}}\n\n'
+
+            finally:
+                # 清理已完成任务资源
+                # 只有在任务失败、取消或停止时才删除 task 数据
+                # plan_ready 状态需要保留，以便用户可以回来确认计划
+                try:
+                    task_status = await redis.hget(_task_key(task_id), "status")
+                    if task_status in ("cancelled", "stopped", "error"):
+                        await redis.delete(_events_key(task_id))
+                        await redis.delete(_task_key(task_id))
+                    elif task_status == "finalized":
+                        # 任务完成，清理 events 但保留 task 记录
+                        await redis.delete(_events_key(task_id))
+                except Exception as e:
+                    logger.error(f"[Writing] 清理资源失败: {e}")
 
         return StreamingResponse(
             event_generator(),

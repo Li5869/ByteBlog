@@ -336,6 +336,62 @@ async def _run_plan_phase(task_id: str, user_request: str):
         _cleanup_task(task_id)
 
 
+async def handle_approve(task_id: str) -> dict:
+    """
+    处理用户批准计划
+    
+    Args:
+        task_id: 写作任务ID
+        
+    Returns:
+        包含 success, status, error 的结果字典
+    """
+    try:
+        redis = await _get_redis()
+        
+        plan_json = await redis.get(_plan_key(task_id))
+        if not plan_json:
+            return {"success": False, "status": None, "error": "计划不存在，请重新开始"}
+        
+        success = await start_execute_phase(task_id)
+        if not success:
+            return {"success": False, "status": None, "error": "启动执行阶段失败"}
+        
+        logger.info(f"[WritingExecution] 用户批准计划，开始执行: {task_id}")
+        return {"success": True, "status": "executing", "error": None}
+        
+    except Exception as e:
+        logger.error(f"[WritingExecution] 处理批准失败: {e}")
+        return {"success": False, "status": None, "error": str(e)}
+
+
+async def handle_revise(task_id: str, feedback: str) -> dict:
+    """
+    处理用户修改计划
+    
+    Args:
+        task_id: 写作任务ID
+        feedback: 用户修改意见
+        
+    Returns:
+        包含 success, status, error 的结果字典
+    """
+    try:
+        if not feedback:
+            return {"success": False, "status": None, "error": "修改意见不能为空"}
+        
+        success = await start_revise_phase(task_id, feedback)
+        if not success:
+            return {"success": False, "status": None, "error": "启动计划修改失败"}
+        
+        logger.info(f"[WritingExecution] 用户要求修改计划: {task_id}")
+        return {"success": True, "status": "planning", "error": None}
+        
+    except Exception as e:
+        logger.error(f"[WritingExecution] 处理修改失败: {e}")
+        return {"success": False, "status": None, "error": str(e)}
+
+
 async def start_revise_phase(task_id: str, feedback: str) -> bool:
     """
     启动计划修改阶段

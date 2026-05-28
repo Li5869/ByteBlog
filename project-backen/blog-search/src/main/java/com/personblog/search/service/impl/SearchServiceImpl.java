@@ -3,6 +3,7 @@ package com.personblog.search.service.impl;
 import cn.hutool.core.util.StrUtil;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import com.personblog.common.exception.BizException;
+import com.personblog.search.convert.SearchConverter;
 import com.personblog.search.dto.SearchQueryDTO;
 import com.personblog.search.dto.SearchResultDTO;
 import com.personblog.search.entity.ArticleDocument;
@@ -22,7 +23,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.client.elc.NativeQueryBuilder;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
-import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.stereotype.Service;
 
@@ -39,6 +39,7 @@ import static com.personblog.common.enums.BizCodeEnum.ERROR_SEARCH;
 @ConditionalOnProperty(name = "search.enabled", havingValue = "true", matchIfMissing = true)
 public class SearchServiceImpl implements SearchService{
     private final ElasticsearchOperations esOperation;
+    private final SearchConverter searchConverter;
     @Override
     public SearchResultDTO search(SearchQueryDTO queryDTO) {
         SearchResultDTO resultDTO = new SearchResultDTO();
@@ -71,7 +72,7 @@ public class SearchServiceImpl implements SearchService{
             SearchHits<ArticleDocument> search = esOperation.search(nativeQuery, ArticleDocument.class);
             List<ArticleSearchVO> list = search.getSearchHits()
                     .stream()
-                    .map(this::ConvertToArticleVO)
+                    .map(searchConverter::convertToArticleVO)
                     .toList();
             resultDTO.setArticles(list);
             resultDTO.setArticleTotal(search.getTotalHits());
@@ -120,7 +121,7 @@ public class SearchServiceImpl implements SearchService{
             SearchHits<QuestionDocument> searchHits = esOperation.search(nativeQuery, QuestionDocument.class);
 
             List<QuestionSearchVO> questions = searchHits.getSearchHits().stream()
-                    .map(this::convertToQuestionVO)
+                    .map(searchConverter::convertToQuestionVO)
                     .collect(Collectors.toList());
 
             result.setQuestions(questions);
@@ -170,7 +171,7 @@ public class SearchServiceImpl implements SearchService{
             SearchHits<AuthorDocument> searchHits = esOperation.search(nativeQuery, AuthorDocument.class);
 
             List<AuthorSearchVO> authors = searchHits.getSearchHits().stream()
-                    .map(this::convertToAuthorVO)
+                    .map(searchConverter::convertToAuthorVO)
                     .collect(Collectors.toList());
 
             result.setAuthors(authors);
@@ -204,59 +205,6 @@ public class SearchServiceImpl implements SearchService{
 
         return queryBuilder.build();
     }
-    private AuthorSearchVO convertToAuthorVO(SearchHit<AuthorDocument> hit) {
-        AuthorDocument doc = hit.getContent();
-        AuthorSearchVO vo = new AuthorSearchVO();
-        vo.setId(doc.getId());
-        vo.setUsername(doc.getUsername());
-        vo.setNickname(doc.getNickname());
-        vo.setAvatar(doc.getAvatar());
-        vo.setBio(doc.getBio());
-        vo.setArticlesCount(doc.getArticlesCount());
-        vo.setFansCount(doc.getFansCount());
-        vo.setLikesCount(doc.getLikesCount());
-        return vo;
-    }
-    private QuestionSearchVO convertToQuestionVO(SearchHit<QuestionDocument> hit) {
-        QuestionDocument doc = hit.getContent();
-        QuestionSearchVO vo = new QuestionSearchVO();
-        vo.setId(doc.getId());
-        vo.setTitle(doc.getTitle());
-        vo.setContent(doc.getContent());
-        vo.setAuthorId(doc.getAuthorId());
-        vo.setAuthorName(doc.getAuthorName());
-        vo.setAuthorAvatar(doc.getAuthorAvatar());
-        vo.setTags(doc.getTags());
-        vo.setViews(doc.getViews());
-        vo.setAnswers(doc.getAnswers());
-        vo.setLikes(doc.getLikes());
-        vo.setIsSolved(doc.getIsSolved());
-        vo.setCreatedAt(doc.getCreatedAt());
-        return vo;
-    }
-    //构建VO对象
-    private ArticleSearchVO ConvertToArticleVO(SearchHit<ArticleDocument> hit) {
-        ArticleDocument doc = hit.getContent();
-        ArticleSearchVO vo = new ArticleSearchVO();
-        vo.setId(doc.getId());
-        vo.setTitle(doc.getTitle());
-        vo.setSummary(doc.getSummary());
-        vo.setCover(doc.getCover());
-        vo.setAuthorId(doc.getAuthorId());
-        vo.setAuthorName(doc.getAuthorName());
-        vo.setAuthorAvatar(doc.getAuthorAvatar());
-        vo.setCategoryId(doc.getCategoryId());
-        vo.setCategoryName(doc.getCategoryName());
-        vo.setTags(doc.getTags());
-        vo.setViews(doc.getViews());
-        vo.setLikes(doc.getLikes());
-        vo.setComments(doc.getComments());
-        vo.setCollections(doc.getCollections());
-        vo.setIsTop(doc.getIsTop());
-        vo.setIsHot(doc.getIsHot());
-        vo.setCreatedAt(doc.getCreatedAt());
-        return vo;
-    }
 
     // ==================== 专栏搜索 ====================
 
@@ -266,7 +214,7 @@ public class SearchServiceImpl implements SearchService{
             SearchHits<ColumnDocument> searchHits = esOperation.search(nativeQuery, ColumnDocument.class);
 
             List<ColumnSearchVO> columns = searchHits.getSearchHits().stream()
-                    .map(this::convertToColumnVO)
+                    .map(searchConverter::convertToColumnVO)
                     .collect(Collectors.toList());
 
             result.setColumns(columns);
@@ -307,22 +255,5 @@ public class SearchServiceImpl implements SearchService{
         }
 
         return queryBuilder.build();
-    }
-
-    private ColumnSearchVO convertToColumnVO(SearchHit<ColumnDocument> hit) {
-        ColumnDocument doc = hit.getContent();
-        ColumnSearchVO vo = new ColumnSearchVO();
-        vo.setId(doc.getId());
-        vo.setTitle(doc.getTitle());
-        vo.setDescription(doc.getDescription());
-        vo.setCover(doc.getCover());
-        vo.setUserId(doc.getUserId());
-        vo.setAuthorName(doc.getAuthorName());
-        vo.setAuthorAvatar(doc.getAuthorAvatar());
-        vo.setArticlesCount(doc.getArticlesCount());
-        vo.setSubscriptionCount(doc.getSubscriptionCount());
-        vo.setViews(doc.getViews());
-        vo.setCreatedAt(doc.getCreatedAt());
-        return vo;
     }
 }
