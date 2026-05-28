@@ -1,9 +1,9 @@
 package com.personblog.article.controller.Admin;
 
-import com.personblog.article.service.IArticleService;
-import com.personblog.article.vo.AdminDashboardVO;
-import com.personblog.article.vo.AdminRecentArticleVO;
-import com.personblog.article.vo.AdminTrendsVO;
+import com.personblog.article.BizService.ArticleAdminBizService;
+import com.personblog.article.vo.Admin.AdminDashboardVO;
+import com.personblog.article.vo.Admin.AdminRecentArticleVO;
+import com.personblog.article.vo.Admin.AdminTrendsVO;
 import com.personblog.common.result.JsonData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,7 +28,7 @@ import java.util.List;
 @Tag(name = "管理端-仪表盘", description = "管理后台首页仪表盘接口")
 public class AdminDashboardController {
 
-    private final IArticleService articleService;
+   private final ArticleAdminBizService articleAdminBizService;
     /**
      * 获取仪表盘概览统计
      * 返回文章总数、用户总数、评论总数、问答总数及环比变化
@@ -36,7 +36,7 @@ public class AdminDashboardController {
     @Operation(summary = "获取仪表盘概览统计", description = "获取全站核心统计数据及环比变化")
     @GetMapping("/statistics")
     public JsonData<AdminDashboardVO> getStatistics() {
-        AdminDashboardVO statistics = articleService.getDashboardStatistics();
+        AdminDashboardVO statistics = articleAdminBizService.getDashboardStatistics();
         return JsonData.buildSuccess(statistics);
     }
 
@@ -48,7 +48,7 @@ public class AdminDashboardController {
     @GetMapping("/trends")
     public JsonData<AdminTrendsVO> getTrends(
             @Parameter(description = "年份，默认当前年") @RequestParam(required = false) Integer year) {
-        AdminTrendsVO trends = articleService.getTrendsData(year);
+        AdminTrendsVO trends = articleAdminBizService.getTrendsData(year);
         return JsonData.buildSuccess(trends);
     }
 
@@ -62,7 +62,7 @@ public class AdminDashboardController {
             @Parameter(description = "返回数量，默认5") @RequestParam(defaultValue = "5") Integer size) {
         // 限制最大返回20条
         size = Math.min(size, 20);
-        List<AdminRecentArticleVO> articles = articleService.getRecentArticles(size);
+        List<AdminRecentArticleVO> articles = articleAdminBizService.getRecentArticles(size);
         return JsonData.buildSuccess(articles);
     }
 }

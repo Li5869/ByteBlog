@@ -10,6 +10,8 @@ public final class PythonAiApiConstants {
     public static final class Chat {
         /** 流式对话接口 */
         public static final String STREAM = "/api/v1/chat/stream";
+        /** 停止对话接口（占位符 {conversationId} 替换为会话ID） */
+        public static final String STOP = "/api/v1/chat/stop/{conversationId}";
 
         private Chat() {}
     }
@@ -36,6 +38,16 @@ public final class PythonAiApiConstants {
         private Knowledge() {}
     }
 
+    /** Skill 技能管理相关API路径 */
+    public static final class Skill {
+        /** 重建 Skill 索引 */
+        public static final String INDEX = "/api/v1/skill/index";
+        /** 查询 Skill 索引状态 */
+        public static final String STATUS = "/api/v1/skill/status";
+
+        private Skill() {}
+    }
+
     /** Python 服务统一响应中的 JSON 字段名 */
     public static final class Fields {
         /** 响应码字段 */
@@ -60,6 +72,13 @@ public final class PythonAiApiConstants {
         public static final String FILENAME = "filename";
         /** ID列表字段 */
         public static final String IDS = "ids";
+        /** Skill 数量字段 */
+        public static final String TOTAL_SKILLS = "totalSkills";
+        /** Skill 名称列表字段 */
+        public static final String SKILLS = "skills";
+        /** 切片总数字段 */
+        public static final String TOTAL_CHUNKS = "totalChunks";
+
 
         private Fields() {}
     }
@@ -72,8 +91,6 @@ public final class PythonAiApiConstants {
         public static final String CHUNK = "chunk";
         /** ReAct 循环中的工具调用 */
         public static final String TOOL_CALL = "tool_call";
-        /** 工具执行结果 */
-        public static final String TOOL_RESULT = "tool_result";
         /** 流式响应完成 */
         public static final String DONE = "done";
         /** 流式响应异常 */

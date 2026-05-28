@@ -4,9 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.personblog.api.articleAPI.ArticleInfoAPI;
+import com.personblog.api.articleAPI.ArticleAPI;
 import com.personblog.api.interactionAPI.CommentApi;
 import com.personblog.api.interactionAPI.LikeApi;
 import com.personblog.api.usrAPI.UseApi;
@@ -22,18 +20,17 @@ import com.personblog.common.dto.User.UserDTO;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
 import com.personblog.common.utils.UserContextHolder;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.personblog.comment.config.CacheConfig.CommentCacheConfig.commentPageCache;
 import static com.personblog.comment.config.mqConfig.CommentMqConfig.COMMENT_EXCHANGE;
 import static com.personblog.comment.config.mqConfig.CommentMqConfig.COMMENT_NOTIFICATION_KEY;
 import static com.personblog.common.constant.RedisKeys.COMMENT_PAGE;
@@ -57,20 +54,8 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     private final UseApi useApi;
     private final LikeApi likeApi;
-    private final ArticleInfoAPI articleInfoAPI;
+    private final ArticleAPI articleAPI;
     private final RabbitTemplate rabbitTemplate;
-
-    // 本地缓存 - 评论分页
-    private Cache<String, Page<CommentVO>> commentPageCache;
-
-    @PostConstruct
-    public void initCommentCache() {
-        commentPageCache = Caffeine.newBuilder()
-                .maximumSize(100)
-                .expireAfterWrite(Duration.ofMinutes(2))
-                .recordStats()
-                .build();
-    }
     @Override
     public Page<CommentVO> getCommentPage(Long articleId, Integer current, Integer size) {
         int page = (current == null || current <= 0) ? 1 : current;
@@ -548,7 +533,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         Map<Long, String> map = new HashMap<>();
         for (Long articleId : articleIds) {
             try {
-                String title = articleInfoAPI.getArticleTitle(articleId);
+                String title = articleAPI.getArticleTitle(articleId);
                 map.put(articleId, title);
             } catch (Exception e) {
                 log.warn("获取文章标题失败: articleId={}", articleId);

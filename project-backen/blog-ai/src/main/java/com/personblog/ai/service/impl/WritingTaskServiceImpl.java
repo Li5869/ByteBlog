@@ -37,7 +37,7 @@ public class WritingTaskServiceImpl implements IWritingTaskService {
     private final WritingPlanMapper writingPlanMapper;
     private final IWritingDraftService draftService;
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public WritingTask createTask(Long userId, String userRequest) {
         // 幂等性检查：如果用户最近10秒内已创建过 planning 状态的任务，直接返回该任务
         LocalDateTime tenSecondsAgo = LocalDateTime.now().minusSeconds(10);
@@ -146,7 +146,7 @@ public class WritingTaskServiceImpl implements IWritingTaskService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean deleteTask(Long taskId, Long userId) {
         // 查询任务是否存在且属于当前用户
         WritingTask task = writingTaskMapper.selectById(taskId);
@@ -168,7 +168,7 @@ public class WritingTaskServiceImpl implements IWritingTaskService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateStatus(Long taskId, String status, String currentStep) {
         LambdaUpdateWrapper<WritingTask> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(WritingTask::getId, taskId)
@@ -181,7 +181,7 @@ public class WritingTaskServiceImpl implements IWritingTaskService {
         log.info("[WritingTask] 更新任务状态, taskId={}, status={}, step={}", taskId, status, currentStep);
     }
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void completeTask(Long taskId, String finalAction) {
         LambdaUpdateWrapper<WritingTask> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(WritingTask::getId, taskId)
@@ -197,7 +197,7 @@ public class WritingTaskServiceImpl implements IWritingTaskService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateArticleId(Long taskId, Long articleId) {
         LambdaUpdateWrapper<WritingTask> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(WritingTask::getId, taskId)
@@ -208,7 +208,7 @@ public class WritingTaskServiceImpl implements IWritingTaskService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     @SuppressWarnings("unchecked")
     public WritingPlan savePlan(Long taskId, Map<String, Object> planData, Integer version, String userFeedback) {
         WritingPlan plan = new WritingPlan();
@@ -246,7 +246,7 @@ public class WritingTaskServiceImpl implements IWritingTaskService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updatePlanApprovalStatus(Long planId, String approvalStatus) {
         LambdaUpdateWrapper<WritingPlan> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(WritingPlan::getId, planId)

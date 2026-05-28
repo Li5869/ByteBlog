@@ -6,6 +6,7 @@ import com.personblog.ai.dto.KnowledgeFileQueryDTO;
 import com.personblog.ai.dto.KnowledgeFileUpdateDTO;
 import com.personblog.ai.entity.KnowledgeFile;
 import com.personblog.ai.vo.KnowledgeFileDetailVO;
+import com.personblog.ai.vo.KnowledgeFileListVO;
 
 import java.util.List;
 
@@ -22,7 +23,7 @@ public interface IKnowledgeFileService extends IService<KnowledgeFile> {
      * @param dto 查询参数
      * @return 分页结果
      */
-    Page<KnowledgeFile> getFilePage(KnowledgeFileQueryDTO dto);
+    Page<KnowledgeFileListVO> getFilePage(KnowledgeFileQueryDTO dto);
 
     /**
      * 获取知识库文件详情

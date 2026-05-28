@@ -43,6 +43,7 @@ async def _get_redis():
 async def _push_event(task_id: str, event: dict):
     redis = await _get_redis()
     await redis.xadd(_events_key(task_id), {"event": json.dumps(event, ensure_ascii=False)})
+    await redis.expire(_events_key(task_id), WRITING_TASK_TTL_SECONDS)
 
 
 async def _set_task_status(task_id: str, **fields):
@@ -54,6 +55,103 @@ async def _set_task_status(task_id: str, **fields):
 def _cleanup_task(task_id: str):
     if task_id in _running_tasks:
         del _running_tasks[task_id]
+
+
+async def cancel_task(task_id: str, reason: str = "用户取消") -> bool:
+    """
+    取消写作任务
+    
+    Args:
+        task_id: 写作任务ID
+        reason: 取消原因
+        
+    Returns:
+        是否成功取消
+    """
+    try:
+        redis = await _get_redis()
+        
+        if not await redis.exists(_task_key(task_id)):
+            logger.warning(f"[WritingExecution] 任务不存在, taskId={task_id}")
+            return False
+        
+        await _set_task_status(task_id, status="cancelled", error=reason)
+        await redis.delete(_events_key(task_id))
+        
+        if task_id in _running_tasks:
+            _running_tasks[task_id].cancel()
+            _cleanup_task(task_id)
+        
+        logger.info(f"[WritingExecution] 取消任务: {task_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"[WritingExecution] 取消任务失败: {e}")
+        return False
+
+
+async def stop_task(task_id: str, save_partial: bool = False) -> bool:
+    """
+    停止写作任务
+    
+    Args:
+        task_id: 写作任务ID
+        save_partial: 是否保存部分进度
+        
+    Returns:
+        是否成功停止
+    """
+    try:
+        redis = await _get_redis()
+        
+        if not await redis.exists(_task_key(task_id)):
+            logger.warning(f"[WritingExecution] 任务不存在, taskId={task_id}")
+            return False
+        
+        await _set_task_status(task_id, status="stopped")
+        
+        if task_id in _running_tasks:
+            _running_tasks[task_id].cancel()
+            _cleanup_task(task_id)
+        
+        if not save_partial:
+            await redis.delete(_events_key(task_id))
+        
+        logger.info(f"[WritingExecution] 停止任务: {task_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"[WritingExecution] 停止任务失败: {e}")
+        return False
+
+
+async def finalize_task(task_id: str) -> bool:
+    """
+    完成写作任务
+    
+    Args:
+        task_id: 写作任务ID
+        
+    Returns:
+        是否成功完成
+    """
+    try:
+        redis = await _get_redis()
+        
+        if not await redis.exists(_task_key(task_id)):
+            logger.warning(f"[WritingExecution] 任务不存在, taskId={task_id}")
+            return False
+        
+        await _set_task_status(task_id, status="finalized")
+        await redis.delete(_events_key(task_id))
+        await redis.delete(_task_key(task_id))
+        
+        logger.info(f"[WritingExecution] 完成任务: {task_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"[WritingExecution] 完成任务失败: {e}")
+        return False
 
 
 async def start_execute_phase(task_id: str) -> bool:

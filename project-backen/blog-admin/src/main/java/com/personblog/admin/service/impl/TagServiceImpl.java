@@ -12,7 +12,7 @@ import com.personblog.admin.mapper.TagMapper;
 import com.personblog.admin.service.ITagService;
 import com.personblog.admin.vo.AdminTagVO;
 import com.personblog.api.adminAPI.TagApi;
-import com.personblog.api.adminAPI.TagVO;
+import com.personblog.api.adminAPI.vo.TagVO;
 import com.personblog.common.dto.Tag.TagDTO;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;

@@ -6,7 +6,7 @@ import com.personblog.ai.config.PromptManger;
 import com.personblog.ai.dto.ContentModerationDTO;
 import com.personblog.ai.dto.sse.ModerationNotificationDTO;
 import com.personblog.ai.vo.ContentModerationVO;
-import com.personblog.api.articleAPI.ArticleInfoAPI;
+import com.personblog.api.articleAPI.ArticleAPI;
 import com.personblog.api.interactionAPI.CommentApi;
 import com.personblog.api.interactionAPI.SystemNotificationApi;
 import com.personblog.common.dto.MqMessage.notifaction.NotificationMessage;
@@ -37,7 +37,7 @@ import static com.personblog.common.constant.TargetTypeConstant.QUESTION;
 public class ContentModerationService{
     private final ChatClient moderationChatClient;
     private final PromptManger promptManger;
-    private final ArticleInfoAPI articleInfoAPI;
+    private final ArticleAPI articleAPI;
     private final CommentApi commentApi;
     private final SystemNotificationApi systemNotificationApi;
     private final SseEmitterManager sseEmitterManager;
@@ -83,7 +83,7 @@ public class ContentModerationService{
         if (type.equals(COMMENT)) {
             commentApi.updateReviewStatue(bizId, statue);
         } else {
-            articleInfoAPI.updateArticleReviewStatus(bizId, statue);
+            articleAPI.updateArticleReviewStatus(bizId, statue);
         }
     }
 

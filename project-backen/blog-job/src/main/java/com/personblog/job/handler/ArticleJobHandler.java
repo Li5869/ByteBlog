@@ -1,6 +1,6 @@
 package com.personblog.job.handler;
 
-import com.personblog.api.articleAPI.ArticleInfoAPI;
+import com.personblog.api.articleAPI.HotArticleAPI;
 import com.xxl.job.core.handler.annotation.XxlJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ArticleJobHandler {
 
-    private final ArticleInfoAPI articleInfoAPI;
+    private final HotArticleAPI articleAPI;
 
     /**
      * 刷新热门文章标记
@@ -21,7 +21,7 @@ public class ArticleJobHandler {
     @XxlJob("refreshHotArticles")
     public void refreshHotArticles() {
         log.info("开始刷新热门文章");
-        articleInfoAPI.refreshHotArticles();
+        articleAPI.refreshHotArticles();
         log.info("热门文章刷新完成");
     }
 }

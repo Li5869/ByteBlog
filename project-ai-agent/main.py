@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from loguru import logger
 from config.settings import get_settings
-from api import chat_router, knowledge_router
+from api import chat_router, knowledge_router, skill_router
 from api.writing_router import router as writing_router
 from services.core.nacos_service import get_nacos_service
 
@@ -46,6 +46,18 @@ async def lifespan(app: FastAPI):
 
     nacos_service = get_nacos_service()
     await nacos_service.register()
+
+    # 开发环境启动时自动索引 Skill 文档
+    if settings.skill_auto_index_on_startup:
+        try:
+            from scripts.index_skills import index_all_skills
+            result = await index_all_skills(force=True)
+            logger.info(
+                f"[Startup] Skill 自动索引完成: "
+                f"{result['skill_count']} Skills, {result['chunk_count']} 切片"
+            )
+        except Exception as e:
+            logger.warning(f"[Startup] Skill 自动索引失败（不影响服务启动）: {e}")
 
     yield
 
@@ -96,6 +108,7 @@ def create_app() -> FastAPI:
     app.include_router(chat_router, prefix="/api/v1/chat", tags=["Chat"])
     app.include_router(knowledge_router, prefix="/api/v1/knowledge", tags=["Knowledge"])
     app.include_router(writing_router, prefix="/api/v1/writing", tags=["Writing"])
+    app.include_router(skill_router, prefix="/api/v1/skill", tags=["Skill"])
 
     @app.get("/health")
     async def health_check():

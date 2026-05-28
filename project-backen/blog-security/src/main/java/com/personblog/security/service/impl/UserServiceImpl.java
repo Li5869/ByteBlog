@@ -5,8 +5,6 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import com.personblog.api.interactionAPI.FollowApi;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.common.dto.MqMessage.user.UserLikeMessageDTO;
@@ -20,7 +18,6 @@ import com.personblog.security.entity.User;
 import com.personblog.security.mapper.UserMapper;
 import com.personblog.security.service.IUserService;
 import com.personblog.security.vo.*;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -28,7 +25,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -47,19 +43,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     private final UserMapper userMapper;
     private final RedisTemplate<String, Object> redisTemplate;
     private final MultiLevelCacheUtil cacheUtil;
-
-    // 用户信息本地缓存
-    private Cache<Long, UserDTO> userInfoCache;
-
-    @PostConstruct
-    public void initCache() {
-        userInfoCache = Caffeine.newBuilder()
-                .maximumSize(500)
-                .expireAfterWrite(Duration.ofMinutes(5))
-                .recordStats()
-                .build();
-    }
-
 
     @Override
     public UserProfileStatsVO getUserProfileStats(Long userId) {
@@ -125,12 +108,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             updateUser.setEmail(dto.getEmail());
         }
         updateUser.setUpdatedAt(LocalDateTime.now());
+        this.updateById(updateUser);
         // 清除缓存
-        userInfoCache.invalidate(userId);
         cacheUtil.evict(USER_INFO + userId);
         cacheUtil.evict(USER_AUTHOR + userId);
         log.info("更新用户资料后清除缓存: userId={}", userId);
-        this.updateById(updateUser);
     }
 
     /**
@@ -378,9 +360,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
         updateUser.setUpdatedAt(LocalDateTime.now());
         this.updateById(updateUser);
-
         // 清除缓存
-        userInfoCache.invalidate(id);
         cacheUtil.evict(USER_INFO + id);
         cacheUtil.evict(USER_AUTHOR + id);
     }
@@ -400,7 +380,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                 .update();
 
         // 清除缓存
-        userInfoCache.invalidate(id);
         cacheUtil.evict(USER_INFO + id);
         cacheUtil.evict(USER_AUTHOR + id);
         log.info("管理员更新用户状态: userId={}, status={}", id, status);
@@ -416,7 +395,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         this.removeById(id);
 
         // 清除缓存
-        userInfoCache.invalidate(id);
         cacheUtil.evict(USER_INFO + id);
         cacheUtil.evict(USER_AUTHOR + id);
         log.info("管理员删除用户: userId={}", id);

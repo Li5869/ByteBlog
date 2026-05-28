@@ -1,8 +1,8 @@
 package com.personblog.article.controller.Column;
 
 import com.personblog.article.service.IColumnService;
-import com.personblog.article.vo.SubscriberVO;
-import com.personblog.article.vo.SubscriptionVO;
+import com.personblog.article.vo.Column.SubscriberVO;
+import com.personblog.article.vo.Column.SubscriptionVO;
 import com.personblog.common.result.JsonData;
 import com.personblog.common.utils.UserContextHolder;
 import io.swagger.v3.oas.annotations.Operation;

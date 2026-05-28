@@ -1,6 +1,6 @@
 package com.personblog.interaction.mqHandler;
 
-import com.personblog.api.articleAPI.ArticleInfoAPI;
+import com.personblog.api.articleAPI.ArticleMqAPI;
 import com.personblog.common.dto.MqMessage.Interaction.BrowseHistoryMessage;
 import com.personblog.interaction.entity.BrowseHistory;
 import com.personblog.interaction.mapper.BrowseHistoryMapper;
@@ -11,7 +11,6 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,11 +23,10 @@ import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.BRO
 @RequiredArgsConstructor
 public class BrowseHistoryMqHandler {
 
-    private final ArticleInfoAPI articleInfoAPI;
+    private final ArticleMqAPI articleAPI;
     private final BrowseHistoryMapper browseHistoryMapper;
 
     @RabbitListener(queues = BROWSE_HISTORY_QUEUE, containerFactory = "rabbitListenerContainerFactory")
-    @Transactional(rollbackFor = Exception.class)
     public void handleBrowseHistoryMessage(List<BrowseHistoryMessage> dtoList, Channel channel,
                                            @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
@@ -50,7 +48,7 @@ public class BrowseHistoryMqHandler {
             }
             
             if (!countList.isEmpty()) {
-                articleInfoAPI.updateBrowseCount(countList);
+                articleAPI.updateBrowseCount(countList);
                 log.info("文章浏览数更新完成，共 {} 条", countList.size());
             }
             

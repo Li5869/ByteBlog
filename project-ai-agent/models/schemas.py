@@ -59,3 +59,18 @@ class UserInfoDTO(BaseModel):
             f"头像: {self.avatar or '未设置'}",
         ]
         return "\n".join(parts)
+
+
+# ==================== Skill 相关 ====================
+
+class SkillIndexData(BaseModel):
+    """Skill 索引重建响应数据（字段名与 Java SkillStatsVO 一致）"""
+    totalSkills: int = Field(default=0, description="已索引的 Skill 数量")
+    totalChunks: int = Field(default=0, description="切片总数")
+
+
+class SkillStatusData(BaseModel):
+    """Skill 索引状态响应数据（字段名与 Java SkillStatsVO 一致，额外保留 skills 供列表查询）"""
+    skills: dict[str, int] = Field(default_factory=dict, description="各 Skill 的切片数量映射")
+    totalSkills: int = Field(default=0, description="已索引的 Skill 数量")
+    totalChunks: int = Field(default=0, description="切片总数")

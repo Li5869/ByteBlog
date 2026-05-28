@@ -12,7 +12,8 @@ def get_smart_agent_system_prompt() -> str:
     使用 Skills 替代原有的工具选择策略指南，实现提示词与代码解耦。
 
     采用渐进式披露策略：不预注入 Skills 描述，
-    Agent 可按需调用 list_available_skills 和 get_skill_details 工具获取技能信息。
+Agent 可按需调用 list_available_skills、search_skill_guide、get_skill_details 工具获取技能信息。
+优先使用 search_skill_guide 进行语义检索，get_skill_details 作为降级兜底。
 
     架构说明：
       thinking 节点只负责推理和工具调用，answer 节点负责生成最终回答。
@@ -45,7 +46,7 @@ def get_smart_agent_system_prompt() -> str:
 ✅ 正确输出：
 用户想了解渐进式披露的概念。我应该搜索相关文章来获取准确信息。
 [调用 search_articles 工具]
-
+好的，我已经获得了足够的信息了，现在可以开始回答了。
 ❌ 错误输出：
 好的，我来帮你了解渐进式披露。渐进式披露是一种设计原则...
 
@@ -53,9 +54,10 @@ def get_smart_agent_system_prompt() -> str:
 
 1. **获取用户信息** — 第一次回答时调用 `get_current_user_info()`，后续记住用户信息
 2. **分析需求** — 判断用户意图，匹配 Skill
-3. **获取 Skill 详情** — 匹配到 Skill 时，必须先调用 `get_skill_details(skill_name)`
-4. **调用工具** — 按 Skill 指南调用工具获取信息
-5. **提取关键信息** — 从工具结果中提取关键点，**不要展开解释**
+3. **语义搜索 Skill 指南** — 调用 `search_skill_guide(query, skill_name)` 获取精准操作指南
+4. **如果结果不足** — 降级调用 `get_skill_details(skill_name)` 获取完整文档
+5. **调用工具** — 按 Skill 指南调用工具获取信息
+6. **提取关键信息** — 从工具结果中提取关键点，**不要展开解释**
 
 ## 输出规则
 
@@ -83,4 +85,5 @@ def get_answer_prompt() -> str:
 - 直接输出回答内容，不要重复思考过程
 - 综合所有工具返回的信息，给出有价值的回答
 - 如果工具没有找到相关信息，如实告知
+- Skill 指南片段可能包含来源标注（如"第 X/Y 段"），无需在回答中体现
 - 语气热情友好，适当使用 emoji"""

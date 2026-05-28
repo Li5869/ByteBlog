@@ -19,7 +19,8 @@ import com.personblog.article.mapper.ColumnMapper;
 import com.personblog.article.service.IColumnArticleService;
 import com.personblog.article.service.IColumnService;
 import com.personblog.article.service.IColumnSubscriptionService;
-import com.personblog.article.vo.*;
+import com.personblog.article.vo.Article.MyArticleVO;
+import com.personblog.article.vo.Column.*;
 import com.personblog.common.dto.MqMessage.search.SearchSyncMessageDTO;
 import com.personblog.common.dto.Search.ColumnSearchDTO;
 import com.personblog.common.dto.User.UserDTO;
@@ -286,7 +287,7 @@ public class ColumnServiceImpl extends ServiceImpl<ColumnMapper, Column> impleme
                 .collect(Collectors.toList());
     }
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateColumnView() {
         Map<Object, Object> viewMap = redisTemplate.opsForHash().entries(COLUMN_READ_COUNT);
         

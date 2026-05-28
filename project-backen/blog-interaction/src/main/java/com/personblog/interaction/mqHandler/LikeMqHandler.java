@@ -1,6 +1,6 @@
 package com.personblog.interaction.mqHandler;
 
-import com.personblog.api.articleAPI.ArticleInfoAPI;
+import com.personblog.api.articleAPI.ArticleMqAPI;
 import com.personblog.api.interactionAPI.CommentApi;
 import com.personblog.api.interactionAPI.NotificationApi;
 import com.personblog.api.questionAPI.AnswerApi;
@@ -45,7 +45,7 @@ import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.*;
 @Component
 @RequiredArgsConstructor
 public class LikeMqHandler {
-    private final ArticleInfoAPI articleInfoAPI;
+    private final ArticleMqAPI articleAPI;
     private final CommentApi commentApi;
     private final BizLikeService likeService;
     private final QuestionApi questionApi;
@@ -72,7 +72,7 @@ public class LikeMqHandler {
         likeStrategyMap.put(QUESTION, questionLikeService);
         likeStrategyMap.put(ANSWER, answerLikeService);
 
-        likeCountUpdaters.put(ARTICLE, articleInfoAPI::updateLikeCount);
+        likeCountUpdaters.put(ARTICLE, articleAPI::updateLikeCount);
         likeCountUpdaters.put(COMMENT, commentApi::updateLikeCount);
         likeCountUpdaters.put(QUESTION, questionApi::updateLikeCount);
         likeCountUpdaters.put(ANSWER, answerApi::updateLikeCount);
@@ -155,7 +155,7 @@ public class LikeMqHandler {
     public void syncLikeCache(SyncLikeCacheMessage dto, Channel channel,
                               @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         // 同类型点赞缓存同步使用分布式锁串行执行，防止并发
-        RLock lock = redissonClient.getLock(LIKE_SYNC_LOCK_PREFIX + dto.getTargetType());
+        RLock lock = redissonClient.getLock(LIKE_SYNC_LOCK_PREFIX + dto.getTargetType() + ":" + dto.getBizId());
         try {
             boolean tryLock = lock.tryLock(5, 30, TimeUnit.SECONDS);
             if (!tryLock) {
@@ -166,7 +166,7 @@ public class LikeMqHandler {
             log.info("开始同步点赞缓存, targetType={}", dto.getTargetType());
             LikeStrategy likeStrategy = likeStrategyMap.get(dto.getTargetType());
             if (likeStrategy != null) {
-                likeStrategy.AllSync2Cache();
+                likeStrategy.AllSync2Cache(dto.getBizId());
             }
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {

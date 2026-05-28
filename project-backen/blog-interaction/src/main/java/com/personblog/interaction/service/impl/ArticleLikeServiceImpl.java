@@ -6,6 +6,7 @@ import com.personblog.interaction.entity.ArticleLike;
 import com.personblog.interaction.mapper.ArticleLikeMapper;
 import com.personblog.interaction.service.ArticleLikeService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.DefaultStringRedisConnection;
 import org.springframework.data.redis.connection.StringRedisConnection;
 import org.springframework.data.redis.core.RedisCallback;
@@ -25,6 +26,7 @@ import static com.personblog.common.constant.TargetTypeConstant.ARTICLE;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ArticleLikeServiceImpl extends ServiceImpl<ArticleLikeMapper, ArticleLike> implements ArticleLikeService {
     private final StringRedisTemplate redisTemplate;
 
@@ -53,8 +55,13 @@ public class ArticleLikeServiceImpl extends ServiceImpl<ArticleLikeMapper, Artic
     }
 
     @Override
-    public void AllSync2Cache() {
+    public void AllSync2Cache(Long bizId) {
+        if (bizId == null) {
+            log.warn("AllSync2Cache: bizId 为空，跳过同步");
+            return;
+        }
         List<ArticleLike> list = lambdaQuery().select(ArticleLike::getArticleId, ArticleLike::getUserId)
+                .eq(ArticleLike::getArticleId,bizId)
                 .list();
         // pipeline优化性能
         redisTemplate.executePipelined((RedisCallback<Object>) connection -> {

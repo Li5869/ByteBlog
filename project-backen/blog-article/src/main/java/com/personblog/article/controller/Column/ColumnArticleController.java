@@ -2,7 +2,7 @@ package com.personblog.article.controller.Column;
 
 import com.personblog.article.dto.column.ColumnArticleDTO;
 import com.personblog.article.service.IColumnService;
-import com.personblog.article.vo.MyArticleVO;
+import com.personblog.article.vo.Article.MyArticleVO;
 import com.personblog.common.result.JsonData;
 import com.personblog.common.utils.UserContextHolder;
 import io.swagger.v3.oas.annotations.Operation;

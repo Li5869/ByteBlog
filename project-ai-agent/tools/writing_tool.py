@@ -23,13 +23,13 @@ from services.business.writing.writing_execution_service import (
     start_execute_phase,
     start_revise_phase,
 )
+from services.business.blog_service import get_blog_service
 from tools.user_tool import current_user_id
 
 
 def _generate_result_url(task_id: str) -> str:
     settings = get_settings()
-    base_url = getattr(settings, 'frontend_base_url', 'https://your-domain.com')
-    return f"{base_url}/writing/{task_id}/result"
+    return f"{settings.frontend_base_url}/ai/writing/{task_id}/draft"
 
 
 def _parse_json_field(value) -> list:
@@ -278,6 +278,99 @@ async def writing_result(task_id: str) -> str:
         return f"获取成果链接时发生错误: {str(e)}"
 
 
-# ==================== 工具列表 ====================
+@tool
+async def writing_publish(task_id: str, action: str) -> str:
+    """
+    发布或保存写作任务生成的文章。
 
-WRITING_TOOLS = [writing_start, writing_status, writing_action, writing_result]
+    用户确认后，获取草稿数据并调用发布接口。
+
+    重要：
+    - 调用前必须先向用户确认是发布还是保存草稿
+    - action 参数必须是 "publish" 或 "draft"
+
+    Args:
+        task_id: 写作任务ID
+        action: 操作类型
+            - "publish": 直接发布文章（status=1）
+            - "draft": 保存为草稿（status=0）
+
+    Returns:
+        发布结果，包含文章ID和状态
+    """
+    try:
+        if action not in ("publish", "draft"):
+            return f"不支持的操作: `{action}`，请使用 publish（发布）或 draft（保存草稿）。"
+
+        task_service = get_writing_task_service()
+        blog_service = get_blog_service()
+
+        task_info = await task_service.get_task(int(task_id))
+        if not task_info:
+            return f"未找到任务 {task_id}，请确认任务ID是否正确。"
+
+        status = task_info.get("status", "unknown")
+        if status != "finalized":
+            return f"任务 {task_id} 当前状态为 {status}，尚未完成写作。请等待写作完成后再发布。"
+
+        draft = await task_service.get_draft(int(task_id))
+        if not draft:
+            return f"未找到任务 {task_id} 的草稿数据，请确认写作是否完成。"
+
+        logger.info(f"[WritingTool] 获取草稿数据: {draft}")
+
+        title = draft.get("title", "")
+        if not title or not title.strip():
+            logger.error(f"[WritingTool] 草稿标题为空, draft={draft}")
+            return f"草稿数据异常：文章标题为空，请确认写作任务是否正常完成。"
+
+        user_id = current_user_id.get()
+        if not user_id:
+            return "无法获取用户信息，请确认登录状态。"
+
+        tag_ids = []
+        if draft.get("tagIds"):
+            tag_ids = [int(tid.strip()) for tid in draft["tagIds"].split(",") if tid.strip()]
+
+        tag_names = []
+        if draft.get("tagNames"):
+            tag_names = [name.strip() for name in draft["tagNames"].split(",") if name.strip()]
+
+        article_data = {
+            "title": title,
+            "summary": draft.get("summary", ""),
+            "content": draft.get("content", ""),
+            "cover": draft.get("cover", ""),
+            "categoryId": draft.get("categoryId"),
+            "tagIds": tag_ids,
+            "tagNames": tag_names,
+            "status": 1 if action == "publish" else 0,
+            "taskId": int(task_id),
+        }
+
+        logger.info(f"[WritingTool] 发布文章数据: userId={user_id}, articleData={article_data}")
+
+        result = await blog_service.publish_article(int(user_id), article_data)
+        if not result:
+            logger.error(f"[WritingTool] 发布文章返回None, userId={user_id}, articleData={article_data}")
+            return f"发布文章失败，请稍后重试。"
+
+        article_id = result.get("id")
+        article_status = result.get("status")
+        status_text = "已发布" if article_status == 1 else "已保存为草稿"
+
+        settings = get_settings()
+        article_url = f"{settings.frontend_base_url}/article/{article_id}"
+
+        return (
+            f"✅ **文章{status_text}！**\n\n"
+            f"📝 **文章ID**: `{article_id}`\n\n"
+            f"🔗 **点击查看文章**：{article_url}\n\n"
+            f"{'🎉 恭喜！您的文章已成功发布到博客！' if action == 'publish' else '📝 文章已保存为草稿，您可以随时编辑和发布。'}"
+        )
+    except Exception as e:
+        logger.error(f"[WritingTool] 发布文章异常: {e}")
+        return f"发布文章时发生错误: {str(e)}"
+
+
+WRITING_TOOLS = [writing_start, writing_status, writing_action, writing_result, writing_publish]

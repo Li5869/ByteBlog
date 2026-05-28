@@ -11,6 +11,7 @@ import com.personblog.ai.mapper.KnowledgeFileMapper;
 import com.personblog.ai.mapper.KnowledgeParentChunkMapper;
 import com.personblog.ai.service.IKnowledgeFileService;
 import com.personblog.ai.vo.KnowledgeFileDetailVO;
+import com.personblog.ai.vo.KnowledgeFileListVO;
 import com.personblog.common.exception.BizException;
 import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +41,7 @@ public class KnowledgeFileServiceImpl extends ServiceImpl<KnowledgeFileMapper, K
     private final KnowledgeParentChunkMapper knowledgeParentChunkMapper;
 
     @Override
-    public Page<KnowledgeFile> getFilePage(KnowledgeFileQueryDTO dto) {
+    public Page<KnowledgeFileListVO> getFilePage(KnowledgeFileQueryDTO dto) {
         int current = (dto.getCurrent() == null || dto.getCurrent() <= 0) ? 1 : dto.getCurrent();
         int size = (dto.getSize() == null || dto.getSize() <= 0) ? 10 : Math.min(dto.getSize(), 50);
 
@@ -61,8 +62,14 @@ public class KnowledgeFileServiceImpl extends ServiceImpl<KnowledgeFileMapper, K
         }
 
         wrapper.orderByDesc(KnowledgeFile::getCreatedAt);
-
-        return knowledgeFileMapper.selectPage(page, wrapper);
+        Page<KnowledgeFile> pages = knowledgeFileMapper.selectPage(page, wrapper);
+        // 转换为 ListVO
+        Page<KnowledgeFileListVO> resultPage = new Page<>(pages.getCurrent(), pages.getSize(), pages.getTotal());
+        List<KnowledgeFileListVO> records = pages.getRecords().stream()
+                .map(this::convertToListVO)
+                .collect(Collectors.toList());
+        resultPage.setRecords(records);
+        return resultPage;
     }
 
     @Override
@@ -206,5 +213,24 @@ public class KnowledgeFileServiceImpl extends ServiceImpl<KnowledgeFileMapper, K
             log.warn("解析 parentIds 失败: {}", parentIdsJson, e);
             return List.of();
         }
+    }
+
+    /**
+     * 转换为列表 VO
+     */
+    private KnowledgeFileListVO convertToListVO(KnowledgeFile file) {
+        return KnowledgeFileListVO.builder()
+                .id(file.getId())
+                .fileName(file.getFileName())
+                .description(file.getDescription())
+                .fileUrl(file.getFileUrl())
+                .fileSize(file.getFileSize())
+                .chunkCount(file.getChunkCount())
+                .source(file.getSource())
+                .category(file.getCategory())
+                .uploaderId(file.getUploaderId())
+                .createdAt(file.getCreatedAt())
+                .updatedAt(file.getUpdatedAt())
+                .build();
     }
 }

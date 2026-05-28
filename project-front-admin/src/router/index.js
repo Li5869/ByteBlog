@@ -89,6 +89,11 @@ const routes = [
         path: 'knowledge',
         name: 'Knowledge',
         component: () => import('../views/KnowledgeManage.vue')
+      },
+      {
+        path: 'skill',
+        name: 'Skill',
+        component: () => import('../views/SkillManage.vue')
       }
     ]
   }

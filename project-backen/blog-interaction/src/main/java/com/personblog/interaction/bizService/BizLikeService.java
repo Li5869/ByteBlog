@@ -68,6 +68,7 @@ public class BizLikeService implements LikeApi {
                 // 使用 MQ 异步同步缓存
                 SyncLikeCacheMessage messageDTO = SyncLikeCacheMessage.builder()
                         .targetType(targetType)
+                        .bizId(targetId)
                         .build();
                 rabbitTemplate.convertAndSend(INTERACTION_EXCHANGE, LIKE_SYNC_CACHE_KEY, messageDTO);
                 log.info("消息已发送");

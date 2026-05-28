@@ -39,7 +39,8 @@
       "Bash(gh pr list *)",
       "Bash(gh pr view *)",
       "Bash(gh issue list *)",
-      "Bash(gh issue view *)"
+      "Bash(gh issue view *)",
+      "Bash(python -m pytest tests/test_skill_chunker.py -v)"
     ]
   }
 }

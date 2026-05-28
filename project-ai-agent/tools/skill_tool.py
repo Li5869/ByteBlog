@@ -7,7 +7,8 @@ Skill 工具
 from langchain_core.tools import tool
 from loguru import logger
 
-from skills.loader import get_skill_loader
+from services.skill.loader import get_skill_loader
+from vectorstore.skill_vector_store import get_skill_vector_store
 
 
 @tool
@@ -62,3 +63,26 @@ def list_available_skills() -> str:
         lines.append(f"{i}. **{name}**：{skill['description']}")
     
     return "\n".join(lines)
+
+
+@tool
+async def search_skill_guide(query: str, skill_name: str = None, top_k: int = 5) -> str:
+    """
+    语义搜索 Skill 指南，精准获取与当前任务相关的操作指南片段。
+
+    优先使用此工具而非 get_skill_details，因为：
+    - 返回内容更精准（只包含与你的任务相关的部分）
+    - Token 消耗更少（通常只有完整文档的 20-40%）
+    - 支持跨 Skill 搜索（不传 skill_name 时搜索所有 Skills）
+
+    Args:
+        query: 描述你当前需要什么帮助。例如："如何发布写作任务"、"启动写作任务的流程"
+        skill_name: 限定搜索的 Skill 名称（可选）。不传则搜索所有 Skills
+        top_k: 返回结果数量，默认 5
+
+    Returns:
+        相关的 Skill 指南片段（Markdown 格式）
+    """
+    store = await get_skill_vector_store()
+    loader = get_skill_loader()
+    return await store.search_and_assemble(query, skill_name, top_k, loader)

@@ -4,7 +4,7 @@
 """
 
 import httpx
-from typing import List
+from typing import List, Optional
 from functools import lru_cache
 from loguru import logger
 from services.business.base_client import NacosAwareClient
@@ -71,6 +71,48 @@ class BlogApiService(NacosAwareClient):
         except Exception as e:
             logger.error(f"[BlogService] 获取标签列表未知错误: {e}")
             return []
+
+    async def publish_article(self, user_id: int, article_data: dict) -> Optional[dict]:
+        """
+        发布或保存文章草稿
+
+        调用 Java 后端 /ai/article/internal/create 接口发布文章。
+        用于 SmartAgent 调用发布写作任务生成的文章。
+
+        Args:
+            user_id: 用户 ID
+            article_data: 文章数据，包含 title, summary, content, cover, categoryId, tagIds, tagNames, status, taskId
+
+        Returns:
+            发布结果，包含文章 ID 和状态
+        """
+        try:
+            response = await self.client.post(
+                f"{await self._get_base_url()}/ai/article/internal/create",
+                params={"userId": user_id},
+                json=article_data
+            )
+            response.raise_for_status()
+            json_data = response.json()
+
+            code = json_data.get("code", -1)
+            if code != 0:
+                msg = json_data.get("msg", "未知错误")
+                logger.error(f"[BlogService] 发布文章业务失败, code={code}, msg={msg}, userId={user_id}")
+                return None
+
+            result = json_data.get("data")
+            logger.info(f"[BlogService] 发布文章成功, userId={user_id}, articleId={result.get('id') if result else None}")
+            return result
+        except httpx.HTTPStatusError as e:
+            logger.error(f"[BlogService] 发布文章失败，状态码: {e.response.status_code}, 响应: {e.response.text}")
+            return None
+        except httpx.RequestError as e:
+            logger.error(f"[BlogService] 发布文章请求异常: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"[BlogService] 发布文章未知错误: {e}")
+            return None
 
     async def close(self):
         """关闭 HTTP 客户端"""

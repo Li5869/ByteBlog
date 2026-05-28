@@ -336,15 +336,31 @@ public class AuthController {
 
         // 3. 构建返回的用户信息
         UserInfoVO userInfoVO = new UserInfoVO();
-        userInfoVO.setId(user.getId());
-        userInfoVO.setUsername(user.getUsername());
-        userInfoVO.setNickname(user.getNickname());
-        userInfoVO.setAvatar(user.getAvatar());
-        userInfoVO.setEmail(user.getEmail());
-        userInfoVO.setPhone(user.getPhone());
-        userInfoVO.setBio(user.getBio());
-        userInfoVO.setIsAdmin(user.getIsAdmin());
-        
+        if (user != null) {
+            userInfoVO.setId(user.getId());
+        }
+        if (user != null) {
+            userInfoVO.setUsername(user.getUsername());
+        }
+        if (user != null) {
+            userInfoVO.setNickname(user.getNickname());
+        }
+        if (user != null) {
+            userInfoVO.setAvatar(user.getAvatar());
+        }
+        if (user != null) {
+            userInfoVO.setEmail(user.getEmail());
+        }
+        if (user != null) {
+            userInfoVO.setPhone(user.getPhone());
+        }
+        if (user != null) {
+            userInfoVO.setBio(user.getBio());
+        }
+        if (user != null) {
+            userInfoVO.setIsAdmin(user.getIsAdmin());
+        }
+
         return JsonData.buildSuccess(userInfoVO);
     }
     

@@ -3,7 +3,7 @@ package com.personblog.article.controller.Admin;
 import com.personblog.admin.aspect.RecordLog;
 import com.personblog.article.entity.Category;
 import com.personblog.article.service.ICategoryService;
-import com.personblog.article.vo.AdminCategoryVO;
+import com.personblog.article.vo.Admin.AdminCategoryVO;
 import com.personblog.common.result.JsonData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

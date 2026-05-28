@@ -101,43 +101,45 @@ class SmartAgent:
 
     async def _thinking_node(self, state: AgentState) -> dict:
         """
-        思考节点：流式调用 LLM，所有内容作为 thinking 事件发射。
-        如果有 tool_calls，在节点内直接执行工具并发射结果事件。
+        思考节点：流式调用 LLM，缓存所有输出。
+
+        - 有 tool_calls：回放缓存内容作为 thinking 事件，执行工具，继续循环
+        - 无 tool_calls：丢弃缓存（那就是最终回答），交给 answer 节点重新流式生成
         """
         llm_with_tools = self.llm.bind_tools(self.tools)
         messages = state["messages"]
 
         full_response = None
-        thinking_content = ""
+        thinking_chunks = []  # 缓存所有输出 chunk，待判断后决定是否发射
 
-        # 流式调用 LLM，所有内容统一作为 thinking 发射
         async for chunk in llm_with_tools.astream(messages):
             full_response = chunk if full_response is None else full_response + chunk
             if chunk.content:
-                thinking_content += chunk.content
-                await self._emit(StreamEvent(event_type="thinking", content=chunk.content))
+                thinking_chunks.append(chunk.content)
 
         tool_calls = full_response.tool_calls if full_response and hasattr(full_response, "tool_calls") else []
 
         if tool_calls:
-            # 发射工具调用事件
+            # 有工具调用：回放思考过程 → 发射工具调用 → 执行工具 → 继续循环
+            for content in thinking_chunks:
+                await self._emit(StreamEvent(event_type="thinking", content=content))
+
             for tc in tool_calls:
                 await self._emit(StreamEvent(
                     event_type="tool_call", content=f"\n🔧 调用工具: {tc['name']}",
                     tool_name=tc["name"], tool_args=tc["args"],
                 ))
 
-            # 在节点内直接执行工具
             tool_messages = await self._execute_tools(tool_calls)
 
+            thinking_content = "".join(thinking_chunks)
             new_messages = list(state["messages"]) + [
                 AIMessage(content=thinking_content, tool_calls=tool_calls)
             ] + tool_messages
 
-            # 执行了工具，需要继续思考以处理工具结果
             return {"messages": new_messages, "iteration": state.get("iteration", 0) + 1, "needs_more_thinking": True}
 
-        # 无 tool_calls，准备进入回答
+        # 无 tool_calls：LLM 输出即为"答案"，丢弃缓存，交由 answer 节点重新流式生成
         return {
             "messages": state["messages"],
             "iteration": state.get("iteration", 0) + 1,

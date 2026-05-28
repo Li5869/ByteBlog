@@ -2,7 +2,7 @@ package com.personblog.article.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.personblog.api.adminAPI.TagApi;
-import com.personblog.api.adminAPI.TagVO;
+import com.personblog.api.adminAPI.vo.TagVO;
 import com.personblog.api.searchAPI.ArticleSearchDataApi;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.article.entity.Article;
@@ -10,7 +10,7 @@ import com.personblog.article.entity.ArticleTag;
 import com.personblog.article.entity.Category;
 import com.personblog.article.mapper.ArticleMapper;
 import com.personblog.article.mapper.ArticleTagMapper;
-import com.personblog.article.mapper.CategoryMapper;
+import com.personblog.article.service.ICategoryService;
 import com.personblog.common.dto.Search.ArticleSearchDTO;
 import com.personblog.common.dto.User.UserDTO;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +31,7 @@ public class ArticleSearchDataServiceImpl implements ArticleSearchDataApi {
 
     private final ArticleMapper articleMapper;
     private final ArticleTagMapper articleTagMapper;
-    private final CategoryMapper categoryMapper;
+    private final ICategoryService categoryService;
     private final TagApi tagApi;
     private final UseApi useApi;
 
@@ -68,7 +68,7 @@ public class ArticleSearchDataServiceImpl implements ArticleSearchDataApi {
 
         // 批量查询分类名称
         List<Long> categoryIds = articles.stream().map(Article::getCategoryId).distinct().toList();
-        Map<Long, String> categoryNameMap = categoryMapper.selectBatchIds(categoryIds).stream()
+        Map<Long, String> categoryNameMap = categoryService.listByIds(categoryIds).stream()
                 .collect(Collectors.toMap(Category::getId, Category::getName));
 
         // 批量查询文章-标签关联

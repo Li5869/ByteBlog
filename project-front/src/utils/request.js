@@ -682,7 +682,7 @@ export const aiApi = {
   /**
    * 创建新会话
    */
-  createConversation: () => post('/ai/chat/conversations'),
+  createConversation: () => post('/ai/conversations'),
 
   /**
    * 获取会话列表
@@ -690,27 +690,27 @@ export const aiApi = {
    * @param {number} size - 每页大小
    */
   getConversationList: (current = 1, size = 20) =>
-    get('/ai/chat/conversations', { current, size }),
+    get('/ai/conversations', { current, size }),
 
   /**
    * 获取会话详情（包含历史消息）
    * @param {string} conversationId - 会话ID
    */
   getConversationDetail: (conversationId) =>
-    get(`/ai/chat/conversations/${conversationId}`),
+    get(`/ai/conversations/${conversationId}`),
 
   /**
    * 删除会话
    * @param {string} conversationId - 会话ID
    */
   deleteConversation: (conversationId) =>
-    del(`/ai/chat/conversations/${conversationId}`),
+    del(`/ai/conversations/${conversationId}`),
 
   /**
    * 停止对话（通知后端终止流式输出，保存已生成内容）
-   * @param {string} sessionId - 会话ID（即 conversationId）
+   * @param {string} conversationId - 会话ID
    */
-  stopChat: (sessionId) => post(`/ai/chat/stop?sessionId=${sessionId}`, {}),
+  stopChat: (conversationId) => post(`/ai/chat/stop?conversationId=${conversationId}`, {}),
 
   /**
    * 发送消息（SSE 流式响应）

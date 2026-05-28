@@ -2,9 +2,9 @@ package com.personblog.article.controller.Admin;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.personblog.admin.aspect.RecordLog;
+import com.personblog.article.BizService.ArticleAdminBizService;
 import com.personblog.article.dto.article.AdminArticleQueryDTO;
-import com.personblog.article.service.IArticleService;
-import com.personblog.article.vo.AdminArticleVO;
+import com.personblog.article.vo.Admin.AdminArticleVO;
 import com.personblog.common.result.JsonData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "管理端-文章管理", description = "管理后台的文章管理接口")
 public class AdminArticleController {
 
-    private final IArticleService articleService;
+    private final ArticleAdminBizService articleAdminBizService;
 
     /**
      * 获取文章列表（分页）
@@ -33,7 +33,7 @@ public class AdminArticleController {
     @Operation(summary = "获取文章列表", description = "分页查询文章列表，支持多种筛选条件")
     @PostMapping("/list")
     public JsonData<Page<AdminArticleVO>> getArticlePage(@RequestBody AdminArticleQueryDTO dto) {
-        Page<AdminArticleVO> page = articleService.getAdminArticlePage(dto);
+        Page<AdminArticleVO> page = articleAdminBizService.getAdminArticlePage(dto);
         return JsonData.buildSuccess(page);
     }
 
@@ -44,7 +44,7 @@ public class AdminArticleController {
     @GetMapping("/{id}")
     public JsonData<AdminArticleVO> getArticleDetail(
             @Parameter(description = "文章ID") @PathVariable Long id) {
-        AdminArticleVO article = articleService.getAdminArticleDetail(id);
+        AdminArticleVO article = articleAdminBizService.getAdminArticleDetail(id);
         return JsonData.buildSuccess(article);
     }
 
@@ -56,7 +56,7 @@ public class AdminArticleController {
     @DeleteMapping("/{id}")
     public JsonData<Void> deleteArticle(
             @Parameter(description = "文章ID") @PathVariable Long id) {
-        articleService.deleteArticleByAdmin(id);
+        articleAdminBizService.deleteArticleByAdmin(id);
         return JsonData.buildSuccess();
     }
 
@@ -68,7 +68,7 @@ public class AdminArticleController {
     @PutMapping("/{id}/approve")
     public JsonData<Void> approveArticle(
             @Parameter(description = "文章ID") @PathVariable Long id) {
-        articleService.approveArticle(id);
+        articleAdminBizService.approveArticle(id);
         return JsonData.buildSuccess();
     }
 
@@ -81,7 +81,7 @@ public class AdminArticleController {
     public JsonData<Void> rejectArticle(
             @Parameter(description = "文章ID") @PathVariable Long id,
             @RequestBody(required = false) String reason) {
-        articleService.rejectArticle(id, reason);
+        articleAdminBizService.rejectArticle(id, reason);
         return JsonData.buildSuccess();
     }
 
@@ -94,7 +94,7 @@ public class AdminArticleController {
     public JsonData<Void> toggleTop(
             @Parameter(description = "文章ID") @PathVariable Long id,
             @RequestParam Boolean isTop) {
-        articleService.setArticleTop(id, isTop);
+        articleAdminBizService.setArticleTop(id, isTop);
         return JsonData.buildSuccess();
     }
 }

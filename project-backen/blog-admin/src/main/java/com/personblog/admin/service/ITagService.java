@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.personblog.admin.dto.AdminTagQueryDTO;
 import com.personblog.admin.entity.Tag;
 import com.personblog.admin.vo.AdminTagVO;
-import com.personblog.api.adminAPI.TagVO;
+import com.personblog.api.adminAPI.vo.TagVO;
 
 import java.util.List;
 
