@@ -1,19 +1,15 @@
 package com.personblog.push.service;
 
-import com.personblog.push.sse.SseEmitterManager;
 import com.personblog.push.vo.PushMessageVO;
 import com.personblog.push.websocket.WebSocketHandler;
 import com.personblog.push.websocket.WebSocketMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
-
 @Service
 @RequiredArgsConstructor
 public class MessagePushService {
     private final WebSocketHandler webSocketHandler;
-    private final SseEmitterManager sseEmitterManager;
     private final OnlineStateService onlineStateService;
 
     public void pushMessage(PushMessageVO message){
@@ -31,14 +27,13 @@ public class MessagePushService {
     }
 
     /**
-     * 推送未读消息数更新（通过 SSE，纯单向推送无需走 WebSocket）
+     * 推送未读消息数更新（通过 WebSocket，与私信同通道，保证时序一致性）
      */
     public void pushUnreadCountUpdate(Long receiverId, int unreadCount) {
         if (!onlineStateService.isOnline(receiverId)) {
             return;
         }
-        sseEmitterManager.sendToUser(receiverId, Map.of(
-                "userId", String.valueOf(receiverId),
-                "delta", unreadCount), "unread_update");
+        WebSocketMessage message = WebSocketMessage.unreadUpdate(receiverId, unreadCount);
+        webSocketHandler.sendToUser(receiverId, message);
     }
 }

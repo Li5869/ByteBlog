@@ -70,16 +70,6 @@ class SseManager {
         }
       })
 
-      // 接收未读消息数更新
-      this.eventSource.addEventListener('unread_update', (event) => {
-        try {
-          const data = JSONbigString.parse(event.data)
-          this.emit('unread_update', data)
-        } catch (e) {
-          console.error('[SSE] 解析未读消息数失败:', e)
-        }
-      })
-
       // 连接错误
       this.eventSource.onerror = (error) => {
         console.error('[SSE] 连接错误:', error)

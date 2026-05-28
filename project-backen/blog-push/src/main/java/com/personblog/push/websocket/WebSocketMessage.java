@@ -112,8 +112,8 @@ public class WebSocketMessage {
 
     public static WebSocketMessage unreadUpdate(Long receiverId, int delta) {
         Map<String, Object> payload = new HashMap<>();
-        payload.put("userId", receiverId);
+        payload.put("userId", String.valueOf(receiverId));  // 转为字符串，避免JS精度丢失
         payload.put("delta", delta);
-        return new WebSocketMessage("unread_update", payload);
+        return new WebSocketMessage(PushConstants.TYPE_UNREAD_UPDATE, payload);
     }
 }
