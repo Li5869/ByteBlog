@@ -5,7 +5,7 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.personblog.api.adminAPI.TagApi;
-import com.personblog.api.adminAPI.TagVO;
+import com.personblog.api.adminAPI.vo.TagVO;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.article.dto.article.AdminArticleQueryDTO;
 import com.personblog.article.entity.Article;

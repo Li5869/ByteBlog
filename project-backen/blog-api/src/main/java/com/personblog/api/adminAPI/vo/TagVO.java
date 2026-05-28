@@ -1,4 +1,4 @@
-package com.personblog.api.adminAPI;
+package com.personblog.api.adminAPI.vo;
 
 import lombok.Builder;
 import lombok.Data;

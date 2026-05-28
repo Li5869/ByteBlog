@@ -36,7 +36,7 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 | 模块 | 能力 | 实现方式 |
 |------|------|----------|
 | 🤖 **AI 写作 Agent** | Plan-and-Execute 四阶段工作流（规划→执行→反思→定稿），四角色 LLM 差异化 temperature 配置，5 维质量评估自动微调，SSE 实时推送子步骤进度，Redis 任务状态管理支持断点恢复 | LangGraph StateGraph + DeepSeek |
-| 💬 **AI 智能对话** | ReAct 范式循环推理（思考→工具调用→观察→回答），[ANSWER] 标记自动区分思考过程与最终回答，Parent-Child RAG 技术（pgvector 检索 Child Chunks → 聚合还原 Parent Documents），多工具并发调度（asyncio.gather），SSE 流式输出 | LangGraph ReAct + pgvector |
+| 💬 **AI 智能对话** | ReAct 范式循环推理（思考→工具调用→观察→回答），节点边界天然区分思考与回答，Parent-Child RAG 技术（pgvector 检索 Child Chunks → 聚合还原 Parent Documents），多工具并发调度（asyncio.gather），SSE 流式输出，Skill 渐进式披露 + 向量化检索节省 Token + 三级降级策略 | LangGraph ReAct + pgvector |
 | 📚 **RAG 知识库** | Parent-Child 文档切片策略（Child 450 字符 / Parent 1500 字符），OpenAI Embedding 向量化，pgvector 余弦相似度检索，管理端支持文档上传与管理 | OpenAI Embedding + pgvector |
 | 🔍 **全文搜索** | ES 统一搜索（文章/问答/作者/专栏四类内容），BoolQuery + MultiMatch 多字段加权检索（title^2），Completion Suggester 搜索建议，MQ 增量同步 | Spring Data Elasticsearch 8.16 |
 | ⚡ **三级缓存** | Caffeine（L1）→ Redis（L2）→ DB（L3）三级回源，Caffeine 原子加载防缓存击穿，NULL_VALUE 占位符防缓存穿透，CacheEntry 键级独立 TTL，Redis 故障自动降级 | Caffeine + Redis + Redisson |
@@ -336,8 +336,10 @@ project-ai-agent/
 ```
 
 > **Skills 渐进式披露机制**：每个技能定义为独立 `SKILL.md` 文件（YAML frontmatter + Markdown 指南），系统提示词仅含技能名称与一句话描述，Agent 通过 `get_skill_details` 工具按需获取详情。解耦提示词与代码，支持横向扩展 10+ 技能。
-
-> **截图待补充**：Skills SKILL.md 文件目录 + Agent 调用 `get_skill_details` 工具的对话过程，展示渐进式披露机制
+>
+> **向量化 Skill 节省 Token**：`search_skill_guide` 工具基于 pgvector 语义检索，只返回与当前任务相关的 Skill 指南片段，Token 消耗通常只有完整文档的 20-40%，支持跨 Skill 搜索。
+>
+> **Skill 三级降级策略**：① 向量检索成功 → 返回格式化切片；② 检索结果不足 → 返回切片 + 降级提示；③ 向量检索异常 → 自动降级加载完整文档，保障可用性。
 
 ---
 
