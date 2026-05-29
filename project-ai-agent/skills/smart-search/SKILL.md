@@ -27,6 +27,8 @@ description: "综合搜索工具，自动协调站内文章搜索和外部技术
 | `search_articles_by_keyword(keyword, limit=5)` | 单独使用站内 ES 搜索，适合纯站内场景 | `tools/article_tool.py` |
 | `search_external_tech_blogs(query)` | 单独使用 Tavily 外部搜索，限定国内技术社区域名 | `tools/article_tool.py` |
 | `get_category_list()` | 获取分类列表，辅助限定搜索范围 | `tools/blog_tool.py` |
+| `scrape_webpage(url, output_format="markdown", include_metadata=True)` | 爬取单个网页内容，提取正文并转换为 Markdown | `tools/web_scraper_tool.py` |
+| `scrape_multiple_webpages(urls, output_format="markdown")` | 批量爬取多个网页内容（最多5个），并发执行 | `tools/web_scraper_tool.py` |
 
 ## 工作流程
 
@@ -142,11 +144,33 @@ AI：正在搜索站内文章...
 ...
 ```
 
+## 网页爬取工具使用场景
+
+搜索结果通常只包含摘要信息，当用户需要查看完整内容时，可使用网页爬取工具：
+
+| 场景 | 工具 | 说明 |
+|------|------|------|
+| 查看外部文章全文 | `scrape_webpage` | 爬取搜索结果中的外部文章链接 |
+| 批量获取参考资料 | `scrape_multiple_webpages` | 同时爬取多篇搜索结果的完整内容 |
+| 深度阅读特定文章 | `scrape_webpage` | 用户指定某篇文章时获取完整内容 |
+
+**使用示例**：
+```
+用户：帮我搜一下 LangGraph 的教程，我想看看完整内容
+AI：[调用 smart_search_references("LangGraph 教程")]
+    [展示搜索结果]
+    用户：第3篇文章看起来不错，帮我看看完整内容
+    AI：[调用 scrape_webpage(url="https://juejin.cn/xxx")]
+        [展示完整文章内容]
+```
+
 ## 注意事项
 
 - `smart_search_references` 是首选工具，它能自动决定是否需要外部搜索
 - 当用户明确要求"只看站内"时，使用 `search_articles_by_keyword` 而非智能搜索
 - 当用户明确要求"上网搜"时，可以直接使用 `search_external_tech_blogs`
+- 当用户需要查看搜索结果的完整内容时，使用 `scrape_webpage` 爬取
 - 外部搜索结果来自国内主流技术社区，经过域名过滤，质量有保障
 - Tavily 外部搜索需配置 `tavily_api_key` 环境变量，未配置时自动降级为仅站内搜索
 - 综合搜索结果建议先展示站内内容，再展示外部内容，让用户了解信息来源
+- 网页爬取工具依赖 `trafilatura` 库，需确保已安装
