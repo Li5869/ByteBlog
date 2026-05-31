@@ -563,6 +563,18 @@ const renderMarkdown = (content) => {
   return marked.parse(unescapeHtml(content))
 }
 
+// ==================== JSON 数组解析工具 ====================
+const parseJsonArray = (jsonStr) => {
+  if (!jsonStr) return []
+  if (Array.isArray(jsonStr)) return jsonStr
+  try {
+    const parsed = JSON.parse(jsonStr)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
 // ==================== 从任务列表恢复任务 ====================
 
 const resumeFromTask = async (rawTaskId) => {
@@ -592,27 +604,20 @@ const resumeFromTask = async (rawTaskId) => {
         try {
           const draft = await aiApi.getWritingTaskDraft(rawTaskId)
           if (draft) {
-            // WritingDraft 实体中的 tagNames/tagIds 是逗号分隔字符串，需要转为数组
-            const newTagNames = (draft.tagNames || draft.tag_names || '')
-              .split(',')
-              .map(s => s.trim())
-              .filter(Boolean)
+            // 使用后端返回的 allTagNames 字段（包含所有标签名称）
+            const allTagNames = draft.allTagNames || draft.AllTagNames || []
+
+            // 如果 allTagNames 为空，尝试从 tagNames 解析（兼容旧数据）
+            const tagNames = allTagNames.length > 0 ? allTagNames : 
+              (draft.tagNames || draft.tag_names || '')
+                .split(',')
+                .map(s => s.trim())
+                .filter(Boolean)
 
             const existingTagIds = (draft.tagIds || draft.tag_ids || '')
               .split(',')
               .map(s => s.trim())
               .filter(Boolean)
-
-            // 查询已有标签的名称
-            let existingTagNames = []
-            if (existingTagIds.length > 0) {
-              try {
-                const tags = await tagApi.batchGetTags(existingTagIds.join(','))
-                existingTagNames = (tags || []).map(t => t.name).filter(Boolean)
-              } catch (e) {
-                console.warn('[Resume] 查询标签名称失败:', e)
-              }
-            }
 
             writingResult.value = {
               title: draft.title || '',
@@ -620,8 +625,23 @@ const resumeFromTask = async (rawTaskId) => {
               content: draft.content || '',
               categoryName: draft.category_name || draft.categoryName,
               categoryId: draft.category_id || draft.categoryId,
-              tagNames: [...existingTagNames, ...newTagNames],
+              tagNames: tagNames,
               tagIds: existingTagIds
+            }
+
+            // 从草稿数据中获取评估结果
+            if (draft.score != null) {
+              reflection.value = {
+                score: draft.score,
+                completeness: draft.completeness,
+                structure: draft.structure,
+                expression: draft.expression,
+                practicality: draft.practicality,
+                format: draft.format,
+                strengths: parseJsonArray(draft.strengths),
+                weaknesses: parseJsonArray(draft.weaknesses),
+                suggestions: parseJsonArray(draft.suggestions)
+              }
             }
           }
         } catch (e) {
@@ -1025,7 +1045,7 @@ onUnmounted(() => {
               </div>
               <div class="flex flex-wrap items-center gap-1.5">
                 <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">标签</label>
-                <span v-for="tag in (writingResult.tagNames || writingResult.tag_names)" :key="tag" class="px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg text-xs font-medium">{{ tag }}</span>
+                <span v-for="tag in (writingResult.allTagNames || writingResult.tagNames || writingResult.tag_names)" :key="tag" class="px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg text-xs font-medium">{{ tag }}</span>
               </div>
             </div>
 

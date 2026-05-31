@@ -7,7 +7,8 @@
 - StartRequest/ResumeRequest/StopRequest/FinalizeRequest/CancelRequest: API 请求 DTO
 """
 
-from typing import List, Optional, TypedDict, NotRequired
+from typing import List, Optional, TypedDict, NotRequired, Annotated
+from operator import add
 from pydantic import BaseModel, Field, ConfigDict
 
 
@@ -47,6 +48,10 @@ class WritingResult(BaseModel):
         default_factory=list,
         serialization_alias="tagIds"
     )
+    all_tag_names: List[str] = Field(
+        default_factory=list,
+        serialization_alias="allTagNames"
+    )
 
 
 class ReflectionResult(BaseModel):
@@ -78,6 +83,8 @@ class WritingAgentState(TypedDict):
     action: NotRequired[Optional[str]]
     cover: NotRequired[Optional[str]]
     error: NotRequired[Optional[dict]]
+
+    parallel_outputs: NotRequired[Annotated[List[dict], add]]
 
 
 class TagGenerationResponse(BaseModel):

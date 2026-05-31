@@ -108,34 +108,6 @@ class WritingTaskService(NacosAwareClient):
         except Exception as e:
             logger.error(f"[WritingTask] 更新修订次数失败: {e}")
             return False
-
-    async def complete_task(self, task_id: int, final_action: Optional[str] = None) -> bool:
-        """
-        完成任务
-
-        Args:
-            task_id: 任务 ID
-            final_action: 最终动作
-
-        Returns:
-            是否成功
-        """
-        try:
-            params = {}
-            if final_action:
-                params["finalAction"] = final_action
-
-            response = await self.client.put(
-                f"{await self._get_base_url()}/ai/writing/internal/task/{task_id}/complete",
-                params=params
-            )
-            response.raise_for_status()
-            logger.info(f"[WritingTask] 完成任务成功, taskId={task_id}")
-            return True
-        except Exception as e:
-            logger.error(f"[WritingTask] 完成任务失败: {e}")
-            return False
-
     async def save_plan(self, task_id: int, plan_data: Dict[str, Any],
                        version: int = 1, user_feedback: Optional[str] = None) -> Optional[int]:
         """
@@ -285,6 +257,36 @@ class WritingTaskService(NacosAwareClient):
             return json_data.get("data")
         except Exception as e:
             logger.error(f"[WritingTask] 获取草稿失败: {e}")
+            return None
+
+    # ==================== 评估结果相关方法 ====================
+
+    async def save_reflection(self, task_id: int, reflection_data: Dict[str, Any]) -> Optional[int]:
+        """
+        保存写作评估结果
+
+        Args:
+            task_id: 任务 ID
+            reflection_data: 评估结果数据（ReflectionResult 的 dict 格式）
+
+        Returns:
+            评估结果 ID
+        """
+        try:
+            response = await self.client.post(
+                f"{await self._get_base_url()}/ai/writing/internal/reflection",
+                json={
+                    "task_id": task_id,
+                    "reflection_data": reflection_data
+                }
+            )
+            response.raise_for_status()
+            json_data = response.json()
+            reflection_id = json_data.get("data")
+            logger.info(f"[WritingTask] 保存评估结果成功, reflectionId={reflection_id}, taskId={task_id}")
+            return reflection_id
+        except Exception as e:
+            logger.error(f"[WritingTask] 保存评估结果失败: {e}")
             return None
 
     async def close(self):

@@ -2,17 +2,21 @@ package com.personblog.ai.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.personblog.ai.entity.WritingDraft;
+import com.personblog.ai.entity.WritingReflection;
 import com.personblog.ai.mapper.WritingDraftMapper;
 import com.personblog.ai.service.IWritingDraftService;
+import com.personblog.ai.service.IWritingReflectionService;
+import com.personblog.ai.vo.WritingDraftVO;
 import com.personblog.api.AIAPI.AiArticleDraftApi;
+import com.personblog.api.adminAPI.TagApi;
+import com.personblog.api.adminAPI.vo.TagVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 写作草稿服务实现
@@ -25,20 +29,74 @@ import java.util.Map;
 public class WritingDraftServiceImpl implements IWritingDraftService, AiArticleDraftApi {
 
     private final WritingDraftMapper writingDraftMapper;
-
+    private final IWritingReflectionService writingReflectionService;
+    private final TagApi tagApi;
     @Override
-    public WritingDraft getByTaskId(Long taskId) {
+    public WritingDraftVO getByTaskId(Long taskId) {
+        // 查询草稿
         LambdaQueryWrapper<WritingDraft> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(WritingDraft::getTaskId, taskId);
-        return writingDraftMapper.selectOne(queryWrapper);
+        WritingDraft draft = writingDraftMapper.selectOne(queryWrapper);
+
+        if (draft == null) {
+            return null;
+        }
+
+        // 查询评估结果
+        WritingReflection reflection = writingReflectionService.getByTaskId(taskId);
+
+        // 组装完整的 VO
+        // 评估结果字段
+        return WritingDraftVO.builder()
+                .title(draft.getTitle())
+                .summary(draft.getSummary())
+                .content(draft.getContent())
+                .cover(draft.getCover())
+                .categoryName(draft.getCategoryName())
+                .categoryId(draft.getCategoryId())
+                .tagIds(draft.getTagIds())
+                .tagNames(draft.getTagNames())
+                .allTagNames(parseTagNames(draft.getTagNames(),draft.getTagIds()))
+                .createdAt(draft.getCreatedAt())
+                // 评估结果字段
+                .score(reflection != null ? reflection.getScore() : null)
+                .completeness(reflection != null ? reflection.getCompleteness() : null)
+                .structure(reflection != null ? reflection.getStructure() : null)
+                .expression(reflection != null ? reflection.getExpression() : null)
+                .practicality(reflection != null ? reflection.getPracticality() : null)
+                .format(reflection != null ? reflection.getFormat() : null)
+                .strengths(reflection != null ? reflection.getStrengths() : null)
+                .weaknesses(reflection != null ? reflection.getWeaknesses() : null)
+                .suggestions(reflection != null ? reflection.getSuggestions() : null)
+                .build();
+    }
+
+    /**
+     * 解析逗号分隔的标签名称为列表
+     */
+    private List<String> parseTagNames(String tagNames,String tagIds) {
+        if (tagNames == null || tagNames.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> res = new ArrayList<>(Arrays.stream(tagNames.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList());
+        List<Long> ids = Arrays.stream(tagIds.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::valueOf)
+                .toList();
+        List<String> tags = tagApi.getTagsByIds(ids).stream().map(TagVO::getName).toList();
+        res.addAll(tags);
+        return res;
     }
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @SuppressWarnings("unchecked")
     public WritingDraft saveDraft(Long taskId, Long userId, Map<String, Object> draftData) {
         // 先检查是否已存在草稿，存在则更新
-        WritingDraft existingDraft = getByTaskId(taskId);
-        
+        WritingDraft existingDraft = getDraftEntityByTaskId(taskId);
+
         if (existingDraft != null) {
             // 更新现有草稿
             updateDraftFromData(existingDraft, draftData);
@@ -56,6 +114,15 @@ public class WritingDraftServiceImpl implements IWritingDraftService, AiArticleD
         writingDraftMapper.insert(draft);
         log.info("[WritingDraft] 保存草稿成功, draftId={}, taskId={}", draft.getId(), taskId);
         return draft;
+    }
+
+    /**
+     * 根据任务ID获取草稿实体（内部使用）
+     */
+    private WritingDraft getDraftEntityByTaskId(Long taskId) {
+        LambdaQueryWrapper<WritingDraft> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(WritingDraft::getTaskId, taskId);
+        return writingDraftMapper.selectOne(queryWrapper);
     }
 
     /**

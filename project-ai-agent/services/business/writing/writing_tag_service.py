@@ -32,8 +32,8 @@ class WritingTagService:
             {
                 "category_name": "分类名",
                 "category_id": 1,  # 数据库中存在则返回 ID，否则为 None
-                "tag_names": ["标签1", "标签2"],  # 所有标签名称（包括已有和新标签）
-                "tag_ids": [1, 2, 3]  # 数据库中已存在的标签 ID（用于发布时关联）
+                "tag_names": ["新标签1"],  # 新标签名称（数据库中不存在，需 Java 后端创建）
+                "tag_ids": [1, 2, 3],  # 数据库中已存在的标签 ID（用于发布时关联）
             }
         """
         categories, existing_tags = await self._fetch_existing_data()
@@ -72,6 +72,7 @@ class WritingTagService:
                 "category_id": category_id,
                 "tag_names": new_tag_names,
                 "tag_ids": tag_ids,
+                "all_tag_names": tag_names_from_llm,
             }
 
             logger.info(

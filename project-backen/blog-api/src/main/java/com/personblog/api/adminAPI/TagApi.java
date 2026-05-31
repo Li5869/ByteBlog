@@ -43,7 +43,7 @@ public interface TagApi {
      *
      * @param tags 标签DTO列表
      */
-    void saveTags(List<TagDTO> tags);
+    List<Long> saveTags(List<TagDTO> tags);
 
     /**
      * 批量更新标签使用次数
