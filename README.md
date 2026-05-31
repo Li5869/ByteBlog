@@ -345,7 +345,7 @@ project-ai-agent/
 
 ### 写作 Agent 工作流
 
-基于 **LangGraph StateGraph** 的 **Plan-and-Execute 模式**，SSE 实时推送子步骤进度，Redis 管理任务状态支持断点恢复。
+基于 **LangGraph StateGraph** 的 **Plan-and-Execute 模式**，采用官方推荐的 **Parallelization** 和 **Evaluator-Optimizer** 最佳实践，SSE 实时推送子步骤进度，Redis 管理任务状态支持断点恢复。
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
@@ -357,23 +357,71 @@ project-ai-agent/
 │  └────┬─────┘  SSE → plan_ready 事件，等待用户确认                  │
 │       │                                                             │
 │       ▼          LLM temperature = 0.1（内容策划师，精确可控）      │
-│  ┌──────────┐                                                      │
-│  │ EXECUTE  │  阶段1（并行）：title + tags  → asyncio.gather        │
-│  │  执行    │  阶段2（串行）：summary    → 依赖 title               │
-│  └────┬─────┘  阶段3（串行）：content    → 依赖 title + summary     │
-│       │                                                             │
-│       ▼          LLM temperature = 0.6（技术博客作者，创造力）      │
-│  ┌──────────┐                                                      │
-│  │ REFLECT  │  5 维评分：完整性(30%) + 结构性(20%) + 表达(25%)      │
-│  │  反思    │           + 实用性(15%) + 格式(10%)                   │
-│  └────┬─────┘  评分 < 7.0 自动微调（最多 3 次）                    │
-│       │                                                             │
-│       ▼          LLM temperature = 0.1（审稿人，标准一致）          │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │  EXECUTE 执行阶段（LangGraph 原生并行）                        │  │
+│  │                                                              │  │
+│  │  ┌─────────────┐    ┌─────────────┐                         │  │
+│  │  │ Title Agent │    │ Tags Agent  │  ← 并行执行              │  │
+│  │  │ 生成标题     │    │ 分类标签     │    asyncio.gather       │  │
+│  │  └──────┬──────┘    └──────┬──────┘                         │  │
+│  │         │                  │                                 │  │
+│  │         └──────────┬───────┘                                 │  │
+│  │                    │  Annotated[list, add] reducer          │  │
+│  │                    │  自动合并并行输出到 parallel_outputs     │  │
+│  │                    ▼                                         │  │
+│  │             ┌─────────────┐                                  │  │
+│  │             │ Merge Agent │  ← 合并标题+标签                  │  │
+│  │             │   汇合点     │    allTagNames 包含所有标签      │  │
+│  │             └──────┬──────┘                                  │  │
+│  │                    │                                         │  │
+│  │             ┌──────▼───────┐                                 │  │
+│  │             │ Summary Agent│  ← 生成摘要                      │  │
+│  │             └──────┬───────┘                                 │  │
+│  │                    │                                         │  │
+│  │             ┌──────▼───────┐                                 │  │
+│  │             │ Content Agent│  ← 生成正文                      │  │
+│  │             └──────┬───────┘                                 │  │
+│  └───────────────────┼──────────────────────────────────────────┘  │
+│                      │                                             │
+│                      ▼          LLM temperature = 0.6（技术博客）  │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │  REFLECT 反思阶段（Evaluator-Optimizer 循环）                 │  │
+│  │                                                              │  │
+│  │  ┌─────────────┐                                             │  │
+│  │  │ Evaluate    │  ← 5 维评分：完整性(30%) + 结构性(20%)      │  │
+│  │  │   Agent     │              + 表达(25%) + 实用性(15%)      │  │
+│  │  └──────┬──────┘              + 格式(10%)                    │  │
+│  │         │                                                     │  │
+│  │         │  评分 < 7.0 且修订次数 < 3                          │  │
+│  │         │                                                     │  │
+│  │         ▼                                                     │  │
+│  │  ┌─────────────┐                                             │  │
+│  │  │ Revise      │  ← 精细化修订（针对性修改）                  │  │
+│  │  │   Agent     │                                             │  │
+│  │  └──────┬──────┘                                             │  │
+│  │         │                                                     │  │
+│  │         └──→ 循环回 Evaluate（最多 3 次）                     │  │
+│  │                                                              │  │
+│  │  评分达标或修订耗尽 → 进入 Finalize                           │  │
+│  └───────────────────┼──────────────────────────────────────────┘  │
+│                      │                                             │
+│                      ▼          LLM temperature = 0.1（审稿人）    │
 │  ┌──────────┐                                                      │
 │  │ FINALIZE │  保存完整内容到 Java 后端（含分类/标签 ID）           │
-│  └──────────┘  SSE → finalize_ready + done                         │
+│  │  定稿    │  SSE → finalize_ready   │
+│  └──────────┘                                                      │
 └────────────────────────────────────────────────────────────────────┘
 ```
+
+**架构亮点（基于 LangGraph 官方最佳实践）：**
+
+| 特性 | 实现方式 | 官方文档参考 |
+|------|---------|-------------|
+| **原生并行模式** | `Annotated[list, operator.add]` reducer 自动合并并行输出 | [Parallelization](https://docs.langchain.com/oss/python/langgraph/workflows-agents#parallelization) |
+| **Evaluator-Optimizer 循环** | evaluate → revise → evaluate 循环，精细化修订 | [Evaluator-optimizer](https://docs.langchain.com/oss/python/langgraph/workflows-agents#evaluator-optimizer) |
+| **节点单一职责** | 每个节点只做一件事，State 存储原始数据 | [Thinking in LangGraph](https://docs.langchain.com/oss/python/langgraph/thinking-in-langgraph) |
+| **SSE 流式推送** | 实时推送各阶段进度，前端实时更新 | [Event streaming](https://docs.langchain.com/oss/python/langgraph/event-streaming) |
+| **Human-in-the-loop** | `interrupt_before` 等待用户确认计划 | [Persistence](https://docs.langchain.com/oss/python/langgraph/persistence) |
 
 ![AI 写作工作流](docs/gif/ai写作规划.gif)
 > *用户输入写作需求 → 生成计划 → 确认 → 流式输出标题/摘要/正文 → 质量评估结果的完整流程*

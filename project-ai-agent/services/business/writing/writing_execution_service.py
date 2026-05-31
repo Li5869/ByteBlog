@@ -7,12 +7,10 @@
 
 import asyncio
 import json
-from typing import Dict, Optional
+from typing import Dict
 
 from loguru import logger
 
-from services.core.memory_service import get_memory_service
-from services.business.writing.writing_task_service import get_writing_task_service
 from agents.writing_agent import get_writing_agent
 from common.constants import (
     REDIS_KEY_WRITING_TASK_PREFIX,
@@ -20,6 +18,8 @@ from common.constants import (
     REDIS_KEY_WRITING_PLAN_PREFIX,
     WRITING_TASK_TTL_SECONDS,
 )
+from services.business.writing.writing_task_service import get_writing_task_service
+from services.core.memory_service import get_memory_service
 
 _running_tasks: Dict[str, asyncio.Task] = {}
 
@@ -206,7 +206,13 @@ async def _run_execute_phase(task_id: str):
             if event.get("type") == "phase":
                 phase_data = event.get("data", {})
                 step = phase_data.get("step")
-                if step:
+                phase_name = phase_data.get("phase")
+                # 根据阶段更新状态
+                if phase_name == "evaluating":
+                    await task_service.update_status(db_task_id, "reflecting", "evaluating")
+                elif phase_name == "revising":
+                    await task_service.update_status(db_task_id, "reflecting", "revising")
+                elif step:
                     await task_service.update_status(db_task_id, "executing", step)
 
         agent.progress_callback = progress_handler
@@ -214,6 +220,13 @@ async def _run_execute_phase(task_id: str):
         async for event in agent.execute_stream(thread_id=task_id):
             if event.get("type") == "reflection_result":
                 await task_service.update_status(db_task_id, "reflecting", "reflecting")
+                # 保存评估结果到数据库
+                reflection_data = event.get("data")
+                if reflection_data:
+                    await task_service.save_reflection(db_task_id, reflection_data)
+                    # 持久化修订次数
+                    revision_count = reflection_data.get("revision_count", 0)
+                    await task_service.update_revision_count(db_task_id, revision_count)
 
             elif event.get("type") == "finalize_ready":
                 writing_result = event.get("data")
@@ -231,6 +244,7 @@ async def _run_execute_phase(task_id: str):
                     "category_name": writing_result.get("categoryName"),
                     "tag_ids": writing_result.get("tagIds"),
                     "tag_names": writing_result.get("tagNames"),
+                    "all_tag_names": writing_result.get("allTagNames"),
                 }
                 await task_service.save_draft(db_task_id, user_id, draft_data)
 
@@ -334,6 +348,62 @@ async def _run_plan_phase(task_id: str, user_request: str):
         await task_service.update_status(db_task_id, "error", None)
     finally:
         _cleanup_task(task_id)
+
+
+async def handle_approve(task_id: str) -> dict:
+    """
+    处理用户批准计划
+    
+    Args:
+        task_id: 写作任务ID
+        
+    Returns:
+        包含 success, status, error 的结果字典
+    """
+    try:
+        redis = await _get_redis()
+        
+        plan_json = await redis.get(_plan_key(task_id))
+        if not plan_json:
+            return {"success": False, "status": None, "error": "计划不存在，请重新开始"}
+        
+        success = await start_execute_phase(task_id)
+        if not success:
+            return {"success": False, "status": None, "error": "启动执行阶段失败"}
+        
+        logger.info(f"[WritingExecution] 用户批准计划，开始执行: {task_id}")
+        return {"success": True, "status": "executing", "error": None}
+        
+    except Exception as e:
+        logger.error(f"[WritingExecution] 处理批准失败: {e}")
+        return {"success": False, "status": None, "error": str(e)}
+
+
+async def handle_revise(task_id: str, feedback: str) -> dict:
+    """
+    处理用户修改计划
+    
+    Args:
+        task_id: 写作任务ID
+        feedback: 用户修改意见
+        
+    Returns:
+        包含 success, status, error 的结果字典
+    """
+    try:
+        if not feedback:
+            return {"success": False, "status": None, "error": "修改意见不能为空"}
+        
+        success = await start_revise_phase(task_id, feedback)
+        if not success:
+            return {"success": False, "status": None, "error": "启动计划修改失败"}
+        
+        logger.info(f"[WritingExecution] 用户要求修改计划: {task_id}")
+        return {"success": True, "status": "planning", "error": None}
+        
+    except Exception as e:
+        logger.error(f"[WritingExecution] 处理修改失败: {e}")
+        return {"success": False, "status": None, "error": str(e)}
 
 
 async def start_revise_phase(task_id: str, feedback: str) -> bool:

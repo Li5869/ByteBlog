@@ -44,6 +44,14 @@ public interface IWritingTaskService {
 
     void updateArticleId(Long taskId, Long articleId);
 
+    /**
+     * 更新修订次数
+     *
+     * @param taskId        任务ID
+     * @param revisionCount 修订次数
+     */
+    void updateRevisionCount(Long taskId, Integer revisionCount);
+
     WritingPlan savePlan(Long taskId, Map<String, Object> planData, Integer version, String userFeedback);
 
     WritingPlan getLatestPlan(Long taskId);

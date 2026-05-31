@@ -209,6 +209,17 @@ public class WritingTaskServiceImpl implements IWritingTaskService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void updateRevisionCount(Long taskId, Integer revisionCount) {
+        LambdaUpdateWrapper<WritingTask> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(WritingTask::getId, taskId)
+                .set(WritingTask::getRevisionCount, revisionCount)
+                .set(WritingTask::getUpdatedAt, LocalDateTime.now());
+        writingTaskMapper.update(null, updateWrapper);
+        log.info("[WritingTask] 更新修订次数, taskId={}, revisionCount={}", taskId, revisionCount);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     @SuppressWarnings("unchecked")
     public WritingPlan savePlan(Long taskId, Map<String, Object> planData, Integer version, String userFeedback) {
         WritingPlan plan = new WritingPlan();

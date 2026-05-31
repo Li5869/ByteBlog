@@ -76,28 +76,58 @@ class WritingAgent:
         self.graph = self._build_graph()
 
     def _build_graph(self):
-        """构建 Plan-and-Execute 工作流"""
+        """
+        构建 Plan-and-Execute 工作流（节点拆分版本）
+
+        架构：
+          plan ──┬── generate_title ──┐
+                 │                    ├── merge → summary → content → evaluate → finalize
+                 └── generate_tags ───┘                                          ↑
+                                                            revise ──────────────┘
+        """
         workflow = StateGraph(WritingAgentState) # type: ignore[arg-type]
 
+        # 添加所有节点
         workflow.add_node("plan", self._plan_node) # type: ignore[arg-type]
-        workflow.add_node("execute", self._execute_node) # type: ignore[arg-type]
-        workflow.add_node("reflect", self._reflect_node) # type: ignore[arg-type]
+        workflow.add_node("generate_title", self._generate_title_node) # type: ignore[arg-type]
+        workflow.add_node("generate_tags", self._generate_tags_node) # type: ignore[arg-type]
+        workflow.add_node("merge_title_tags", self._merge_title_tags_node) # type: ignore[arg-type]
+        workflow.add_node("generate_summary", self._generate_summary_node) # type: ignore[arg-type]
+        workflow.add_node("generate_content", self._generate_content_node) # type: ignore[arg-type]
+        workflow.add_node("evaluate", self._evaluate_node) # type: ignore[arg-type]
+        workflow.add_node("revise", self._revise_node) # type: ignore[arg-type]
         workflow.add_node("finalize", self._finalize_node) # type: ignore[arg-type]
 
+        # 入口点
         workflow.set_entry_point("plan")
 
-        workflow.add_edge("plan", "execute")
-        workflow.add_edge("execute", "reflect")
+        # Phase 1: title 和 tags 并行启动（LangGraph 原生并行模式）
+        workflow.add_edge("plan", "generate_title")
+        workflow.add_edge("plan", "generate_tags")
 
+        # 汇合点：等待两者都完成后合并结果
+        workflow.add_edge("generate_title", "merge_title_tags")
+        workflow.add_edge("generate_tags", "merge_title_tags")
+
+        # Phase 2 & 3: 串行执行
+        workflow.add_edge("merge_title_tags", "generate_summary")
+        workflow.add_edge("generate_summary", "generate_content")
+        workflow.add_edge("generate_content", "evaluate")
+
+        # Evaluator-Optimizer 循环：评分低时进入 revise 节点
         workflow.add_conditional_edges(
-            "reflect",
-            self._route_after_reflection,
+            "evaluate",
+            self._route_after_evaluation,
             {
-                "retry": "execute",
+                "revise": "revise",
                 "proceed": "finalize"
             }
         )
 
+        # 修订后重新评估
+        workflow.add_edge("revise", "evaluate")
+
+        # 终态路由
         workflow.add_conditional_edges(
             "finalize",
             self._route_after_finalize,
@@ -107,7 +137,8 @@ class WritingAgent:
             }
         )
 
-        return workflow.compile(checkpointer=self.checkpointer, interrupt_before=["execute"])
+        # 中断点：在并行节点执行前等待用户确认
+        return workflow.compile(checkpointer=self.checkpointer, interrupt_before=["generate_title", "generate_tags"])
 
     async def _plan_node(self, state: WritingAgentState) -> dict:
         """
@@ -145,179 +176,316 @@ class WritingAgent:
                 "current_step": "error"
             }
 
-    async def _execute_node(self, state: WritingAgentState) -> dict:
+    # ==================== 拆分后的独立节点 ====================
+
+    async def _generate_title_node(self, state: WritingAgentState) -> dict:
         """
-        Execute 节点：并行执行标题+标签→摘要→正文
-          title 和 tags 都只依赖 plan，互不依赖 → 通过 asyncio.gather 并行执行。
-          summary 依赖 title，content 依赖 title + summary → 保持串行。
+        标题生成节点：只负责生成标题
 
-        依赖关系：
-          Phase 1（并行）: title + tags          ← 只依赖 plan
-          Phase 2（串行）: summary                ← 依赖 title
-          Phase 3（串行）: content                ← 依赖 title + summary + references
-
-        每个子步骤通过 self.progress_callback 实时推送进度事件，
-        确保前端 SSE 流可以实时获取当前写作阶段。
-
-        当从 reflect 节点重试时（current_step == "revised"），保留已修订的内容，
-        不重新生成，因为 reflect 节点已调用 quality_service.revise 完成了内容修订。
+        与 generate_tags 并行执行，都只依赖 plan。
+        输出写入 parallel_outputs 字段，由 merge 节点合并。
+        使用 Annotated[list, add] reducer 自动合并并行节点输出。
         """
         plan = state["plan"]
-        references = state.get("references", [])
-        current_step = state.get("current_step")
 
-        logger.info(f"[Execute] 开始执行写作任务，主题: {plan.topic}")
+        logger.info("[Title] 开始生成标题...")
 
-        # 当从 reflect 修订后重试时，跳过重新生成，保留已修订的结果
-        if current_step == "revised":
-            logger.info("[Execute] 保留修订后的内容，跳过重新生成")
-            return {
-                "writing_result": state.get("writing_result"),
-                "current_step": "executed"
-            }
+        if self.progress_callback:
+            await self.progress_callback({
+                "type": "phase",
+                "data": {"phase": "executing", "step": "title"}
+            })
 
-        result = WritingResult(
-            title="", summary="", content=""
-        )
-
-        # ==================== Phase 1：title + tags 并行 ====================
         try:
-            if self.progress_callback:
-                await self.progress_callback({
-                    "type": "phase",
-                    "data": {"phase": "executing", "step": "title"}
-                })
-            if self.progress_callback:
-                await self.progress_callback({
-                    "type": "phase",
-                    "data": {"phase": "executing", "step": "tags"}
-                })
+            title = await self.content_service.generate_title(plan)
 
-            logger.info("[Execute] 并行生成标题和标签分类...")
-            title_val, tag_result = await asyncio.gather(
-                self.content_service.generate_title(plan),
-                self.tag_service.generate_tags(plan),
-            )
-
-            result.title = title_val
             if self.progress_callback:
                 await self.progress_callback({
                     "type": "token",
-                    "data": result.title
+                    "data": title
                 })
 
-            result.category_name = tag_result.get("category_name")
-            result.category_id = tag_result.get("category_id")
-            result.tag_names = tag_result.get("tag_names", [])
-            result.tag_ids = tag_result.get("tag_ids", [])
+            logger.info(f"[Title] 标题生成完成: {title[:30]}...")
+
+            return {
+                "parallel_outputs": [{"type": "title", "value": title}]
+            }
+        except Exception as e:
+            logger.error(f"[Title] 生成标题失败: {e}")
+            return {
+                "error": {"message": str(e), "step": "title"}
+            }
+
+    async def _generate_tags_node(self, state: WritingAgentState) -> dict:
+        """
+        标签分类节点：只负责生成标签和分类
+
+        与 generate_title 并行执行，都只依赖 plan。
+        输出写入 parallel_outputs 字段，由 merge 节点合并。
+        使用 Annotated[list, add] reducer 自动合并并行节点输出。
+        """
+        plan = state["plan"]
+
+        logger.info("[Tags] 开始生成标签分类...")
+
+        if self.progress_callback:
+            await self.progress_callback({
+                "type": "phase",
+                "data": {"phase": "executing", "step": "tags"}
+            })
+
+        try:
+            tag_result = await self.tag_service.generate_tags(plan)
+
             if self.progress_callback:
                 await self.progress_callback({
                     "type": "token",
                     "data": json.dumps({
-                        "category_name": result.category_name,
-                        "category_id": result.category_id,
-                        "tag_names": result.tag_names,
-                        "tag_ids": result.tag_ids
+                        "category_name": tag_result.get("category_name"),
+                        "category_id": tag_result.get("category_id"),
+                        "tag_names": tag_result.get("tag_names", []),
+                        "tag_ids": tag_result.get("tag_ids", []),
+                        "all_tag_names": tag_result.get("all_tag_names", [])
                     }, ensure_ascii=False)
                 })
 
-        except Exception as e:
-            logger.error(f"[Execute] 并行阶段(title/tags)失败: {e}")
+            logger.info("[Tags] 标签生成完成")
+
             return {
-                "error": {"message": str(e), "step": "title_or_tags"},
+                "parallel_outputs": [{
+                    "type": "tags",
+                    "value": {
+                        "category_name": tag_result.get("category_name"),
+                        "category_id": tag_result.get("category_id"),
+                        "tag_names": tag_result.get("tag_names", []),
+                        "tag_ids": tag_result.get("tag_ids", []),
+                        "all_tag_names": tag_result.get("all_tag_names", [])
+                    }
+                }]
+            }
+        except Exception as e:
+            logger.error(f"[Tags] 生成标签失败: {e}")
+            return {
+                "error": {"message": str(e), "step": "tags"}
+            }
+
+    async def _merge_title_tags_node(self, state: WritingAgentState) -> dict:
+        """
+        合并节点：等待 title 和 tags 都完成后，合并到 writing_result
+
+        LangGraph 并行节点通过 Annotated[list, add] reducer 自动合并输出到 parallel_outputs，
+        此节点作为汇合点，从 parallel_outputs 中提取并合并为完整的 WritingResult。
+
+        tag_names 原始值只包含新标签名称，需 Java 后端创建后关联。
+        all_tag_names 包含所有标签名称（新标签 + 已存在标签）。
+        """
+        logger.info("[Merge] 合并标题和标签结果...")
+
+        outputs = state.get("parallel_outputs", [])
+        title_output = next((o for o in outputs if o["type"] == "title"), None)
+        tags_output = next((o for o in outputs if o["type"] == "tags"), None)
+
+        writing_result = WritingResult(
+            title=title_output["value"] if title_output else "",
+            summary="",
+            content="",
+            category_name=tags_output["value"].get("category_name") if tags_output else None,
+            category_id=tags_output["value"].get("category_id") if tags_output else None,
+            tag_names=tags_output["value"].get("tag_names", []) if tags_output else [],
+            tag_ids=tags_output["value"].get("tag_ids", []) if tags_output else [],
+            all_tag_names=tags_output["value"].get("all_tag_names", []) if tags_output else []
+        )
+
+        logger.info(f"[Merge] 合并完成，标题: {writing_result.title[:30] if writing_result.title else 'N/A'}...")
+
+        return {
+            "writing_result": writing_result,
+            "parallel_outputs": [],  # 清空临时列表
+            "current_step": "title_tags_merged"
+        }
+
+    async def _generate_summary_node(self, state: WritingAgentState) -> dict:
+        """
+        摘要生成节点：依赖 title（由 merge 节点合并后写入 writing_result）
+        """
+        plan = state["plan"]
+        writing_result = state.get("writing_result")
+
+        if not writing_result or not writing_result.title:
+            logger.error("[Summary] 标题未生成，无法生成摘要")
+            return {
+                "error": {"message": "标题未生成", "step": "summary"},
                 "current_step": "error"
             }
 
-        # ==================== Phase 2：summary（依赖 title）= ====================
-        try:
-            if self.progress_callback:
-                await self.progress_callback({
-                    "type": "phase",
-                    "data": {"phase": "executing", "step": "summary"}
-                })
+        logger.info("[Summary] 开始生成摘要...")
 
-            logger.info("[Execute] 生成摘要...")
-            result.summary = await self.content_service.generate_summary(plan, result.title)
+        if self.progress_callback:
+            await self.progress_callback({
+                "type": "phase",
+                "data": {"phase": "executing", "step": "summary"}
+            })
+
+        try:
+            summary = await self.content_service.generate_summary(plan, writing_result.title)
+
             if self.progress_callback:
                 await self.progress_callback({
                     "type": "token",
-                    "data": result.summary
+                    "data": summary
                 })
 
+            logger.info(f"[Summary] 摘要生成完成: {summary[:50]}...")
+
+            return {
+                "writing_result": writing_result.model_copy(update={"summary": summary}),
+                "current_step": "summary_generated"
+            }
         except Exception as e:
-            logger.error(f"[Execute] summary 步骤失败: {e}")
+            logger.error(f"[Summary] 生成摘要失败: {e}")
             return {
                 "error": {"message": str(e), "step": "summary"},
                 "current_step": "error"
             }
 
-        # ==================== Phase 3：content（依赖 title + summary）= ====================
-        try:
-            if self.progress_callback:
-                await self.progress_callback({
-                    "type": "phase",
-                    "data": {"phase": "executing", "step": "content"}
-                })
+    async def _generate_content_node(self, state: WritingAgentState) -> dict:
+        """
+        正文生成节点：依赖 title + summary + references
+        """
+        plan = state["plan"]
+        writing_result = state.get("writing_result")
+        references = state.get("references", [])
 
-            logger.info("[Execute] 生成正文...")
-            result.content = await self.content_service.generate_content(plan, result.title, result.summary, references)
+        if not writing_result or not writing_result.title or not writing_result.summary:
+            logger.error("[Content] 标题或摘要未生成，无法生成正文")
+            return {
+                "error": {"message": "标题或摘要未生成", "step": "content"},
+                "current_step": "error"
+            }
+
+        logger.info("[Content] 开始生成正文...")
+
+        if self.progress_callback:
+            await self.progress_callback({
+                "type": "phase",
+                "data": {"phase": "executing", "step": "content"}
+            })
+
+        try:
+            content = await self.content_service.generate_content(
+                plan, writing_result.title, writing_result.summary, references
+            )
+
             if self.progress_callback:
                 await self.progress_callback({
                     "type": "token",
-                    "data": result.content
+                    "data": content
                 })
 
+            logger.info(f"[Content] 正文生成完成，长度: {len(content)} 字符")
+
+            return {
+                "writing_result": writing_result.model_copy(update={"content": content}),
+                "current_step": "executed"
+            }
         except Exception as e:
-            logger.error(f"[Execute] content 步骤失败: {e}")
+            logger.error(f"[Content] 生成正文失败: {e}")
             return {
                 "error": {"message": str(e), "step": "content"},
                 "current_step": "error"
             }
 
-        logger.info("[Execute] 写作任务执行完成")
-
-        return {
-            "writing_result": result,
-            "current_step": "executed"
-        }
-
-    async def _reflect_node(self, state: WritingAgentState) -> dict:
+    async def _evaluate_node(self, state: WritingAgentState) -> dict:
         """
-        Reflection 节点：评估写作质量，必要时自动微调
+        评估节点：只负责评估写作质量，不进行修订
+
+        根据评分决定下一步：
+        - 评分达标 → 进入 finalize
+        - 评分不达标 → 进入 revise
         """
         plan = state["plan"]
         result = state["writing_result"]
         revision_count = state.get("revision_count", 0)
 
-        logger.info(f"[Reflect] 开始评估写作质量，当前修订次数: {revision_count}")
+        logger.info(f"[Evaluate] 开始评估写作质量，当前修订次数: {revision_count}")
+
+        # 评估开始前推送进度事件
+        if self.progress_callback:
+            await self.progress_callback({
+                "type": "phase",
+                "data": {"phase": "evaluating", "step": "evaluating"}
+            })
 
         try:
             reflection = await self.quality_service.evaluate(plan, result)
 
-            logger.info(f"[Reflect] 评估完成，综合评分: {reflection.score}")
-
-            if reflection.score < self.reflection_threshold and revision_count < self.max_revisions:
-                logger.info(f"[Reflect] 评分低于阈值({self.reflection_threshold})，准备微调...")
-
-                revised_result = await self.quality_service.revise(result, reflection)
-
-                return {
-                    "reflection": reflection,
-                    "writing_result": revised_result,
-                    "revision_count": revision_count + 1,
-                    "current_step": "revised"
-                }
+            logger.info(f"[Evaluate] 评估完成，综合评分: {reflection.score}")
 
             return {
                 "reflection": reflection,
-                "current_step": "reflected"
+                "revision_count": revision_count,
+                "current_step": "evaluated"
             }
         except Exception as e:
-            logger.error(f"[Reflect] 评估失败: {e}")
+            logger.error(f"[Evaluate] 评估失败: {e}")
             return {
-                "error": {"message": str(e), "step": "reflect"},
+                "error": {"message": str(e), "step": "evaluate"},
                 "current_step": "error"
             }
+
+    async def _revise_node(self, state: WritingAgentState) -> dict:
+        """
+        修订节点：根据评估结果修订文章内容
+
+        只有在评分不达标且未超过最大修订次数时才会执行
+        """
+        result = state["writing_result"]
+        reflection = state["reflection"]
+        revision_count = state.get("revision_count", 0)
+
+        logger.info(f"[Revise] 开始修订文章，当前修订次数: {revision_count}")
+
+        # 修订开始前推送进度事件
+        if self.progress_callback:
+            await self.progress_callback({
+                "type": "phase",
+                "data": {"phase": "revising", "step": "revising"}
+            })
+
+        try:
+            revised_result = await self.quality_service.revise(result, reflection)
+
+            logger.info(f"[Revise] 修订完成，修订次数: {revision_count + 1}")
+
+            return {
+                "writing_result": revised_result,
+                "revision_count": revision_count + 1,
+                "current_step": "revised"
+            }
+        except Exception as e:
+            logger.error(f"[Revise] 修订失败: {e}")
+            return {
+                "error": {"message": str(e), "step": "revise"},
+                "current_step": "error"
+            }
+
+    def _route_after_evaluation(self, state: WritingAgentState) -> str:
+        """
+        评估后路由逻辑
+
+        Returns:
+            "revise": 进入 revise 节点修订
+            "proceed": 进入 finalize 节点
+        """
+        reflection = state.get("reflection")
+        revision_count = state.get("revision_count", 0)
+
+        if reflection and reflection.score < self.reflection_threshold and revision_count < self.max_revisions:
+            logger.info(f"[Route] 评分 {reflection.score} < {self.reflection_threshold}，进入修订")
+            return "revise"
+
+        logger.info(f"[Route] 评分达标或已达最大修订次数，进入 finalize")
+        return "proceed"
 
     async def _finalize_node(self, state: WritingAgentState) -> dict:
         """
@@ -333,24 +501,6 @@ class WritingAgent:
             "current_step": "finalized",
             "writing_result": result
         }
-
-    def _route_after_reflection(self, state: WritingAgentState) -> str:
-        """
-        反思后路由逻辑
-
-        Returns:
-            "retry": 返回 execute 节点重新执行
-            "proceed": 进入 finalize 节点
-        """
-        reflection = state.get("reflection")
-        revision_count = state.get("revision_count", 0)
-
-        if reflection and reflection.score < self.reflection_threshold and revision_count < self.max_revisions:
-            logger.info(f"[Route] 评分 {reflection.score} < {self.reflection_threshold}，返回 execute 重试")
-            return "retry"
-
-        logger.info(f"[Route] 评分达标或已达最大修订次数，进入 finalize")
-        return "proceed"
 
     def _route_after_finalize(self, state: WritingAgentState) -> str:
         """
@@ -481,11 +631,11 @@ class WritingAgent:
         """
         阶段2：根据已确认的计划，执行写作流程
 
-        从 graph 检查点恢复执行（graph 停在 interrupt_before=["execute"]），
-        自动运行 execute → reflect → (retry loop) → finalize → END。
+        从 graph 检查点恢复执行（graph 停在 interrupt_before），
+        自动运行 generate_title/generate_tags → merge → summary → content → evaluate → revise → finalize。
 
-        execute 节点的子步骤事件（phase/token）由 progress_callback 实时推送，
-        此方法只处理 reflect 和 finalize 节点的事件。
+        各节点的子步骤事件（phase/token）由 progress_callback 实时推送，
+        此方法只处理 evaluate、revise 和 finalize 节点的事件。
 
         Args:
             thread_id: 线程 ID（与 generate_plan 传入的 thread_id 一致）
@@ -496,19 +646,41 @@ class WritingAgent:
         config = {"configurable": {"thread_id": thread_id}}
 
         async for event in self.graph.astream(None, config):
-            # execute节点完成时，立即推送reflecting状态，让前端实时显示
-            if "execute" in event:
-                yield {"type": "phase", "data": {"phase": "reflecting"}}
+            # 并行节点完成，等待合并
+            if "generate_title" in event or "generate_tags" in event:
+                pass
 
-            elif "reflect" in event:
-                node_output = event["reflect"]
+            # 合并节点完成
+            elif "merge_title_tags" in event:
+                yield {"type": "phase", "data": {"phase": "executing", "step": "merged"}}
+
+            # 摘要节点完成
+            elif "generate_summary" in event:
+                yield {"type": "phase", "data": {"phase": "executing", "step": "summary_done"}}
+
+            # 正文节点完成
+            elif "generate_content" in event:
+                yield {"type": "phase", "data": {"phase": "executing", "step": "content_done"}}
+
+            # 评估节点完成
+            elif "evaluate" in event:
+                node_output = event["evaluate"]
                 reflection = node_output.get("reflection")
+                revision_count = node_output.get("revision_count", 0)
                 if reflection:
                     yield {
                         "type": "reflection_result",
-                        "data": reflection.model_dump()
+                        "data": {
+                            **reflection.model_dump(),
+                            "revision_count": revision_count
+                        }
                     }
 
+            # 修订节点完成
+            elif "revise" in event:
+                yield {"type": "phase", "data": {"phase": "revising", "step": "revised"}}
+
+            # 完成节点
             elif "finalize" in event:
                 node_output = event["finalize"]
                 writing_result = node_output.get("writing_result")

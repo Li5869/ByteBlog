@@ -8,6 +8,7 @@ import {Events, off, on} from '@/utils/eventBus'
 import OnlineIndicator from './OnlineIndicator.vue'
 import {DEFAULT_AVATAR} from '@/utils/defaults'
 import sseManager from '@/utils/sse'
+import wsManager from '@/utils/websocket'
 
 defineProps({
   isDark: Boolean
@@ -208,8 +209,8 @@ onUnmounted(() => {
   off(Events.REFRESH_UNREAD_COUNT, handleRefreshUnreadCount)
   off(Events.NOTIFICATION_READ, handleNotificationRead)
   
-  // 移除 SSE 未读数监听
-  sseManager.off('unread_update', handleUnreadUpdate)
+  // 移除 WebSocket 未读数监听
+  wsManager.off('unread_update', handleUnreadUpdate)
   
   // 移除 SSE 监听
   sseManager.off('notification', handleSseNotification)
@@ -226,7 +227,7 @@ const handleNotificationRead = (count = 1) => {
   fetchUnreadCount()
 }
 
-// 处理 WebSocket 未读数更新
+// 处理未读数更新
 const handleUnreadUpdate = (data) => {
   if (data && data.delta !== undefined) {
     unreadCount.value = Math.max(0, unreadCount.value + data.delta)
@@ -244,8 +245,8 @@ onMounted(() => {
   on(Events.REFRESH_UNREAD_COUNT, handleRefreshUnreadCount)
   on(Events.NOTIFICATION_READ, handleNotificationRead)
   
-  // 监听 SSE 未读数更新
-  sseManager.on('unread_update', handleUnreadUpdate)
+  // 监听 WebSocket 未读数更新
+  wsManager.on('unread_update', handleUnreadUpdate)
   
   // 监听 SSE 通知
   sseManager.on('notification', handleSseNotification)

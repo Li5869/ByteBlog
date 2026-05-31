@@ -7,11 +7,18 @@
       └──→ (无 tool_calls) ──→ answer ──→ END
 
 架构说明：
-  - thinking 节点：负责 LLM 推理（thinking 事件）+ 工具执行（tool_call/tool_result 事件）
+  - thinking 节点：负责 LLM 推理（thinking 事件）+ 工具执行（tool_call 事件）
   - judge 路由：根据是否有 tool_calls 决定继续循环还是进入回答
-  - answer 节点：基于对话历史重新生成最终回答（token 事件，流式输出）
+  - answer 节点：基于对话历史重新生成最终回答（chunk 事件，流式输出）
 
 节点边界天然区分思考与回答，无需 [ANSWER] 标记。
+
+事件类型统一命名（与前端、Java 端保持一致）：
+  - thinking: 思考分析内容
+  - chunk: 回答文本片段
+  - tool_call: 工具调用/执行结果
+  - done: 流完成
+  - error: 错误
 """
 
 from langgraph.graph import StateGraph, END
@@ -30,12 +37,36 @@ from config.prompts import get_prompt_manager
 
 @dataclass
 class StreamEvent:
-    """流式事件"""
-    event_type: str  # "thinking" | "token" | "tool_call" | "tool_result" | "done"
+    """
+    流式事件
+    
+    事件类型统一命名（与前端、Java 端保持一致）：
+    - thinking: 思考分析内容
+    - chunk: 回答文本片段
+    - tool_call: 工具调用/执行结果
+    - done: 流完成
+    - error: 错误
+    """
+    event_type: str  # "thinking" | "chunk" | "tool_call" | "done" | "error"
     content: str = ""
     tool_name: str = ""
     tool_args: dict = field(default_factory=dict)
     extra: dict = field(default_factory=dict)
+    # 累积字段（仅在 done/error 事件时携带）
+    accumulated_thinking: str = ""
+    accumulated_response: str = ""
+    tool_calls_summary: List[dict] = field(default_factory=list)
+    conversation_id: str = ""
+
+    def to_sse_dict(self) -> dict:
+        """转换为 SSE 格式的字典"""
+        base = {"type": self.event_type, "content": self.content}
+        if self.tool_name:
+            base["tool_name"] = self.tool_name
+        if self.event_type == "done":
+            base["conversation_id"] = self.conversation_id
+            base["tool_calls"] = self.tool_calls_summary
+        return base
 
 
 class AgentState(TypedDict):
@@ -74,6 +105,10 @@ class SmartAgent:
         self.system_prompt = prompt_manager.get_smart_agent_system_prompt()
         self._event_queue: Optional[asyncio.Queue] = None
         self.graph = self._build_graph()
+        # 累积状态（每次调用重置）
+        self._accumulated_thinking: str = ""
+        self._accumulated_response: str = ""
+        self._tool_calls_list: List[dict] = []
 
     # ==================== 图构建 ====================
 
@@ -122,9 +157,18 @@ class SmartAgent:
         if tool_calls:
             # 有工具调用：回放思考过程 → 发射工具调用 → 执行工具 → 继续循环
             for content in thinking_chunks:
+                self._accumulated_thinking += content
                 await self._emit(StreamEvent(event_type="thinking", content=content))
 
             for tc in tool_calls:
+                tool_call_info = {
+                    "id": len(self._tool_calls_list),
+                    "name": tc["name"],
+                    "args": tc.get("args", {}),
+                    "result": None
+                }
+                self._tool_calls_list.append(tool_call_info)
+                self._accumulated_thinking += f"\n🔧 调用工具: {tc['name']}"
                 await self._emit(StreamEvent(
                     event_type="tool_call", content=f"\n🔧 调用工具: {tc['name']}",
                     tool_name=tc["name"], tool_args=tc["args"],
@@ -159,8 +203,13 @@ class SmartAgent:
                 if tool.name == tool_name:
                     try:
                         result = await tool.ainvoke(tool_args)
+                        # 更新 tool_calls_list 中对应工具的 result
+                        for tci in self._tool_calls_list:
+                            if tci["name"] == tool_name and tci["result"] is None:
+                                tci["result"] = str(result)
+                                break
                         await self._emit(StreamEvent(
-                            event_type="tool_result",
+                            event_type="tool_call",
                             content=f"\n✅ 工具执行完成: {tool_name}",
                             tool_name=tool_name,
                             extra={"result": str(result)}
@@ -168,8 +217,13 @@ class SmartAgent:
                     except Exception as e:
                         result = f"工具执行错误: {e}"
                         logger.error(f"[Tool] 工具执行失败: {tool_name}, error={e}")
+                        # 更新 tool_calls_list 中对应工具的 result（标记错误）
+                        for tci in self._tool_calls_list:
+                            if tci["name"] == tool_name and tci["result"] is None:
+                                tci["result"] = str(result)
+                                break
                         await self._emit(StreamEvent(
-                            event_type="tool_result",
+                            event_type="tool_call",
                             content=f"\n❌ 工具执行失败: {tool_name}",
                             tool_name=tool_name,
                             extra={"result": str(result), "error": True}
@@ -182,7 +236,7 @@ class SmartAgent:
 
     async def _answer_node(self, state: AgentState) -> dict:
         """
-        回答节点：基于对话历史（含工具结果）生成最终回答，作为 token 事件流式输出。
+        回答节点：基于对话历史（含工具结果）生成最终回答，作为 chunk 事件流式输出。
 
         thinking 节点的输出已作为 thinking 事件发射，
         此节点基于完整的对话历史（包括工具调用和结果）生成面向用户的最终回答。
@@ -194,7 +248,8 @@ class SmartAgent:
         async for chunk in self.llm.astream(messages):
             if chunk.content:
                 accumulated_content += chunk.content
-                await self._emit(StreamEvent(event_type="token", content=chunk.content))
+                self._accumulated_response += chunk.content
+                await self._emit(StreamEvent(event_type="chunk", content=chunk.content))
 
         return {"final_answer": accumulated_content}
 
@@ -215,15 +270,25 @@ class SmartAgent:
     # ==================== 流式调用入口 ====================
 
     async def astream_chat_with_result(
-        self, message: str, user_id: str | None = None
+        self, message: str, user_id: str | None = None, conversation_id: str = ""
     ):
         """
         流式对话入口
 
+        Args:
+            message: 用户消息
+            user_id: 用户 ID
+            conversation_id: 会话 ID（用于 done 事件）
+
         Yields:
-            StreamEvent: thinking / token / tool_call / tool_result / done
+            StreamEvent: thinking / chunk / tool_call / done / error
         """
         logger.info(f"[LangGraph] 开始处理, message={message[:50]}..., user_id={user_id}")
+
+        # 重置累积状态
+        self._accumulated_thinking = ""
+        self._accumulated_response = ""
+        self._tool_calls_list = []
 
         self._event_queue = asyncio.Queue()
 
@@ -247,10 +312,25 @@ class SmartAgent:
             try:
                 final_state = await self.graph.ainvoke(initial_state, config=config)
                 final_answer = final_state.get("final_answer", "")
-                await self._emit(StreamEvent(event_type="done", content=final_answer or ""))
+                # done 事件携带完整累积结果
+                await self._emit(StreamEvent(
+                    event_type="done",
+                    content=final_answer or "",
+                    accumulated_thinking=self._accumulated_thinking,
+                    accumulated_response=self._accumulated_response,
+                    tool_calls_summary=self._tool_calls_list,
+                    conversation_id=conversation_id,
+                ))
             except Exception as e:
                 logger.error(f"[LangGraph] 执行失败: {e}")
-                await self._emit(StreamEvent(event_type="done", content=f"抱歉，处理请求时出现错误：{str(e)}"))
+                await self._emit(StreamEvent(
+                    event_type="error",
+                    content=f"抱歉，处理请求时出现错误：{str(e)}",
+                    accumulated_thinking=self._accumulated_thinking,
+                    accumulated_response=self._accumulated_response,
+                    tool_calls_summary=self._tool_calls_list,
+                    conversation_id=conversation_id,
+                ))
 
         task = asyncio.create_task(run_graph())
 
@@ -258,7 +338,7 @@ class SmartAgent:
             while True:
                 event = await self._event_queue.get()
                 yield event
-                if event.event_type == "done":
+                if event.event_type in ("done", "error"):
                     break
         finally:
             await task

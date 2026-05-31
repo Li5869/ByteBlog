@@ -32,6 +32,10 @@ from tools.writing_tool import (
     writing_result,
     writing_publish,
 )
+from tools.web_scraper_tool import (
+    scrape_webpage,
+    scrape_multiple_webpages,
+)
 
 # ==================== 工具分组 ====================
 
@@ -58,6 +62,9 @@ _base_tools = [
     writing_action,
     writing_result,
     writing_publish,
+    # 网页爬取工具（2个）
+    scrape_webpage,
+    scrape_multiple_webpages,
 ]
 
 _tavily_tools = [search_external_tech_blogs]

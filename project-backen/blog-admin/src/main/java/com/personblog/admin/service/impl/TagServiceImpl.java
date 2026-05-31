@@ -230,9 +230,9 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void saveTags(List<TagDTO> tags) {
+    public List<Long> saveTags(List<TagDTO> tags) {
         if (tags == null || tags.isEmpty()) {
-            return;
+            return Collections.emptyList();
         }
         List<Tag> entityList = tags.stream()
                 .map(dto -> {
@@ -245,6 +245,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
                 .collect(Collectors.toList());
         saveBatch(entityList);
         tagCache.invalidateAll();
+        return entityList.stream().map(Tag::getId).toList();
     }
     @Override
     @Transactional(rollbackFor = Exception.class)

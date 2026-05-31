@@ -42,4 +42,7 @@ public class PushConstants {
 
     /** 私信消息：用户间实时私信推送 */
     public static final String TYPE_PRIVATE_MESSAGE = "private_message";
+
+    /** 未读消息数更新：推送未读数变化 */
+    public static final String TYPE_UNREAD_UPDATE = "unread_update";
 }

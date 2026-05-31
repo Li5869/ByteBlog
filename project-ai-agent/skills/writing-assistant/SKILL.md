@@ -25,9 +25,9 @@ description: "智能写作助手，支持从需求收集到文章生成与发布
 - "写一个关于...的文章"
 - "帮我生成一篇..."
 
-## 工具列表（5个）
+## 工具列表（7个）
 
-本 Skill 使用 5 个工具控制 WritingAgent 的完整生命周期：
+本 Skill 使用 7 个工具控制 WritingAgent 的完整生命周期：
 
 | 工具 | 功能 | 调用方式 |
 |------|------|----------|
@@ -36,6 +36,8 @@ description: "智能写作助手，支持从需求收集到文章生成与发布
 | `writing_action` | 用户操作（确认/修改/取消） | WritingExecutionService |
 | `writing_result` | 获取成果链接 | Java接口 |
 | `writing_publish` | 发布或保存文章草稿 | Java接口（获取草稿 + 发布文章） |
+| `scrape_webpage` | 爬取单个网页内容，提取正文并转换为 Markdown | WebScraperService |
+| `scrape_multiple_webpages` | 批量爬取多个网页内容（最多5个），并发执行 | WebScraperService |
 
 ## 工作流程
 
@@ -362,8 +364,26 @@ AI: 调用 writing_publish(task_id="12345", action="draft")
 6. **成果链接**：写作完成后调用 `writing_result(task_id)` 获取成果链接
 7. **发布确认**：调用 `writing_publish` 前必须先向用户确认是发布还是保存草稿，不要擅自发布
 
+## 网页爬取工具使用场景
+
+在写作过程中，网页爬取工具可用于获取参考资料的完整内容：
+
+| 场景 | 工具 | 说明 |
+|------|------|------|
+| 引用外部文章 | `scrape_webpage` | 爬取用户提供的链接内容作为参考 |
+| 批量收集资料 | `scrape_multiple_webpages` | 同时爬取多篇参考资料 |
+| 搜索后获取全文 | `scrape_webpage` | 先搜索到文章链接，再爬取完整内容 |
+
+**使用示例**：
+```
+用户：帮我写一篇关于 Redis 的文章，参考一下这篇文章 https://example.com/redis-guide
+AI：[调用 scrape_webpage(url="https://example.com/redis-guide")]
+    [获取文章内容后，作为参考资料融入写作]
+```
+
 ## 与其他 Skill 的关系
 
 - **smart-chat**：当用户进行一般性对话时使用，写作请求会触发 writing-assistant
 - **article-search**：写作过程中可能需要搜索相关文章作为参考
 - **knowledge-qa**：写作过程中可能需要查询知识库获取背景知识
+- **smart-search**：写作前可使用综合搜索收集参考资料，再用网页爬取获取完整内容

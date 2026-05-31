@@ -52,7 +52,6 @@ public class BrowseHistoryServiceImpl extends ServiceImpl<BrowseHistoryMapper, B
         int pageSize = (size == null || size <= 0) ? 10 : Math.min(size, 50);
         
         long offset = (long) (pageNum - 1) * pageSize;
-        String key = BROWSE_HISTORY_KEY_PREFIX+userId;
         List<BrowseHistoryVO> voList = baseMapper.selectUserBrowseHistory(userId, offset, pageSize);
         long total = baseMapper.countByUserId(userId);
         

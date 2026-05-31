@@ -347,8 +347,8 @@ public class ArticlePublishBizService {
                     }
                 }
                 if (CollectionUtil.isNotEmpty(newTags)) {
-                    tagApi.saveTags(newTags);
-                    resultIds.addAll(newTags.stream().map(TagDTO::getId).toList());
+                    List<Long> ids = tagApi.saveTags(newTags);
+                    resultIds.addAll(ids);
                 }
             }
         }
@@ -363,7 +363,9 @@ public class ArticlePublishBizService {
         if (CollectionUtil.isEmpty(tagIds)) {
             return;
         }
-        List<ArticleTag> relationList = tagIds.stream().map(tagId -> {
+        List<ArticleTag> relationList = tagIds.stream()
+                .filter(Objects::nonNull)
+                .map(tagId -> {
             ArticleTag relation = new ArticleTag();
             relation.setArticleId(articleId);
             relation.setTagId(tagId);

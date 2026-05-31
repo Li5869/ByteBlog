@@ -34,7 +34,6 @@ public class ArticleController {
     /**
      * 获取轮播图数据
      * 返回热门推荐文章列表，用于首页轮播图展示
-     * @param size 返回数量，默认3，最大10
      * @return 轮播图列表
      */
     @Operation(summary = "获取轮播图数据", description = "获取首页轮播图数据，返回热门推荐文章列表")

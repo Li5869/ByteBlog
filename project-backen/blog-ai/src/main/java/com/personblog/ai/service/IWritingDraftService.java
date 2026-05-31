@@ -1,6 +1,7 @@
 package com.personblog.ai.service;
 
 import com.personblog.ai.entity.WritingDraft;
+import com.personblog.ai.vo.WritingDraftVO;
 
 import java.util.Map;
 
@@ -18,7 +19,7 @@ public interface IWritingDraftService {
      * @param taskId 任务ID
      * @return 草稿实体
      */
-    WritingDraft getByTaskId(Long taskId);
+    WritingDraftVO getByTaskId(Long taskId);
 
     /**
      * 保存草稿

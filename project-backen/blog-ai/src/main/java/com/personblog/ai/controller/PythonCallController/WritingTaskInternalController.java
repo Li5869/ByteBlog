@@ -3,8 +3,10 @@ package com.personblog.ai.controller.PythonCallController;
 import com.personblog.ai.dto.WritingTaskUpdateDTO;
 import com.personblog.ai.entity.WritingDraft;
 import com.personblog.ai.entity.WritingPlan;
+import com.personblog.ai.entity.WritingReflection;
 import com.personblog.ai.entity.WritingTask;
 import com.personblog.ai.service.IWritingDraftService;
+import com.personblog.ai.service.IWritingReflectionService;
 import com.personblog.ai.service.IWritingTaskService;
 import com.personblog.common.result.JsonData;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,6 +32,7 @@ public class WritingTaskInternalController {
 
     private final IWritingTaskService writingTaskService;
     private final IWritingDraftService writingDraftService;
+    private final IWritingReflectionService writingReflectionService;
 
     @Operation(summary = "创建写作任务", description = "SmartAgent调用此接口创建写作任务")
     @PostMapping("/task")
@@ -87,6 +90,15 @@ public class WritingTaskInternalController {
         return JsonData.buildSuccess(plan);
     }
 
+    @Operation(summary = "更新修订次数", description = "Python服务调用此接口更新修订次数")
+    @PutMapping("/task/{taskId}/revision")
+    public JsonData<Void> updateRevisionCount(
+            @PathVariable Long taskId,
+            @RequestParam Integer revisionCount) {
+        writingTaskService.updateRevisionCount(taskId, revisionCount);
+        return JsonData.buildSuccess();
+    }
+
     // ==================== 草稿相关 ====================
 
     @Operation(summary = "保存写作草稿", description = "Python服务调用此接口保存草稿")
@@ -100,5 +112,19 @@ public class WritingTaskInternalController {
         WritingDraft draft = writingDraftService.saveDraft(taskId, userId, draftData);
         log.info("[WritingDraft] 保存草稿成功, draftId={}, taskId={}", draft.getId(), taskId);
         return JsonData.buildSuccess(draft.getId());
+    }
+
+    // ==================== 评估结果相关 ====================
+
+    @Operation(summary = "保存写作评估结果", description = "Python服务调用此接口保存评估结果")
+    @PostMapping("/reflection")
+    public JsonData<Long> saveReflection(@RequestBody Map<String, Object> request) {
+        Long taskId = Long.parseLong(request.get("task_id").toString());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> reflectionData = (Map<String, Object>) request.get("reflection_data");
+
+        WritingReflection reflection = writingReflectionService.saveReflection(taskId, reflectionData);
+        log.info("[WritingReflection] 保存评估结果成功, reflectionId={}, taskId={}", reflection.getId(), taskId);
+        return JsonData.buildSuccess(reflection.getId());
     }
 }
