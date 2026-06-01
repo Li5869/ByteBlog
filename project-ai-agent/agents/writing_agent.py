@@ -29,6 +29,11 @@ class WritingAgent:
         settings = get_settings()
         self.prompt_manager = get_prompt_manager()
 
+        # DeepSeek thinking模式不支持 tool_choice 参数，而 with_structured_output(method="function_calling")
+        # 会通过 bind_tools 设置 tool_choice，导致 400 错误。
+        # 解决方案：通过 extra_body 显式禁用 thinking 模式
+        thinking_disabled = {"thinking": {"type": "disabled"}}
+
         # 四角色 LLM 配置：不同节点使用不同的 temperature，提升各环节输出质量
         # 规划角色：低温（0.1）保证写作计划精确、结构清晰
         self.llm_planner = ChatOpenAI(
@@ -36,7 +41,8 @@ class WritingAgent:
             base_url=settings.openai_base_url_deepseek,
             api_key=settings.openai_api_key_deepseek,
             temperature=settings.writing_planner_temperature,
-            streaming=True
+            streaming=True,
+            extra_body=thinking_disabled
         )
         # 写作角色：中高温（0.6）提升内容创造力、语言生动性
         self.llm_writer = ChatOpenAI(
@@ -44,7 +50,8 @@ class WritingAgent:
             base_url=settings.openai_base_url_deepseek,
             api_key=settings.openai_api_key_deepseek,
             temperature=settings.writing_writer_temperature,
-            streaming=True
+            streaming=True,
+            extra_body=thinking_disabled
         )
         # 评估角色：低温（0.1）确保评分标准一致、客观公正
         self.llm_critic = ChatOpenAI(
@@ -52,7 +59,8 @@ class WritingAgent:
             base_url=settings.openai_base_url_deepseek,
             api_key=settings.openai_api_key_deepseek,
             temperature=settings.writing_critic_temperature,
-            streaming=True
+            streaming=True,
+            extra_body=thinking_disabled
         )
         # 分类角色：较低温（0.2）保证分类结果确定、可复现
         self.llm_classifier = ChatOpenAI(
@@ -60,7 +68,8 @@ class WritingAgent:
             base_url=settings.openai_base_url_deepseek,
             api_key=settings.openai_api_key_deepseek,
             temperature=settings.writing_classifier_temperature,
-            streaming=True
+            streaming=True,
+            extra_body=thinking_disabled
         )
 
         # 注入独立的业务 Service，职责清晰、可独立测试

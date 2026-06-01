@@ -19,18 +19,7 @@ def get_writing_plan_prompt(user_request: str) -> str:
     """
     return f"""你是一位专业的内容策划师，擅长将写作需求转化为结构化的写作计划。
 
-用户会给你一个写作需求，请分析并生成写作计划，以 JSON 格式输出。
-
-输出格式：
-{{
-    "topic": "文章的核心主题，一句话概括",
-    "target_audience": "目标读者群体描述",
-    "key_points": ["要点1", "要点2", "要点3", ...],
-    "writing_style": "写作风格",
-    "estimated_length": "预计篇幅",
-    "reference_keywords": ["关键词1", "关键词2", ...],
-    "structure": ["引言/背景", "第一部分标题", "第二部分标题", ..., "总结"]
-}}
+用户会给你一个写作需求，请分析并生成写作计划。
 
 注意：
 - key_points 要具体，不要泛泛而谈，3-5个核心要点
@@ -70,16 +59,7 @@ def get_writing_revision_prompt(user_request: str, original_plan: Optional[Writi
 用户修改意见：
 {feedback}
 
-请根据用户反馈调整计划，输出格式：
-{{
-    "topic": "文章的核心主题，一句话概括",
-    "target_audience": "目标读者群体描述",
-    "key_points": ["要点1", "要点2", "要点3", ...],
-    "writing_style": "写作风格",
-    "estimated_length": "预计篇幅",
-    "reference_keywords": ["关键词1", "关键词2", ...],
-    "structure": ["引言/背景", "第一部分标题", "第二部分标题", ..., "总结"]
-}}"""
+请根据用户反馈调整计划。"""
 
 
 def get_title_generation_prompt(plan: WritingPlan) -> str:
@@ -226,12 +206,6 @@ def get_tags_generation_prompt(plan: WritingPlan, categories_str: str, existing_
 ## 可选分类（请从中选择一个）
 {categories_str}{existing_tags_section}
 
-请输出 JSON 格式：
-{{
-    "category": "分类名称",
-    "tags": ["标签1", "标签2", "标签3", "标签4", "标签5"]
-}}
-
 标签要求：
 1. 3-5个标签
 2. 每个标签2-8个字
@@ -283,21 +257,7 @@ def get_writing_evaluation_prompt(plan: WritingPlan, result_content: str, result
 1. 必须阅读完整篇文章后再评分，不要只看开头
 2. 对照写作计划中的核心要点，逐一检查是否都有阐述
 3. 对照文章结构大纲，检查每个章节是否都有内容
-4. 评分要客观公正，不要因为文章长就给高分
-
-## 输出格式
-输出 JSON 格式：
-{{
-    "score": 8.5,
-    "completeness": 9,
-    "structure": 8,
-    "expression": 9,
-    "practicality": 8,
-    "format": 9,
-    "strengths": ["具体优点1", "具体优点2"],
-    "weaknesses": ["具体不足1", "具体不足2"],
-    "suggestions": ["具体建议1", "具体建议2"]
-}}"""
+4. 评分要客观公正，不要因为文章长就给高分"""
 
 
 def get_writing_revision_content_prompt(result_title: str, result_summary: str, result_content: str,

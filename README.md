@@ -437,7 +437,8 @@ project-ai-agent/
 
 **核心机制：**
 
-- **节点边界区分思考与回答**：thinking 节点输出思考过程（thinking 事件），answer 节点输出最终回答（token 事件）。
+- **LangGraph 原生流式输出**：采用 `custom` + `messages` 双流模式，thinking 节点通过 `get_stream_writer()` 实时发射事件，answer 节点 LLM tokens 自动流式输出
+- **零额外 Token 浪费**：thinking 节点实时输出无需缓存回放，answer 节点直接使用 LLM 流式输出，无需重复生成
 - **并发工具调用**：`asyncio.gather` 同时执行多个工具
 - **迭代次数控制**：最大 10 次迭代，超限强制输出答案
 - **极端兜底**：answer_node 为空时重新调用 LLM 生成

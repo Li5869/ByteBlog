@@ -16,13 +16,13 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class WritingPlan(BaseModel):
     """写作计划 DTO"""
-    topic: str
-    target_audience: str
-    key_points: List[str]
-    writing_style: str
-    estimated_length: str
-    reference_keywords: List[str]
-    structure: List[str]
+    topic: str = Field(description="文章的核心主题，一句话概括")
+    target_audience: str = Field(description="目标读者群体描述")
+    key_points: List[str] = Field(description="核心要点列表，3-5个具体要点")
+    writing_style: str = Field(description="写作风格，如：教程、科普、经验分享、深度分析、技术解读、随笔")
+    estimated_length: str = Field(description="预计篇幅，如：短文(800字)、中文(1500字)、长文(3000字+)")
+    reference_keywords: List[str] = Field(description="参考搜索关键词列表，3-5个")
+    structure: List[str] = Field(description="文章章节标题列表，每个元素是一个章节标题")
 
 
 class WritingResult(BaseModel):
@@ -56,16 +56,16 @@ class WritingResult(BaseModel):
 
 class ReflectionResult(BaseModel):
     """反思结果 VO"""
-    score: float
-    completeness: float
-    structure: float
-    expression: float
-    practicality: float
-    format: float
-    strengths: List[str]
-    weaknesses: List[str]
-    suggestions: List[str]
-    revised_content: Optional[str] = None
+    score: float = Field(description="综合评分，0-10分")
+    completeness: float = Field(description="完整性评分，0-10分，是否覆盖所有核心要点")
+    structure: float = Field(description="结构性评分，0-10分，章节是否清晰、逻辑是否严密")
+    expression: float = Field(description="表达质量评分，0-10分，语言是否流畅、术语是否准确")
+    practicality: float = Field(description="实用性评分，0-10分，对目标读者是否有直接帮助")
+    format: float = Field(description="格式规范评分，0-10分，Markdown格式是否正确")
+    strengths: List[str] = Field(description="文章具体优点列表")
+    weaknesses: List[str] = Field(description="文章具体不足列表")
+    suggestions: List[str] = Field(description="具体改进建议列表")
+    revised_content: Optional[str] = Field(default=None, description="修订后的文章内容（可选）")
 
 
 class WritingAgentState(TypedDict):
@@ -88,7 +88,7 @@ class WritingAgentState(TypedDict):
 
 
 class TagGenerationResponse(BaseModel):
-    """标签与分类生成结果（LLM 结构化输出，with_structured_output 自动注入 JSON Schema）"""
+    """标签与分类生成结果（通过 structured_generate 调用 with_structured_output 自动生成）"""
     category: str = Field(description="文章分类名称，从现有分类中选择最合适的")
     tags: List[str] = Field(description="文章标签名称列表，优先从现有标签中选择，也可推荐新标签")
 
