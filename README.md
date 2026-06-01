@@ -36,7 +36,7 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 | 模块 | 能力 | 实现方式 |
 |------|------|----------|
 | 🤖 **AI 写作 Agent** | Plan-and-Execute 四阶段工作流（规划→执行→反思→定稿），四角色 LLM 差异化 temperature 配置，5 维质量评估自动微调，SSE 实时推送子步骤进度，Redis 任务状态管理支持断点恢复 | LangGraph StateGraph + DeepSeek |
-| 💬 **AI 智能对话** | ReAct 范式循环推理（思考→工具调用→观察→回答），节点边界天然区分思考与回答，Parent-Child RAG 技术（pgvector 检索 Child Chunks → 聚合还原 Parent Documents），多工具并发调度（asyncio.gather），SSE 流式输出，Skill 渐进式披露 + 向量化检索节省 Token + 三级降级策略 | LangGraph ReAct + pgvector |
+| 💬 **AI 智能对话** | ReAct 范式循环推理（thinking 节点统一推理与回答 → judge 路由 → tool_executor 执行工具），DeepSeek 思考模式实时输出思维链，Parent-Child RAG 技术（pgvector 检索 Child Chunks → 聚合还原 Parent Documents），多工具并发调度（asyncio.gather），SSE 流式输出，add_messages reducer 状态管理，Skill 渐进式披露 + 向量化检索节省 Token + 三级降级策略 | LangGraph ReAct + pgvector |
 | 📚 **RAG 知识库** | Parent-Child 文档切片策略（Child 450 字符 / Parent 1500 字符），OpenAI Embedding 向量化，pgvector 余弦相似度检索，管理端支持文档上传与管理 | OpenAI Embedding + pgvector |
 | 🔍 **全文搜索** | ES 统一搜索（文章/问答/作者/专栏四类内容），BoolQuery + MultiMatch 多字段加权检索（title^2），Completion Suggester 搜索建议，MQ 增量同步 | Spring Data Elasticsearch 8.16 |
 | ⚡ **三级缓存** | Caffeine（L1）→ Redis（L2）→ DB（L3）三级回源，Caffeine 原子加载防缓存击穿，NULL_VALUE 占位符防缓存穿透，CacheEntry 键级独立 TTL，Redis 故障自动降级 | Caffeine + Redis + Redisson |
@@ -433,34 +433,52 @@ project-ai-agent/
 
 ### Smart Agent 工具调用
 
-基于 **LangGraph StateGraph** 的 **Thinking→Judge→Answer** 循环图，节点边界天然区分思考与回答，无需依赖特殊标记。
+基于 **LangGraph StateGraph** 的 **Thinking→Judge→ToolExecutor** ReAct 循环图，thinking 节点统一负责推理与回答输出，judge 根据 `tool_calls` 路由至工具执行或结束。
+
+**工作流：**
+
+```
+thinking ──→ judge ──→ (有 tool_calls) ──→ tool_executor ──→ thinking (循环)
+    │
+    └──→ (无 tool_calls) ──→ END
+```
 
 **核心机制：**
 
-- **LangGraph 原生流式输出**：采用 `custom` + `messages` 双流模式，thinking 节点通过 `get_stream_writer()` 实时发射事件，answer 节点 LLM tokens 自动流式输出
-- **零额外 Token 浪费**：thinking 节点实时输出无需缓存回放，answer 节点直接使用 LLM 流式输出，无需重复生成
-- **并发工具调用**：`asyncio.gather` 同时执行多个工具
-- **迭代次数控制**：最大 10 次迭代，超限强制输出答案
-- **极端兜底**：answer_node 为空时重新调用 LLM 生成
+- **DeepSeek 官方思考模式**：`reasoning_content`（思维链）→ `thinking` 事件，`content`（最终回答）→ `chunk` 事件，天然分离无需额外解析
+- **LangGraph 原生 custom 流模式**：thinking 节点通过 `get_stream_writer()` 实时发射 thinking / chunk / tool_call 事件，零缓存回放
+- **add_messages reducer**：节点只需返回新消息，LangGraph 自动追加到消息历史，代码简洁且不易出错
+- **并发工具调用**：`asyncio.gather` 同时执行多个工具调用
+- **迭代次数控制**：超过最大迭代次数强制结束，防止无限循环
+- **content + tool_calls 并发输出**：模型可先回答部分内容（如"让我查一下数据库"），同时发起工具调用，下轮基于工具结果继续完善回答
+
+**工具列表（22 个）：**
 
 | 工具 | 功能 | 来源 |
 |------|------|------|
 | `search_articles_by_keyword` | ES 关键词搜索文章 | Elasticsearch |
-| `search_knowledge_base` | Parent-Child RAG 语义检索 | pgvector |
-| `search_authors_by_keyword` | ES 博主搜索 | Elasticsearch |
-| `get_hot_articles` | 获取热门文章 | Elasticsearch |
+| `search_knowledge_base` | Parent-Child RAG 语义检索（支持 category 过滤） | pgvector |
+| `search_authors_by_keyword` | ES 博主搜索（用户名/昵称/简介） | Elasticsearch |
+| `get_hot_articles` | 获取浏览量最高的热门文章 | Elasticsearch |
+| `get_hot_authors` | 获取粉丝数最多的热门博主 | Elasticsearch |
 | `get_article_by_id` | 根据 ID 获取文章详情 | Elasticsearch |
-| `get_article_content_by_id` | 根据 ID 获取文章内容 | Elasticsearch |
-| `get_category_list` | 分类查询 | Java API |
-| `get_skill_details` | 获取 Skill 详细使用指南 | Skills 文件 |
-| `list_available_skills` | 列出可用 Skills | Skills 文件 |
-| `search_skill_guide` | 搜索 Skill 指南 | Skills 文件 |
+| `get_article_content_by_id` | 根据 ID 获取文章完整 Markdown 正文 | Java API |
+| `get_author_by_id` | 根据 ID 获取博主详细信息 | Elasticsearch |
+| `get_category_list` | 获取所有文章分类 | Java API |
+| `get_the_time` | 获取当前日期时间、星期、时间段描述 | 系统时钟 |
+| `get_current_user_id` | 获取当前登录用户 ID | 用户上下文 |
+| `get_current_user_info` | 获取当前登录用户详细信息（昵称/邮箱/头像等） | 用户上下文 |
+| `get_skill_details` | 获取 Skill 详细使用指南（渐进式披露） | Skills 文件 |
+| `list_available_skills` | 列出所有可用 Skills 及简要描述 | Skills 文件 |
+| `search_skill_guide` | 语义搜索 Skill 指南片段（低 Token 消耗） | Skills 文件 |
 | `search_external_tech_blogs` | 站外技术博客搜索（站内结果不足时补充） | Tavily |
-| `writing_start` | 开始写作任务 | 写作 Agent |
-| `writing_status` | 查询写作任务状态 | 写作 Agent |
-| `writing_action` | 执行写作动作（确认/取消等） | 写作 Agent |
-| `writing_result` | 获取写作结果 | 写作 Agent |
-| `writing_publish` | 发布写作结果 | 写作 Agent |
+| `scrape_webpage` | 爬取单个网页内容，提取正文转 Markdown | Web 爬虫 |
+| `scrape_multiple_webpages` | 并发爬取多个网页（最多 5 个） | Web 爬虫 |
+| `writing_start` | 启动写作任务，异步生成计划 | 写作 Agent |
+| `writing_status` | 查询写作任务状态及计划内容 | 写作 Agent |
+| `writing_action` | 执行写作动作（确认/修订/取消） | 写作 Agent |
+| `writing_result` | 获取写作成果链接 | 写作 Agent |
+| `writing_publish` | 发布或保存草稿 | 写作 Agent |
 
 ![SmartAgent调用写作Agent全流程](docs/gif/ai创作全流程.gif)
 > *SmartAgent调用写作Agent全流程，展示用户输入需求 → SmartAgent理解意图 → 调用写作Agent → 生成计划 → 人工确认 → 开始写作 → 协作发布的完整过程*

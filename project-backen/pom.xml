@@ -27,6 +27,7 @@
         <module>blog-push</module>
         <module>blog-notification</module>
         <module>blog-message</module>
+        <module>blog-point</module>
     </modules>
 
     <properties>

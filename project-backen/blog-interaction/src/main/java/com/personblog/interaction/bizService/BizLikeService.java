@@ -32,11 +32,11 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.personblog.common.constant.RedisKeys.LIKES_TIMES_KEY_PREFIX;
 import static com.personblog.common.constant.RedisKeys.LIKE_BIZ_KEY_PREFIX;
 import static com.personblog.common.constant.TargetTypeConstant.*;
 import static com.personblog.common.enums.BizCodeEnum.LIKE_ERROR;
 import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.*;
+import static com.personblog.interaction.constant.RedisKeys.LIKES_TIMES_KEY_PREFIX;
 
 @Service
 @RequiredArgsConstructor

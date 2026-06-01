@@ -14,8 +14,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.personblog.article.config.cachConfig.ArticleCacheConfig.bannerCache;
+import static com.personblog.article.constant.RedisKeys.ARTICLE_BANNERS;
 import static com.personblog.common.constant.PageConstant.DEFAULT_BANNER_SIZE;
-import static com.personblog.common.constant.RedisKeys.ARTICLE_BANNERS;
 import static com.personblog.common.constant.StatusConstant.APPROVED;
 
 @Service

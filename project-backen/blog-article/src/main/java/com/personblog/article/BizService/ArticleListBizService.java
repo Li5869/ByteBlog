@@ -29,8 +29,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.personblog.article.config.cachConfig.ArticleCacheConfig.articlePageCache;
+import static com.personblog.article.constant.RedisKeys.ARTICLE_PAGE;
 import static com.personblog.common.constant.PageConstant.*;
-import static com.personblog.common.constant.RedisKeys.ARTICLE_PAGE;
 import static com.personblog.common.constant.RedisKeys.BROWSE_COUNT_KEY;
 import static com.personblog.common.constant.StatusConstant.APPROVED;
 import static com.personblog.common.constant.TargetTypeConstant.ARTICLE;

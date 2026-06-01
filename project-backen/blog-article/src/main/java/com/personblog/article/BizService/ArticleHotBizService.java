@@ -17,9 +17,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.personblog.article.config.cachConfig.ArticleCacheConfig.hotArticleCache;
+import static com.personblog.article.constant.RedisKeys.ARTICLE_HOT;
 import static com.personblog.common.constant.PageConstant.DEFAULT_HOT_SIZE;
 import static com.personblog.common.constant.PageConstant.MAX_HOT_SIZE;
-import static com.personblog.common.constant.RedisKeys.ARTICLE_HOT;
 import static com.personblog.common.constant.RedisKeys.BROWSE_COUNT_KEY;
 import static com.personblog.common.constant.StatusConstant.APPROVED;
 

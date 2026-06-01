@@ -20,8 +20,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.personblog.article.config.cachConfig.ArticleCacheConfig.*;
-import static com.personblog.common.constant.RedisKeys.ARTICLE_BANNERS;
-import static com.personblog.common.constant.RedisKeys.ARTICLE_DETAIL;
+import static com.personblog.article.constant.RedisKeys.ARTICLE_BANNERS;
+import static com.personblog.article.constant.RedisKeys.ARTICLE_DETAIL;
 import static com.personblog.common.constant.TargetTypeConstant.ARTICLE;
 import static com.personblog.common.enums.BizCodeEnum.NOT_ARTICLE;
 import static com.personblog.common.enums.BizCodeEnum.NO_POWER;

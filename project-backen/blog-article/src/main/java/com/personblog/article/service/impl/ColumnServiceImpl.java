@@ -37,7 +37,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.personblog.common.constant.RedisKeys.COLUMN_READ_COUNT;
+import static com.personblog.article.constant.RedisKeys.COLUMN_READ_COUNT;
 import static com.personblog.common.constant.TargetTypeConstant.COLUMN;
 import static com.personblog.search.config.mqConfig.SearchMqConfig.*;
 

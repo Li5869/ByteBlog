@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.personblog.article.constant.RedisKeys.ARTICLE_METADATA;
 import static com.personblog.common.constant.RedisKeys.*;
 import static com.personblog.common.constant.StatusConstant.APPROVED;
 import static com.personblog.common.constant.TargetTypeConstant.ARTICLE;

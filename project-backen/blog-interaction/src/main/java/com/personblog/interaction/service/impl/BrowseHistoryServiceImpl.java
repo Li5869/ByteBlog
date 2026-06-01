@@ -22,9 +22,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.personblog.common.constant.RedisKeys.*;
+import static com.personblog.common.constant.RedisKeys.BROWSE_COUNT_KEY;
 import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.BROWSE_HISTORY_KEY;
 import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.INTERACTION_EXCHANGE;
+import static com.personblog.interaction.constant.RedisKeys.BROWSE_ACTIVE_USERS;
+import static com.personblog.interaction.constant.RedisKeys.BROWSE_HISTORY_KEY_PREFIX;
 
 @Service
 @Slf4j

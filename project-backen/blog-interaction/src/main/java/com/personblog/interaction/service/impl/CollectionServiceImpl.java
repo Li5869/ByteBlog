@@ -30,12 +30,12 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
-import static com.personblog.common.constant.RedisKeys.COLLECTION_TIMES_KEY_PREFIX;
 import static com.personblog.common.constant.RedisKeys.COLLECTION_USER_KEY_PREFIX;
 import static com.personblog.common.constant.TargetTypeConstant.ARTICLE;
 import static com.personblog.common.enums.BizCodeEnum.ERROR_OPERATION;
 import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.COLLECTION_KEY;
 import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.INTERACTION_EXCHANGE;
+import static com.personblog.interaction.constant.RedisKeys.COLLECTION_TIMES_KEY_PREFIX;
 
 /**
  * <p>

@@ -46,9 +46,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
-import static com.personblog.common.constant.RedisKeys.*;
 import static com.personblog.common.constant.TargetTypeConstant.ANSWER;
 import static com.personblog.common.constant.TargetTypeConstant.QUESTION;
+import static com.personblog.question.constant.RedisKeys.*;
 
 /**
  * 问题表 服务实现类

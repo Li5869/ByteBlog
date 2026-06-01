@@ -23,9 +23,11 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.personblog.common.constant.RedisKeys.*;
+import static com.personblog.common.constant.RedisKeys.USER_AUTHOR;
+import static com.personblog.common.constant.RedisKeys.USER_INFO;
 import static com.personblog.common.enums.BizCodeEnum.FOLLOW_ERROR;
 import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.*;
+import static com.personblog.interaction.constant.RedisKeys.USER_FOLLOW;
 
 @Service
 @RequiredArgsConstructor

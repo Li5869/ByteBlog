@@ -26,7 +26,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.personblog.common.constant.RedisKeys.CATEGORY_ALL;
+import static com.personblog.article.constant.RedisKeys.CATEGORY_ALL;
 import static com.personblog.common.enums.BizCodeEnum.CATEGORY_HAS_ARTICLE;
 import static com.personblog.common.enums.BizCodeEnum.CATEGORY_REPEAT;
 
