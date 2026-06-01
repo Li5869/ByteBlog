@@ -20,11 +20,12 @@
 """
 
 from langgraph.graph import StateGraph, END
+from langgraph.graph.message import add_messages
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.config import get_stream_writer
-from typing import TypedDict, List, Optional, Any, Literal
+from typing import TypedDict, List, Optional, Any, Literal, Annotated, Sequence
 from dataclasses import dataclass, field
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage, SystemMessage
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage, SystemMessage
 from langchain_deepseek import ChatDeepSeek
 from tools import ALL_TOOLS
 from tools.user_tool import set_current_user_id
@@ -69,8 +70,8 @@ class StreamEvent:
 
 
 class AgentState(TypedDict):
-    """LangGraph Agent 状态（精简：tool_calls 通过 AIMessage 自然传递，无冗余字段）"""
-    messages: List[Any]
+    """LangGraph Agent 状态（使用 add_messages reducer 自动管理消息追加）"""
+    messages: Annotated[Sequence[BaseMessage], add_messages]
     iteration: int
     final_answer: str
     user_id: Optional[str]
@@ -95,7 +96,6 @@ class SmartAgent:
         # ChatDeepSeek 开启官方思考模式：
         # - reasoning_content：思维链（内部推理过程）
         # - content：最终回答（给用户的内容）
-        # 注意：思考模式下 temperature 会被 DeepSeek 忽略，无需设置
         self.llm = ChatDeepSeek(
             model=settings.model_name_deepseek,
             api_key=settings.openai_api_key_deepseek,
@@ -153,8 +153,7 @@ class SmartAgent:
         - reasoning_content → thinking 事件（思维链）
         - content → chunk 事件（最终回答）
 
-        tool_calls 通过 AIMessage 存入 messages 历史，
-        _judge 直接从 messages 末尾检查，无需额外状态字段。
+        使用 add_messages reducer，只需返回新消息，LangGraph 自动追加。
         """
         writer = get_stream_writer()
 
@@ -183,21 +182,22 @@ class SmartAgent:
         content = "".join(content_chunks)
 
         if tool_calls:
-            # 有工具调用：AIMessage 携带 tool_calls + reasoning_content 存入消息历史
+            # 有工具调用：AIMessage 携带 tool_calls + reasoning_content
             # 符合 DeepSeek 官方要求：工具调用场景必须回传 reasoning_content
             ai_message = AIMessage(
                 content=content,
                 tool_calls=tool_calls,
                 additional_kwargs={"reasoning_content": reasoning_content}
             )
+            # add_messages reducer 会自动追加新消息
             return {
-                "messages": list(messages) + [ai_message],
+                "messages": [ai_message],
                 "iteration": state.get("iteration", 0) + 1,
             }
 
-        # 无工具调用：返回最终回答
+        # 无工具调用：返回最终回答（不追加消息）
         return {
-            "messages": messages,
+            "messages": [],
             "iteration": state.get("iteration", 0) + 1,
             "final_answer": content,
         }
@@ -206,8 +206,7 @@ class SmartAgent:
         """
         工具执行节点：从消息历史末尾的 AIMessage 提取 tool_calls 并执行。
 
-        数据流：AIMessage(messages[-1]).tool_calls → 执行 → ToolMessage → 追加到 messages
-        reasoning_content 已在 AIMessage.additional_kwargs 中，随消息历史自然传递。
+        使用 add_messages reducer，只需返回新消息，LangGraph 自动追加。
         """
         writer = get_stream_writer()
         messages = state["messages"]
@@ -217,7 +216,7 @@ class SmartAgent:
         tool_calls = last_message.tool_calls if isinstance(last_message, AIMessage) else []
 
         if not tool_calls:
-            return {"messages": messages}
+            return {"messages": []}
 
         tool_map = {tool.name: tool for tool in self.tools}
         tool_calls_summary = self._tool_calls_list
@@ -261,9 +260,9 @@ class SmartAgent:
         # 并发执行所有工具调用
         tool_messages = await asyncio.gather(*[_execute_single(tc) for tc in tool_calls])
 
-        # ToolMessage 追加到消息历史，reasoning_content 随 AIMessage 自然传递
+        # add_messages reducer 会自动追加新消息
         return {
-            "messages": list(messages) + list(tool_messages),
+            "messages": list(tool_messages),
         }
 
     # ==================== 路由函数 ====================
