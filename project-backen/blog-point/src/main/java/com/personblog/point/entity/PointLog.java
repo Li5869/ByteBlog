@@ -26,7 +26,7 @@ public class PointLog {
     /** 积分变动值（正数增加，负数减少） */
     private Integer points;
 
-    /** 类型: sign/article_published/article_liked/article_collected/comment_liked/answer_liked/exchange/admin_adjust */
+    /** 类型，取值参见 {@link com.personblog.point.constant.PointTypeConstants} */
     private String type;
 
     /** 业务ID（可为null，如签到、管理员调整等场景） */

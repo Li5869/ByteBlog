@@ -53,6 +53,18 @@ public class RedisKeys {
     public static final String POINT_AWARDED = "point:awarded:";
 
     /**
+     * 排行榜积分增量缓存 Key 前缀
+     * 完整 Key 格式：point:rank:incr:{yyyyMM}
+     * 存储内容：用户积分增量（待同步到排行榜）
+     * 数据类型：Hash
+     *           field: userId
+     *           value: 积分增量值（可正可负）
+     * 过期时间：无（定时任务处理后删除）
+     * 用途：缓冲积分变动，定时任务批量更新排行榜
+     */
+    public static final String POINT_RANK_INCR = "point:rank:incr:";
+
+    /**
      * 签到状态 Bitmap Key
      *
      * @param userId 用户ID
@@ -104,5 +116,15 @@ public class RedisKeys {
      */
     public static String getPointAwardedKey(String bizType, Long targetId) {
         return POINT_AWARDED + bizType + ":" + targetId;
+    }
+
+    /**
+     * 排行榜积分增量缓存 Key
+     *
+     * @param yearMonth 年月（格式：yyyyMM）
+     * @return 完整的 Redis Key
+     */
+    public static String getPointRankIncrKey(String yearMonth) {
+        return POINT_RANK_INCR + yearMonth;
     }
 }

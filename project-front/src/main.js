@@ -125,6 +125,24 @@ const routes = [
     name: 'ColumnArticleManage',
     component: () => import('./views/ColumnArticleManage.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/points',
+    name: 'Points',
+    component: () => import('./views/Points.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/points/rank',
+    name: 'PointsRank',
+    component: () => import('./views/PointsRank.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/points/logs',
+    name: 'PointsLogs',
+    component: () => import('./views/PointsLogs.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

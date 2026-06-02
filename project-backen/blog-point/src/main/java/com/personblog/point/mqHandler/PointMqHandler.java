@@ -1,6 +1,7 @@
 package com.personblog.point.mqHandler;
 
 import com.personblog.common.dto.MqMessage.Point.PointMessageDTO;
+import com.personblog.point.BizService.PointBizService;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,8 @@ import static com.personblog.point.config.mqConfig.PointMqConfig.*;
 @RequiredArgsConstructor
 public class PointMqHandler {
 
+    private final PointBizService pointBizService;
+
     /**
      * 处理签到积分发放消息
      */
@@ -33,7 +36,13 @@ public class PointMqHandler {
                                 @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
             log.info("收到签到积分消息: userId={}, points={}", message.getUserId(), message.getPoints());
-            // TODO: 实现签到积分发放逻辑
+            pointBizService.changePoints(
+                    message.getUserId(),
+                    message.getPoints(),
+                    message.getType(),
+                    null,
+                    null
+            );
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
             log.error("签到积分处理失败: {}", e.getMessage(), e);
@@ -45,12 +54,18 @@ public class PointMqHandler {
      * 处理文章积分发放消息（发布文章、被点赞、被收藏）
      */
     @RabbitListener(queues = {POINT_ARTICLE_QUEUE, POINT_LIKE_QUEUE, POINT_COLLECTION_QUEUE},
-                    containerFactory = "rabbitListenerContainerFactory")
+            containerFactory = "rabbitListenerContainerFactory")
     public void handleArticlePoint(PointMessageDTO message, Channel channel,
                                    @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
             log.info("收到文章积分消息: userId={}, points={}, type={}", message.getUserId(), message.getPoints(), message.getType());
-            // TODO: 实现文章积分发放逻辑
+            pointBizService.changePoints(
+                    message.getUserId(),
+                    message.getPoints(),
+                    message.getType(),
+                    message.getBizId(),
+                    null
+            );
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
             log.error("文章积分处理失败: {}", e.getMessage(), e);
@@ -66,7 +81,13 @@ public class PointMqHandler {
                                        @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
             log.info("收到管理员调整积分消息: userId={}, points={}, operatorId={}", message.getUserId(), message.getPoints(), message.getOperatorId());
-            // TODO: 实现管理员调整积分逻辑
+            pointBizService.changePoints(
+                    message.getUserId(),
+                    message.getPoints(),
+                    message.getType(),
+                    null,
+                    message.getDescription()
+            );
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
             log.error("管理员调整积分处理失败: {}", e.getMessage(), e);

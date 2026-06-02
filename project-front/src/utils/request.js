@@ -944,6 +944,49 @@ export const columnApi = {
   getSubscriptions: () => get('/article/columns/subscriptions')
 }
 
+/**
+ * 积分相关 API
+ */
+export const pointsApi = {
+  /**
+   * 执行签到
+   * @returns {Promise<Object>} 签到结果
+   */
+  doSign: () => post('/point/sign'),
+
+  /**
+   * 获取签到状态
+   * @returns {Promise<Object>} 签到状态
+   */
+  getSignStatus: () => get('/point/sign/status'),
+
+  /**
+   * 获取积分余额
+   * @returns {Promise<Object>} 积分余额
+   */
+  getBalance: () => get('/point/balance'),
+
+  /**
+   * 获取积分排行榜
+   * @param {number} topN - 获取前 N 名
+   * @returns {Promise<Object>} 排行榜数据
+   */
+  getRankList: (topN = 50) => get('/point/rank', { topN }),
+
+  /**
+   * 获取积分流水
+   * @param {number} current - 当前页码
+   * @param {number} size - 每页大小
+   * @param {string} type - 类型筛选
+   * @returns {Promise<Object>} 积分流水
+   */
+  getPointLogs: (current = 1, size = 20, type = null) => {
+    const params = { current, size }
+    if (type) params.type = type
+    return get('/point/logs', params)
+  },
+}
+
 export default {
   get,
   post,
@@ -961,6 +1004,7 @@ export default {
   searchApi,
   aiApi,
   columnApi,
+  pointsApi,
   getToken,
   getRefreshToken,
   getUserInfo,

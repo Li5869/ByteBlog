@@ -198,7 +198,14 @@ public enum BizCodeEnum {
     /** 文件上传至知识库失败 */
     AI_FILE_UPLOAD_ERROR(4066, "文件上传至知识库失败"),
     /** Python 服务返回了业务错误（响应 code 不为 0） */
-    AI_PYTHON_BUSINESS_ERROR(4067, "Python服务返回业务错误");
+    AI_PYTHON_BUSINESS_ERROR(4067, "Python服务返回业务错误"),
+
+    // ==================== 积分系统 (4071-4080) ====================
+
+    /** 今日已签到 */
+    POINT_ALREADY_SIGNED(4071, "今日已签到"),
+    /** 积分不足 */
+    POINT_NOT_ENOUGH(4072, "积分不足");
 
     private final String message;
 
