@@ -21,12 +21,12 @@
         <module>blog-search</module>
         <module>blog-ai</module>
         <module>blog-job</module>
-        <module>blog-question</module>
         <module>blog-application</module>
         <module>blog-api</module>
         <module>blog-push</module>
         <module>blog-notification</module>
         <module>blog-message</module>
+        <module>blog-point</module>
     </modules>
 
     <properties>

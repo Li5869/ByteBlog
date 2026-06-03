@@ -26,16 +26,6 @@ const routes = [
     component: () => import('./views/Article.vue')
   },
   {
-    path: '/qa',
-    name: 'QA',
-    component: () => import('./views/QA.vue')
-  },
-  {
-    path: '/question/:id',
-    name: 'QuestionDetail',
-    component: () => import('./views/QuestionDetail.vue')
-  },
-  {
     path: '/ai-chat',
     name: 'AIChat',
     component: () => import('./views/AIChat.vue')
@@ -88,12 +78,6 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/create-question',
-    name: 'CreateQuestion',
-    component: () => import('./views/CreateQuestion.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
     path: '/user/:id',
     name: 'UserHome',
     component: () => import('./views/UserHome.vue')
@@ -124,6 +108,24 @@ const routes = [
     path: '/column/:id/articles',
     name: 'ColumnArticleManage',
     component: () => import('./views/ColumnArticleManage.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/points',
+    name: 'Points',
+    component: () => import('./views/Points.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/points/rank',
+    name: 'PointsRank',
+    component: () => import('./views/PointsRank.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/points/logs',
+    name: 'PointsLogs',
+    component: () => import('./views/PointsLogs.vue'),
     meta: { requiresAuth: true }
   }
 ]

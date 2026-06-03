@@ -45,7 +45,9 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
 
     # DeepSeek 专属（写作 Agent 等高创意场景）
-    model_name_deepseek: str = "deepseek-chat"
+    # deepseek-v4-flash: 高效通用，非默认思考模式
+    # deepseek-v4-pro: 强推理旗舰，默认启用思考模式
+    model_name_deepseek: str = "deepseek-v4-flash"
     openai_base_url_deepseek: str = "https://api.deepseek.com"
     openai_api_key_deepseek: str = ""
 

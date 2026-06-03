@@ -34,9 +34,9 @@ import static com.personblog.ai.constants.LLMType.USER;
 import static com.personblog.ai.constants.PythonAiApiConstants.Chat.STOP;
 import static com.personblog.ai.constants.PythonAiApiConstants.Chat.STREAM;
 import static com.personblog.ai.constants.PythonAiApiConstants.*;
+import static com.personblog.ai.constants.RedisKeys.REDIS_KEY_PREFIX;
+import static com.personblog.ai.constants.RedisKeys.REDIS_MEMORY_PREFIX;
 import static com.personblog.common.constant.MqRoutingConstants.AI_EXCHANGE;
-import static com.personblog.common.constant.RedisKeys.REDIS_KEY_PREFIX;
-import static com.personblog.common.constant.RedisKeys.REDIS_MEMORY_PREFIX;
 
 @Slf4j
 @Service

@@ -24,7 +24,6 @@ import static com.personblog.ai.constants.LlmPromptType.MODERATION_USER_TYPE;
 import static com.personblog.common.constant.StatusConstant.APPROVED;
 import static com.personblog.common.constant.StatusConstant.REJECT;
 import static com.personblog.common.constant.TargetTypeConstant.COMMENT;
-import static com.personblog.common.constant.TargetTypeConstant.QUESTION;
 
 /**
  * 内容审核服务实现
@@ -149,7 +148,6 @@ public class ContentModerationService{
     private String getContentTypeDesc(String contentType) {
         return switch (contentType) {
             case COMMENT -> Moderation.TYPE_COMMENT;
-            case QUESTION -> Moderation.TYPE_QUESTION;
             default -> Moderation.TYPE_ARTICLE;
         };
     }

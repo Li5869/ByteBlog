@@ -31,7 +31,4 @@ public class BrowseHistory {
 
     /** 浏览更新时间(用于排序) */
     private LocalDateTime browseAt;
-
-    /** 问题id(关联tb_question)*/
-    private Long questionId;
 }

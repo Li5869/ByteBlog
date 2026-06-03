@@ -15,8 +15,8 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
-import static com.personblog.common.constant.RedisKeys.ONLINE_USERS;
-import static com.personblog.common.constant.RedisKeys.getUserOnlineDetailKey;
+import static com.personblog.push.constant.RedisKeys.ONLINE_USERS;
+import static com.personblog.push.constant.RedisKeys.getUserOnlineDetailKey;
 
 /**
  * 用户在线状态服务

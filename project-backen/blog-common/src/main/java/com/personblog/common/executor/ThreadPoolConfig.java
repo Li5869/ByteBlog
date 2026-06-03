@@ -13,7 +13,7 @@ import java.util.concurrent.ThreadPoolExecutor;
  * <p>
  * 按业务场景划分线程池，参数根据任务特征差异化配置：
  * <ul>
- *   <li>普通任务（文章计数/评论/问答/消息）：中等并发</li>
+ *   <li>普通任务（文章计数/评论/消息）：中等并发</li>
  *   <li>IO密集任务（AI调用）：较高并发，大队列</li>
  *   <li>特殊任务（死信队列重试）：低并发，小队列</li>
  * </ul>
@@ -50,7 +50,7 @@ public class ThreadPoolConfig {
         return executor;
     }
 
-    // ==================== 普通任务线程池（文章/评论/问答/消息） ====================
+    // ==================== 普通任务线程池（文章/评论/消息） ====================
 
     /**
      * 文章计数线程池（更新用户文章数、分类文章数等）
@@ -66,14 +66,6 @@ public class ThreadPoolConfig {
     @Bean(name = "CommentExecutor")
     public Executor commentExecutor() {
         return createExecutor("comment-", 4, 8, 256);
-    }
-
-    /**
-     * 问答处理线程池（问题/回答的异步操作）
-     */
-    @Bean(name = "QuestionExecutor")
-    public Executor questionExecutor() {
-        return createExecutor("question-", 4, 8, 256);
     }
 
     /**

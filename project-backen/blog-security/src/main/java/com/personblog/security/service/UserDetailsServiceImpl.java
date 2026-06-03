@@ -2,7 +2,6 @@ package com.personblog.security.service;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.personblog.common.constant.RedisKeys;
 import com.personblog.common.utils.RedisUtil;
 import com.personblog.security.entity.LoginUser;
 import com.personblog.security.entity.User;
@@ -17,6 +16,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
+
+import static com.personblog.security.constant.RedisKeys.*;
 
 /**
  * 用户详情服务实现类
@@ -104,7 +105,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
      */
     public LoginUser getLoginUserByToken(String token) {
         // 构建 Redis Key：user:token:{token}
-        String key = RedisKeys.USER_TOKEN + token;
+        String key = USER_TOKEN + token;
         // 从 Redis 获取
         Object obj = redisUtil.get(key);
         if(obj!=null){
@@ -126,7 +127,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         // 清除密码，避免敏感信息存储到 Redis
         loginUser.setPassword(null);
         // 构建 Redis Key
-        String key = RedisKeys.USER_TOKEN + token;
+        String key = USER_TOKEN + token;
         // 存入 Redis，设置 30 分钟过期
         redisUtil.set(key, loginUser, 30, TimeUnit.MINUTES);
     }
@@ -141,13 +142,13 @@ public class UserDetailsServiceImpl implements UserDetailsService {
      */
     public void refreshToken(String token) {
         // 1. 刷新 Access Token 的过期时间
-        String key = RedisKeys.USER_TOKEN + token;
+        String key = USER_TOKEN + token;
         redisUtil.expire(key, 30, TimeUnit.MINUTES);
         
         // 2. 获取用户信息，刷新用户当前登录 Token 映射的过期时间
         LoginUser loginUser = getLoginUserByToken(token);
         if (loginUser != null) {
-            String loginKey = RedisKeys.getUserLoginTokenKey(loginUser.getUserId());
+            String loginKey = getUserLoginTokenKey(loginUser.getUserId());
             redisUtil.expire(loginKey, 30, TimeUnit.MINUTES);
         }
     }
@@ -161,7 +162,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
      */
     public void removeLoginUser(String token) {
         // 构建 Redis Key
-        String key = RedisKeys.USER_TOKEN + token;
+        String key = USER_TOKEN + token;
         // 从 Redis 删除
         redisUtil.delete(key);
     }
@@ -176,7 +177,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
      */
     public void setRefreshToken(Long userId, String refreshToken) {
         // 构建 Redis Key：user:refresh_token:{userId}
-        String key = RedisKeys.getUserRefreshTokenKey(userId);
+        String key = getUserRefreshTokenKey(userId);
         // 存入 Redis，设置 7 天过期（与配置的 refresh-token-expiration 一致）
         redisUtil.set(key, refreshToken, 7, TimeUnit.DAYS);
     }
@@ -191,7 +192,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
      */
     public String getRefreshTokenByUserId(Long userId) {
         // 构建 Redis Key：user:refresh_token:{userId}
-        String key = RedisKeys.getUserRefreshTokenKey(userId);
+        String key = getUserRefreshTokenKey(userId);
         Object obj = redisUtil.get(key);
         return obj != null ? obj.toString() : null;
     }
@@ -205,7 +206,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
      */
     public void removeRefreshToken(Long userId) {
         // 构建 Redis Key：user:refresh_token:{userId}
-        String key = RedisKeys.getUserRefreshTokenKey(userId);
+        String key = getUserRefreshTokenKey(userId);
         // 从 Redis 删除
         redisUtil.delete(key);
     }
@@ -219,7 +220,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
      */
     public String getCurrentTokenByUserId(Long userId) {
         // 构建 Redis Key：user:login:{userId}
-        String key = RedisKeys.getUserLoginTokenKey(userId);
+        String key = getUserLoginTokenKey(userId);
         // 从 Redis 获取
         Object obj = redisUtil.get(key);
         return obj != null ? obj.toString() : null;
@@ -235,7 +236,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
      */
     public void setCurrentToken(Long userId, String token) {
         // 构建 Redis Key：user:login:{userId}
-        String key = RedisKeys.getUserLoginTokenKey(userId);
+        String key = getUserLoginTokenKey(userId);
         // 存入 Redis，设置 30 分钟过期（与 Access Token 一致）
         redisUtil.set(key, token, 30, TimeUnit.MINUTES);
     }
@@ -258,7 +259,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         }
         
         // 3. 删除用户ID到Token的映射
-        String loginKey = RedisKeys.getUserLoginTokenKey(userId);
+        String loginKey = getUserLoginTokenKey(userId);
         redisUtil.delete(loginKey);
     }
 
@@ -270,7 +271,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
      */
     public void removeCurrentToken(Long userId) {
         // 构建 Redis Key：user:login:{userId}
-        String key = RedisKeys.getUserLoginTokenKey(userId);
+        String key = getUserLoginTokenKey(userId);
         // 从 Redis 删除
         redisUtil.delete(key);
     }

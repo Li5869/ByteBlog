@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.personblog.common.constant.RedisKeys.REDIS_MEMORY_PREFIX;
+import static com.personblog.ai.constants.RedisKeys.REDIS_MEMORY_PREFIX;
 
 @Slf4j
 @Service

@@ -29,7 +29,7 @@ public class ElasticsearchDataInitializer {
     /**
      * 应用启动后执行全量数据同步
      *
-     * 执行顺序：文章 → 问题 → 作者 → 专栏
+     * 执行顺序：文章 → 作者 → 专栏
      * 原因：文章数据量通常最大，优先同步以尽快提供搜索服务
      */
     @PostConstruct
@@ -43,13 +43,10 @@ public class ElasticsearchDataInitializer {
         // 1. 同步文章索引
         syncArticles();
 
-        // 2. 同步问题索引
-        syncQuestions();
-
-        // 3. 同步作者索引
+        // 2. 同步作者索引
         syncAuthors();
 
-        // 4. 同步专栏索引
+        // 3. 同步专栏索引
         syncColumns();
 
         long totalCost = System.currentTimeMillis() - totalStart;
@@ -61,41 +58,31 @@ public class ElasticsearchDataInitializer {
 
     private void syncArticles() {
         try {
-            log.info(">>> [1/4] 开始同步文章索引...");
+            log.info(">>> [1/3] 开始同步文章索引...");
             searchSyncService.syncAllArticles();
-            log.info(">>> [1/4] 文章索引同步完成 ✓");
+            log.info(">>> [1/3] 文章索引同步完成 ✓");
         } catch (Exception e) {
-            log.error(">>> [1/4] 文章索引同步失败 ✗，将在后续增量同步中修复", e);
-        }
-    }
-
-    private void syncQuestions() {
-        try {
-            log.info(">>> [2/4] 开始同步问题索引...");
-            searchSyncService.syncAllQuestions();
-            log.info(">>> [2/4] 问题索引同步完成 ✓");
-        } catch (Exception e) {
-            log.error(">>> [2/4] 问题索引同步失败 ✗，将在后续增量同步中修复", e);
+            log.error(">>> [1/3] 文章索引同步失败 ✗，将在后续增量同步中修复", e);
         }
     }
 
     private void syncAuthors() {
         try {
-            log.info(">>> [3/4] 开始同步作者索引...");
+            log.info(">>> [2/3] 开始同步作者索引...");
             searchSyncService.syncAllAuthors();
-            log.info(">>> [3/4] 作者索引同步完成 ✓");
+            log.info(">>> [2/3] 作者索引同步完成 ✓");
         } catch (Exception e) {
-            log.error(">>> [3/4] 作者索引同步失败 ✗，将在后续增量同步中修复", e);
+            log.error(">>> [2/3] 作者索引同步失败 ✗，将在后续增量同步中修复", e);
         }
     }
 
     private void syncColumns() {
         try {
-            log.info(">>> [4/4] 开始同步专栏索引...");
+            log.info(">>> [3/3] 开始同步专栏索引...");
             searchSyncService.syncAllColumns();
-            log.info(">>> [4/4] 专栏索引同步完成 ✓");
+            log.info(">>> [3/3] 专栏索引同步完成 ✓");
         } catch (Exception e) {
-            log.error(">>> [4/4] 专栏索引同步失败 ✗，将在后续增量同步中修复", e);
+            log.error(">>> [3/3] 专栏索引同步失败 ✗，将在后续增量同步中修复", e);
         }
     }
 }

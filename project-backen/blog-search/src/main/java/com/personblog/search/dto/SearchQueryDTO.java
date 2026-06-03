@@ -12,7 +12,7 @@ public class SearchQueryDTO {
     @Schema(description = "搜索关键词")
     private String keyword;
 
-    @Schema(description = "搜索类型：article-文章，question-问题，author-作者，column-专栏，all-全部")
+    @Schema(description = "搜索类型：article-文章，author-作者，column-专栏，all-全部")
     private String type = "all";
 
     @Schema(description = "分类ID（文章搜索）")

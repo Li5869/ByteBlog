@@ -2,7 +2,7 @@
 import {onMounted, ref, watch} from 'vue'
 import {RouterLink, useRouter} from 'vue-router'
 import {NPagination, NSelect} from 'naive-ui'
-import {articleApi, columnApi, interactionApi, isLoggedIn, questionApi, userApi} from '@/utils/request'
+import {articleApi, columnApi, interactionApi, isLoggedIn, userApi} from '@/utils/request'
 import {toast} from '@/utils/toast'
 import {modal} from '@/utils/modal'
 import OnlineIndicator from '@/components/OnlineIndicator.vue'
@@ -32,8 +32,6 @@ const userInfo = ref({
 const tabs = [
   { name: '我的文章', key: 'articles', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
   { name: '我的专栏', key: 'columns', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' },
-  { name: '我的问答', key: 'questions', icon: 'M8.228 9c.549-1.219 1.04-2.453 1.482-3.72a10.003 10.003 0 01-.09-3.28m-9.82 0c.18 1.12.51 2.195.96 3.42 1.24M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z' },
-  { name: '我的回答', key: 'answers', icon: 'M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2v-6a2 2 0 012-2h8zM5 14H3a2 2 0 01-2-2V6a2 2 0 012-2h2V0l4 4h4a2 2 0 012 2v6a2 2 0 01-2 2z' },
   { name: '我的收藏', key: 'collections', icon: 'M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z' },
   { name: '我的点赞', key: 'likes', icon: 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z' },
   { name: '浏览历史', key: 'history', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
@@ -48,8 +46,6 @@ const myCollections = ref([])
 const myLikes = ref([])
 const browseHistory = ref([])
 
-const myQuestions = ref([])
-const myAnswers = ref([])
 const mySubscriptions = ref([])
 
 const articlesLoading = ref(false)
@@ -57,47 +53,18 @@ const columnsLoading = ref(false)
 const collectionsLoading = ref(false)
 const likesLoading = ref(false)
 const historyLoading = ref(false)
-const questionsLoading = ref(false)
-const answersLoading = ref(false)
 const subscriptionsLoading = ref(false)
 
 const articlesPagination = ref({ current: 1, size: 10, total: 0, pages: 0 })
 const collectionsPagination = ref({ current: 1, size: 10, total: 0, pages: 0 })
 const likesPagination = ref({ current: 1, size: 10, total: 0, pages: 0 })
 const historyPagination = ref({ current: 1, size: 10, total: 0, pages: 0 })
-const questionsPagination = ref({ current: 1, size: 10, total: 0, pages: 0 })
-const answersPagination = ref({ current: 1, size: 10, total: 0, pages: 0 })
 
 const articlesOrderBy = ref('created_at')
 const orderByOptions = [
   { label: '按时间排序', value: 'created_at' },
   { label: '按点赞数排序', value: 'likes' },
   { label: '按阅读数排序', value: 'views' }
-]
-
-const questionsFilter = ref('all')
-const questionsOrderBy = ref('created_at')
-const questionsFilterOptions = [
-  { label: '全部', value: 'all' },
-  { label: '已解决', value: 'solved' },
-  { label: '待解决', value: 'unsolved' }
-]
-const questionsSortOptions = [
-  { label: '按时间排序', value: 'created_at' },
-  { label: '按回答数排序', value: 'answers' },
-  { label: '按点赞数排序', value: 'likes' }
-]
-
-const answersFilter = ref('all')
-const answersOrderBy = ref('created_at')
-const answersFilterOptions = [
-  { label: '全部', value: 'all' },
-  { label: '最佳答案', value: 'best' },
-  { label: '普通回答', value: 'normal' }
-]
-const answersSortOptions = [
-  { label: '按时间排序', value: 'created_at' },
-  { label: '按赞同数排序', value: 'likes' }
 ]
 
 
@@ -334,30 +301,6 @@ const handleHistoryPageChange = (page) => {
   fetchBrowseHistory()
 }
 
-const handleQuestionsPageChange = (page) => {
-  questionsPagination.value.current = page
-  fetchMyQuestions()
-}
-
-const handleAnswersPageChange = (page) => {
-  answersPagination.value.current = page
-  fetchMyAnswers()
-}
-
-const handleQuestionsFilterChange = () => {
-  questionsPagination.value.current = 1
-  fetchMyQuestions()
-}
-
-const handleAnswersFilterChange = () => {
-  answersPagination.value.current = 1
-  fetchMyAnswers()
-}
-
-const goToQuestion = (questionId) => {
-  router.push({ name: 'QuestionDetail', params: { id: questionId } })
-}
-
 const goToArticle = (articleId, isDeleted) => {
   if (isDeleted) {
     toast.error('该文章已被删除，无法查看')
@@ -393,10 +336,6 @@ watch(activeTab, (newTab) => {
     fetchMyArticles()
   } else if (newTab === 'columns' && myColumns.value.length === 0) {
     fetchMyColumns()
-  } else if (newTab === 'questions' && myQuestions.value.length === 0) {
-    fetchMyQuestions()
-  } else if (newTab === 'answers' && myAnswers.value.length === 0) {
-    fetchMyAnswers()
   } else if (newTab === 'collections' && myCollections.value.length === 0) {
     fetchMyCollections()
   } else if (newTab === 'likes' && myLikes.value.length === 0) {
@@ -407,60 +346,6 @@ watch(activeTab, (newTab) => {
     fetchMySubscriptions()
   }
 })
-
-const fetchMyQuestions = async () => {
-  if (questionsLoading.value) return
-  
-  questionsLoading.value = true
-  try {
-    const data = await questionApi.getMyQuestions({
-      current: questionsPagination.value.current,
-      size: questionsPagination.value.size,
-      status: questionsFilter.value,
-      orderBy: questionsOrderBy.value
-    })
-    
-    myQuestions.value = data.records || []
-    
-    questionsPagination.value = {
-      current: data.current || 1,
-      size: data.size || 10,
-      total: data.total || 0,
-      pages: data.pages || 0
-    }
-  } catch (error) {
-    console.error('获取我的问题失败:', error)
-  } finally {
-    questionsLoading.value = false
-  }
-}
-
-const fetchMyAnswers = async () => {
-  if (answersLoading.value) return
-  
-  answersLoading.value = true
-  try {
-    const data = await questionApi.getMyAnswers({
-      current: answersPagination.value.current,
-      size: answersPagination.value.size,
-      type: answersFilter.value,
-      orderBy: answersOrderBy.value
-    })
-    
-    myAnswers.value = data.records || []
-    
-    answersPagination.value = {
-      current: data.current || 1,
-      size: data.size || 10,
-      total: data.total || 0,
-      pages: data.pages || 0
-    }
-  } catch (error) {
-    console.error('获取我的回答失败:', error)
-  } finally {
-    answersLoading.value = false
-  }
-}
 
 onMounted(() => {
   fetchUserProfile()
@@ -903,247 +788,6 @@ onMounted(() => {
                     </div>
                   </div>
                 </div>
-              </template>
-            </div>
-
-            <!-- 我的问答 Tab -->
-            <div v-else-if="activeTab === 'questions'" class="space-y-4">
-              <div class="flex flex-wrap items-center gap-3 mb-4 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-                <div class="flex items-center gap-2">
-                  <span class="text-sm text-gray-500 dark:text-gray-400">状态：</span>
-                  <div class="flex gap-1">
-                    <button
-                      v-for="opt in questionsFilterOptions"
-                      :key="opt.value"
-                      @click="questionsFilter = opt.value; handleQuestionsFilterChange()"
-                      class="px-3 py-1.5 text-sm rounded-lg transition-all"
-                      :class="questionsFilter === opt.value
-                        ? 'bg-blue-500 text-white shadow-md'
-                        : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20'"
-                    >
-                      {{ opt.label }}
-                    </button>
-                  </div>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-sm text-gray-500 dark:text-gray-400">排序：</span>
-                  <select
-                    v-model="questionsOrderBy"
-                    @change="handleQuestionsFilterChange"
-                    class="px-3 py-1.5 text-sm rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option v-for="opt in questionsSortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-                  </select>
-                </div>
-                <div class="ml-auto text-sm text-gray-400">
-                  共 {{ questionsPagination.total }} 个问题
-                </div>
-              </div>
-
-              <div v-if="questionsLoading && myQuestions.length === 0" class="space-y-4">
-                <div v-for="i in 3" :key="i" class="p-4 border border-gray-100 dark:border-gray-700 rounded-xl">
-                  <div class="flex gap-4">
-                    <div class="flex-1 space-y-3">
-                      <div class="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-                      <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse w-3/4"></div>
-                      <div class="flex gap-4">
-                        <div class="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-                        <div class="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div v-else-if="myQuestions.length === 0" class="text-center py-12">
-                <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                  <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.219 1.04-2.453 1.482-3.72a10.003 10.003 0 01-.09-3.28m-9.82 0c.18 1.12.51 2.195.96 3.42 1.24M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                </div>
-                <p class="text-gray-500 dark:text-gray-400 font-medium">暂无提问</p>
-                <RouterLink to="/create-question" class="inline-block mt-4 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg text-sm hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg">
-                  去提问
-                </RouterLink>
-              </div>
-
-              <template v-else>
-
-                <div 
-                  v-for="question in myQuestions" 
-                  :key="question.id"
-                  @click="goToQuestion(question.id)"
-                  class="group p-4 border border-gray-100 dark:border-gray-700 rounded-xl hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-800 transition-all duration-300 cursor-pointer"
-                >
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="flex-1 min-w-0">
-                      <h3 class="font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-blue-500 transition-colors line-clamp-2">{{ question.title }}</h3>
-                      <p class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{{ question.content }}</p>
-                      <div class="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
-                        <span class="flex items-center gap-1">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          {{ formatAbsoluteDate(question.createdAt) }}
-                        </span>
-                        <span class="flex items-center gap-1">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                          {{ formatNumber(question.views) }}
-                        </span>
-                        <span 
-                          v-if="question.isSolved"
-                          class="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded font-medium"
-                        >
-                          已解决
-                        </span>
-                        <span 
-                          v-else
-                          class="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded font-medium"
-                        >
-                          待解决
-                        </span>
-                      </div>
-                      <div v-if="question.tags && question.tags.length > 0" class="flex flex-wrap gap-1.5 mt-2">
-                        <span 
-                          v-for="tag in question.tags" 
-                          :key="tag"
-                          class="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs rounded"
-                        >
-                          #{{ tag }}
-                        </span>
-                      </div>
-                    </div>
-                    <div class="flex-shrink-0 flex flex-col items-center gap-2 pt-1">
-                      <div class="text-center px-3 py-1.5 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                        <div class="text-base font-bold text-gray-900 dark:text-white">{{ question.answers }}</div>
-                        <div class="text-xs text-gray-400">回答</div>
-                      </div>
-                      <div class="text-center px-3 py-1.5 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                        <div class="text-base font-bold text-red-500">{{ formatNumber(question.likes) }}</div>
-                        <div class="text-xs text-gray-400">点赞</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <NPagination
-                  v-if="questionsPagination.pages > 1"
-                  :page="questionsPagination.current"
-                  :page-count="questionsPagination.pages"
-                  :page-size="questionsPagination.size"
-                  show-size-picker
-                  :page-sizes="[10, 20, 50]"
-                  @update:page="handleQuestionsPageChange"
-                  class="justify-center mt-6"
-                />
-              </template>
-            </div>
-
-            <!-- 我的回答 Tab -->
-            <div v-else-if="activeTab === 'answers'" class="space-y-4">
-              <div class="flex flex-wrap items-center gap-3 mb-4 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-                <div class="flex items-center gap-2">
-                  <span class="text-sm text-gray-500 dark:text-gray-400">类型：</span>
-                  <div class="flex gap-1">
-                    <button
-                      v-for="opt in answersFilterOptions"
-                      :key="opt.value"
-                      @click="answersFilter = opt.value; handleAnswersFilterChange()"
-                      class="px-3 py-1.5 text-sm rounded-lg transition-all"
-                      :class="answersFilter === opt.value
-                        ? 'bg-purple-500 text-white shadow-md'
-                        : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20'"
-                    >
-                      {{ opt.label }}
-                    </button>
-                  </div>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-sm text-gray-500 dark:text-gray-400">排序：</span>
-                  <select
-                    v-model="answersOrderBy"
-                    @change="handleAnswersFilterChange"
-                    class="px-3 py-1.5 text-sm rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option v-for="opt in answersSortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-                  </select>
-                </div>
-                <div class="ml-auto text-sm text-gray-400">
-                  共 {{ answersPagination.total }} 条回答
-                </div>
-              </div>
-
-              <div v-if="answersLoading && myAnswers.length === 0" class="space-y-4">
-                <div v-for="i in 3" :key="i" class="p-4 border border-gray-100 dark:border-gray-700 rounded-xl">
-                  <div class="flex gap-4">
-                    <div class="flex-1 space-y-3">
-                      <div class="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-                      <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse w-3/4"></div>
-                      <div class="flex gap-4">
-                        <div class="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-                        <div class="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div v-else-if="myAnswers.length === 0" class="text-center py-12">
-                <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                  <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2v-6a2 2 0 012-2h8zM5 14H3a2 2 0 01-2-2V6a2 2 0 012-2h2V0l4 4h4a2 2 0 012 2v6a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <p class="text-gray-500 dark:text-gray-400 font-medium">暂无回答</p>
-                <RouterLink to="/qa" class="inline-block mt-4 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg text-sm hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg">
-                  去回答问题
-                </RouterLink>
-              </div>
-
-              <template v-else>
-
-                <div 
-                  v-for="answer in myAnswers" 
-                  :key="answer.id"
-                  @click="goToQuestion(answer.questionId)"
-                  class="group p-4 border border-gray-100 dark:border-gray-700 rounded-xl hover:shadow-lg hover:border-purple-200 dark:hover:border-purple-800 transition-all duration-300 cursor-pointer"
-                >
-                  <div class="flex items-start gap-2 mb-2">
-                    <span 
-                      class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded"
-                      :class="answer.isBest ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'"
-                    >
-                      {{ answer.isBest ? '✓ 最佳答案' : '普通回答' }}
-                    </span>
-                    <span class="text-xs text-blue-500 dark:text-blue-400 truncate hover:underline">
-                      问题：{{ answer.questionTitle }}
-                    </span>
-                  </div>
-                  <p class="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 mb-3 leading-relaxed">{{ answer.content }}</p>
-                  <div class="flex items-center justify-between text-xs text-gray-400">
-                    <span>{{ formatAbsoluteDate(answer.createdAt) }}</span>
-                    <span class="flex items-center gap-1">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                      {{ formatNumber(answer.likes) }} 赞同
-                    </span>
-                  </div>
-                </div>
-                
-                <NPagination
-                  v-if="answersPagination.pages > 1"
-                  :page="answersPagination.current"
-                  :page-count="answersPagination.pages"
-                  :page-size="answersPagination.size"
-                  show-size-picker
-                  :page-sizes="[10, 20, 50]"
-                  @update:page="handleAnswersPageChange"
-                  class="justify-center mt-6"
-                />
               </template>
             </div>
 

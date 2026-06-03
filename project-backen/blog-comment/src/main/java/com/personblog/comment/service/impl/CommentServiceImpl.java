@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 import static com.personblog.comment.config.CacheConfig.CommentCacheConfig.commentPageCache;
 import static com.personblog.comment.config.mqConfig.CommentMqConfig.COMMENT_EXCHANGE;
 import static com.personblog.comment.config.mqConfig.CommentMqConfig.COMMENT_NOTIFICATION_KEY;
-import static com.personblog.common.constant.RedisKeys.COMMENT_PAGE;
+import static com.personblog.comment.constant.RedisKeys.COMMENT_PAGE;
 import static com.personblog.common.constant.StatusConstant.APPROVED;
 import static com.personblog.common.constant.StatusConstant.PENDING;
 import static com.personblog.common.constant.TargetTypeConstant.COMMENT;

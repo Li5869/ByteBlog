@@ -35,7 +35,7 @@ import static com.personblog.article.config.cachConfig.ArticleCacheConfig.articl
 import static com.personblog.article.config.cachConfig.ArticleCacheConfig.hotArticleCache;
 import static com.personblog.article.config.mqConfig.ArticleStatsMqConfig.ARTICLE_STATS_EXCHANGE;
 import static com.personblog.article.config.mqConfig.ArticleStatsMqConfig.ARTICLE_STATS_KEY;
-import static com.personblog.common.constant.RedisKeys.ARTICLE_DETAIL;
+import static com.personblog.article.constant.RedisKeys.ARTICLE_DETAIL;
 import static com.personblog.common.constant.StatusConstant.APPROVED;
 import static com.personblog.common.constant.StatusConstant.REJECT;
 import static com.personblog.search.config.mqConfig.SearchMqConfig.OPERATION_DELETE;

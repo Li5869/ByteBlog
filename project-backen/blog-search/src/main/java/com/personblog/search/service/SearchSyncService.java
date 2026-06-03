@@ -8,12 +8,6 @@ public interface SearchSyncService{
      */
     void syncArticle(Long articleId);
     /**
-     * 同步问题索引
-     *
-     * @param questionId 问题ID
-     */
-    void syncQuestion(Long questionId);
-    /**
      * 同步作者索引
      *
      * @param authorId 作者ID
@@ -29,10 +23,6 @@ public interface SearchSyncService{
      * 同步所有文章索引
      */
     void syncAllArticles();
-    /**
-     * 同步所有问题索引
-     */
-    void syncAllQuestions();
     /**
      * 同步所有作者索引
      */

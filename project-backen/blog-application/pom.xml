@@ -73,12 +73,12 @@
         </dependency>
         <dependency>
             <groupId>com.personblog</groupId>
-            <artifactId>blog-question</artifactId>
+            <artifactId>blog-push</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.personblog</groupId>
-            <artifactId>blog-push</artifactId>
+            <artifactId>blog-point</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

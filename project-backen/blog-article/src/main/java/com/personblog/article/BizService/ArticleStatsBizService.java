@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.personblog.common.constant.RedisKeys.ARTICLE_DETAIL;
+import static com.personblog.article.constant.RedisKeys.ARTICLE_DETAIL;
 import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.INTERACTION_EXCHANGE;
 import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.USER_LIKE_KEY;
 

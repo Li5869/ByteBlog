@@ -9,12 +9,10 @@ import com.personblog.search.dto.SearchResultDTO;
 import com.personblog.search.entity.ArticleDocument;
 import com.personblog.search.entity.AuthorDocument;
 import com.personblog.search.entity.ColumnDocument;
-import com.personblog.search.entity.QuestionDocument;
 import com.personblog.search.service.SearchService;
 import com.personblog.search.vo.ArticleSearchVO;
 import com.personblog.search.vo.AuthorSearchVO;
 import com.personblog.search.vo.ColumnSearchVO;
-import com.personblog.search.vo.QuestionSearchVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -45,18 +43,13 @@ public class SearchServiceImpl implements SearchService{
         SearchResultDTO resultDTO = new SearchResultDTO();
         resultDTO.setArticles(new ArrayList<>());
         resultDTO.setAuthors(new ArrayList<>());
-        resultDTO.setQuestions(new ArrayList<>());
         resultDTO.setColumns(new ArrayList<>());
         resultDTO.setArticleTotal(0L);
         resultDTO.setAuthorTotal(0L);
-        resultDTO.setQuestionTotal(0L);
         resultDTO.setColumnTotal(0L);
         String type = queryDTO.getType();
         if (ARTICLE.equals(type) || ALL.equals(type)) {
             searchArticles(queryDTO, resultDTO);
-        }
-        if (QUESTION.equals(type) || ALL.equals(type)) {
-            searchQuestions(queryDTO, resultDTO);
         }
         if (AUTHOR.equals(type) || ALL.equals(type)) {
             searchAuthors(queryDTO, resultDTO);
@@ -114,56 +107,6 @@ public class SearchServiceImpl implements SearchService{
                 nativeQueryBuilder.withSort(Sort.by(Sort.Direction.DESC, "createdAt"));
             }
         return nativeQueryBuilder.build();
-    }
-    private void searchQuestions(SearchQueryDTO queryDTO, SearchResultDTO result) {
-        try {
-            NativeQuery nativeQuery = buildQuestionQuery(queryDTO);
-            SearchHits<QuestionDocument> searchHits = esOperation.search(nativeQuery, QuestionDocument.class);
-
-            List<QuestionSearchVO> questions = searchHits.getSearchHits().stream()
-                    .map(searchConverter::convertToQuestionVO)
-                    .collect(Collectors.toList());
-
-            result.setQuestions(questions);
-            result.setQuestionTotal(searchHits.getTotalHits());
-        } catch (Exception e) {
-           throw new BizException(ERROR_SEARCH);
-        }
-    }
-
-
-
-    private NativeQuery buildQuestionQuery(SearchQueryDTO queryDTO) {
-        BoolQuery.Builder boolQuery = new BoolQuery.Builder();
-        if (queryDTO.getKeyword() != null && !queryDTO.getKeyword().isEmpty()) {
-            boolQuery.must(m -> m
-                    .multiMatch(mm -> mm
-                            .fields("title^2", "content")
-                            .query(queryDTO.getKeyword())
-                    )
-            );
-        }
-
-        if (queryDTO.getAuthorId() != null) {
-            boolQuery.filter(f -> f.term(t -> t.field("authorId").value(queryDTO.getAuthorId())));
-        }
-
-        boolQuery.filter(f -> f.term(t -> t.field("status").value(1)));
-
-        var queryBuilder = NativeQuery.builder()
-                .withQuery(q -> q.bool(boolQuery.build()))
-                .withPageable(PageRequest.of(queryDTO.getCurrent() - 1, queryDTO.getSize()));
-
-        String orderBy = queryDTO.getOrderBy();
-        if ("time".equals(orderBy)) {
-            queryBuilder.withSort(Sort.by(Sort.Direction.DESC, "createdAt"));
-        } else if ("views".equals(orderBy)) {
-            queryBuilder.withSort(Sort.by(Sort.Direction.DESC, "views"));
-        } else if ("relevance".equals(orderBy) && queryDTO.getKeyword() != null) {
-            queryBuilder.withSort(Sort.by(Sort.Direction.DESC, "createdAt"));
-        }
-
-        return queryBuilder.build();
     }
     private void searchAuthors(SearchQueryDTO queryDTO, SearchResultDTO result) {
         try {

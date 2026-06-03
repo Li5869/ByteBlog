@@ -28,13 +28,11 @@ const sortOptions = [
 
 // ========== 数据 ==========
 const allArticles = ref([])
-const allQuestions = ref([])
 const allAuthors = ref([])
 const allColumns = ref([])
 
 const searchResult = ref({
   articleTotal: 0,
-  questionTotal: 0,
   authorTotal: 0,
   columnTotal: 0
 })
@@ -42,13 +40,11 @@ const searchResult = ref({
 // ========== 计算属性 ==========
 const totalCount = computed(() => {
   const at = Number(searchResult.value.articleTotal) || 0
-  const qt = Number(searchResult.value.questionTotal) || 0
   const aut = Number(searchResult.value.authorTotal) || 0
   const ct = Number(searchResult.value.columnTotal) || 0
 
-  if (activeTab.value === 'all') return at + qt + aut + ct
+  if (activeTab.value === 'all') return at + aut + ct
   if (activeTab.value === 'article') return at
-  if (activeTab.value === 'question') return qt
   if (activeTab.value === 'author') return aut
   if (activeTab.value === 'column') return ct
   return 0
@@ -56,11 +52,10 @@ const totalCount = computed(() => {
 
 const paginationTotal = computed(() => {
   const at = Number(searchResult.value.articleTotal) || 0
-  const qt = Number(searchResult.value.questionTotal) || 0
   const aut = Number(searchResult.value.authorTotal) || 0
   const ct = Number(searchResult.value.columnTotal) || 0
 
-  if (activeTab.value === 'all') return Math.max(at, qt, aut, ct)
+  if (activeTab.value === 'all') return Math.max(at, aut, ct)
   return totalCount.value
 })
 
@@ -92,10 +87,9 @@ const handleSearch = async () => {
   loading.value = true
   current.value = 1
   allArticles.value = []
-  allQuestions.value = []
   allAuthors.value = []
   allColumns.value = []
-  searchResult.value = { articleTotal: 0, questionTotal: 0, authorTotal: 0, columnTotal: 0 }
+  searchResult.value = { articleTotal: 0, authorTotal: 0, columnTotal: 0 }
 
   try {
     const params = {
@@ -110,13 +104,11 @@ const handleSearch = async () => {
 
     searchResult.value = {
       articleTotal: Number(result.articleTotal) || 0,
-      questionTotal: Number(result.questionTotal) || 0,
       authorTotal: Number(result.authorTotal) || 0,
       columnTotal: Number(result.columnTotal) || 0
     }
 
     allArticles.value = result.articles || []
-    allQuestions.value = result.questions || []
     allAuthors.value = (result.authors || []).map(author => ({
       ...author,
       isFollowing: false
@@ -152,12 +144,10 @@ const fetchPage = async () => {
     const result = await searchApi.search(params)
     searchResult.value = {
       articleTotal: Number(result.articleTotal) || 0,
-      questionTotal: Number(result.questionTotal) || 0,
       authorTotal: Number(result.authorTotal) || 0,
       columnTotal: Number(result.columnTotal) || 0
     }
     allArticles.value = result.articles || []
-    allQuestions.value = result.questions || []
     allAuthors.value = (result.authors || []).map(author => ({
       ...author,
       isFollowing: false
@@ -254,7 +244,7 @@ watch(() => route.query, (newQuery) => {
           </div>
           <div>
             <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">搜索</h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400">探索文章、问答、专栏和优质博主</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">探索文章、专栏和优质博主</p>
           </div>
         </div>
 
@@ -289,7 +279,6 @@ watch(() => route.query, (newQuery) => {
               v-for="tab in [
                 { key: 'all', label: '全部', count: totalCount },
                 { key: 'article', label: '文章', count: searchResult.articleTotal },
-                { key: 'question', label: '问答', count: searchResult.questionTotal },
                 { key: 'author', label: '博主', count: searchResult.authorTotal },
                 { key: 'column', label: '专栏', count: searchResult.columnTotal }
               ]"
@@ -306,9 +295,6 @@ watch(() => route.query, (newQuery) => {
                 </svg>
                 <svg v-else-if="tab.key === 'article'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <svg v-else-if="tab.key === 'question'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <svg v-else-if="tab.key === 'author'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -484,67 +470,6 @@ watch(() => route.query, (newQuery) => {
                 </div>
               </template>
 
-              <!-- ===== 问答列表 ===== -->
-              <template v-if="activeTab !== 'author' && allQuestions.length > 0">
-                <div v-if="activeTab === 'all'" class="flex items-center gap-3 mb-4 mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
-                  <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 class="font-bold text-gray-900 dark:text-white">问答</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ searchResult.questionTotal }} 个</p>
-                  </div>
-                </div>
-
-                <div class="space-y-4">
-                  <div
-                    v-for="question in allQuestions"
-                    :key="question.id"
-                    class="group flex gap-4 p-4 rounded-xl border-2 border-gray-100 dark:border-gray-700 hover:border-primary-200 dark:hover:border-primary-800 hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-all cursor-pointer"
-                    @click="router.push(`/question/${question.id}`)"
-                  >
-                    <div class="flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-400 flex items-center justify-center shadow-md">
-                      <svg class="w-10 h-10 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div class="flex-1 min-w-0 flex flex-col justify-between py-1">
-                      <div>
-                        <div class="flex flex-wrap gap-1.5 mb-2">
-                          <span class="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs rounded-md font-medium">问答</span>
-                          <span v-if="question.isSolved" class="px-2 py-0.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-xs rounded-md font-medium">已解决</span>
-                          <span v-for="tag in (question.tags || []).slice(0, 2)" :key="tag" class="px-2 py-0.5 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 text-xs rounded-md">{{ tag }}</span>
-                        </div>
-                        <h3 class="font-semibold text-gray-900 dark:text-white mb-1.5 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors line-clamp-1 text-base" v-html="highlightText(question.title, searchQuery)" />
-                        <p class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2" v-html="highlightText(question.content, searchQuery)" />
-                      </div>
-                      <div class="flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500 mt-2">
-                        <div class="flex items-center gap-1.5">
-                          <img :src="question.authorAvatar || DEFAULT_AVATAR" class="w-5 h-5 rounded-full" />
-                          <span class="text-gray-600 dark:text-gray-400">{{ question.authorName }}</span>
-                        </div>
-                        <span>{{ formatAbsoluteDate(question.createdAt) }}</span>
-                        <span class="flex items-center gap-1">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                          {{ formatNumber(question.views) }}
-                        </span>
-                        <span class="flex items-center gap-1">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                          </svg>
-                          {{ formatNumber(question.answers) }} 回答
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </template>
-
               <!-- ===== 专栏列表 ===== -->
               <template v-if="activeTab !== 'author' && allColumns.length > 0">
                 <div v-if="activeTab === 'all'" class="flex items-center gap-3 mb-4 mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
@@ -643,7 +568,7 @@ watch(() => route.query, (newQuery) => {
           </svg>
         </div>
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">开始搜索</h3>
-        <p class="text-gray-500 dark:text-gray-400 text-sm">输入关键词，一键搜索海量文章、问答、专栏和优质博主</p>
+        <p class="text-gray-500 dark:text-gray-400 text-sm">输入关键词，一键搜索海量文章、专栏和优质博主</p>
       </div>
 
     </div>

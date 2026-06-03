@@ -9,10 +9,8 @@ import com.personblog.common.exception.BizException;
 import com.personblog.common.utils.UserContextHolder;
 import com.personblog.interaction.dto.LikedDTO;
 import com.personblog.interaction.mapper.ArticleLikeMapper;
-import com.personblog.interaction.service.AnswerLikeService;
 import com.personblog.interaction.service.ArticleLikeService;
 import com.personblog.interaction.service.CommentLikeService;
-import com.personblog.interaction.service.QuestionLikeService;
 import com.personblog.interaction.strategy.LikeStrategy;
 import com.personblog.interaction.vo.LikedVO;
 import com.personblog.interaction.vo.MyLikeVO;
@@ -32,11 +30,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.personblog.common.constant.RedisKeys.LIKES_TIMES_KEY_PREFIX;
 import static com.personblog.common.constant.RedisKeys.LIKE_BIZ_KEY_PREFIX;
-import static com.personblog.common.constant.TargetTypeConstant.*;
+import static com.personblog.common.constant.TargetTypeConstant.ARTICLE;
+import static com.personblog.common.constant.TargetTypeConstant.COMMENT;
 import static com.personblog.common.enums.BizCodeEnum.LIKE_ERROR;
 import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.*;
+import static com.personblog.interaction.constant.RedisKeys.LIKES_TIMES_KEY_PREFIX;
 
 @Service
 @RequiredArgsConstructor
@@ -46,8 +45,6 @@ public class BizLikeService implements LikeApi {
     private final RabbitTemplate rabbitTemplate;
     private final ArticleLikeService articleLikeService;
     private final CommentLikeService commentLikeService;
-    private final QuestionLikeService questionLikeService;
-    private final AnswerLikeService answerLikeService;
     private final ArticleLikeMapper articleLikeMapper;
     private static final Map<String, LikeStrategy> likeStrategyMap = new HashMap<>();
 
@@ -55,8 +52,6 @@ public class BizLikeService implements LikeApi {
     public void init() {
         likeStrategyMap.put(ARTICLE, articleLikeService);
         likeStrategyMap.put(COMMENT, commentLikeService);
-        likeStrategyMap.put(QUESTION, questionLikeService);
-        likeStrategyMap.put(ANSWER, answerLikeService);
     }
     public boolean isLiked(Long targetId, Long userId,String targetType) {
         String key = LIKE_BIZ_KEY_PREFIX(targetType,targetId);

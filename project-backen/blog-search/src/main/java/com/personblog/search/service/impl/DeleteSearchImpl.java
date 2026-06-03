@@ -4,7 +4,6 @@ import com.personblog.api.searchAPI.DeleteSearchAPI;
 import com.personblog.search.entity.ArticleDocument;
 import com.personblog.search.entity.AuthorDocument;
 import com.personblog.search.entity.ColumnDocument;
-import com.personblog.search.entity.QuestionDocument;
 import com.personblog.search.service.DeleteSearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,16 +30,6 @@ public class DeleteSearchImpl implements DeleteSearchService, DeleteSearchAPI {
             log.info("删除文章索引成功, articleId={}", articleId);
         } catch (Exception e) {
             log.error("删除文章索引失败, articleId={}", articleId, e);
-        }
-    }
-
-    @Override
-    public void deleteQuestion(Long questionId) {
-        try {
-            elasticsearchOperations.delete(String.valueOf(questionId), QuestionDocument.class);
-            log.info("删除问题索引成功, questionId={}", questionId);
-        } catch (Exception e) {
-            log.error("删除问题索引失败, questionId={}", questionId, e);
         }
     }
 

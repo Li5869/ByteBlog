@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 搜索查询控制器
  * 
  * 职责：提供全局搜索和搜索建议功能
- * 包括：文章、问题、作者、专栏 的全文检索和补全建议
+ * 包括：文章、作者、专栏 的全文检索和补全建议
  *
  * @author LSH
  */
@@ -34,7 +34,7 @@ public class SearchController {
     private final SearchService searchService;
     private final SearchSuggestService searchSuggestService;
 
-    @Operation(summary = "全局搜索", description = "搜索文章、问题、作者、专栏，通过type参数指定类型：article/question/author/column/all")
+    @Operation(summary = "全局搜索", description = "搜索文章、作者、专栏，通过type参数指定类型：article/author/column/all")
     @GetMapping
     public JsonData<SearchResultDTO> search(SearchQueryDTO queryDTO) {
         SearchResultDTO result = searchService.search(queryDTO);
