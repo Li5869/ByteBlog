@@ -21,7 +21,7 @@ import static com.personblog.common.utils.DateTimeUtil.currentYearMonth;
 import static com.personblog.point.config.mqConfig.PointMqConfig.POINT_EXCHANGE;
 import static com.personblog.point.config.mqConfig.PointMqConfig.POINT_SIGN_KEY;
 import static com.personblog.point.constant.PointTypeConstants.SIGN;
-import static com.personblog.point.constant.RedisKeys.getPointSignKey;
+import static com.personblog.point.constant.RedisKeys.getSignKey;
 
 @Slf4j
 @Service
@@ -44,7 +44,7 @@ public class SignBizService {
         Long userId = UserContextHolder.getUserId();
         LocalDate now = LocalDate.now();
         String yearMonth = currentYearMonth();
-        String key = getPointSignKey(userId, yearMonth);
+        String key = getSignKey(userId, yearMonth);
         int offset = now.getDayOfMonth() - 1;
 
         Boolean signed = commonBizService.trySign(key, offset);
@@ -93,7 +93,7 @@ public class SignBizService {
     public SignStatusVO getStatus() {
         Long userId = UserContextHolder.getUserId();
         String yearMonth = currentYearMonth();
-        String key = getPointSignKey(userId, yearMonth);
+        String key = getSignKey(userId, yearMonth);
         LocalDate now = LocalDate.now();
         int offset = now.getDayOfMonth() - 1;
         int continuousDays = commonBizService.calculateContinuousDays(key, offset);

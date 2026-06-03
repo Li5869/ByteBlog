@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.common.dto.User.UserDTO;
-import com.personblog.common.utils.DateTimeUtil;
 import com.personblog.common.utils.UserContextHolder;
 import com.personblog.point.dto.PointLogQueryDTO;
 import com.personblog.point.entity.PointLog;
@@ -18,17 +17,24 @@ import com.personblog.point.vo.PointRankItemVO;
 import com.personblog.point.vo.PointRankVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.scripting.support.ResourceScriptSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.personblog.point.constant.RedisKeys.getPointRankIncrKey;
-import static com.personblog.point.constant.RedisKeys.getPointRankKey;
+import static com.personblog.common.utils.DateTimeUtil.currentYearMonth;
+import static com.personblog.common.utils.DateTimeUtil.currentYearMonthDay;
+import static com.personblog.point.constant.PointTypeConstants.ADMIN_ADJUST;
+import static com.personblog.point.constant.RedisKeys.*;
 
 @Slf4j
 @Service
@@ -37,6 +43,17 @@ public class PointBizService {
 
     private static final String INCR_AVAILABLE = "available_points = available_points + %d";
     private static final String INCR_TOTAL = "total_points = total_points + %d";
+    private static final int DAILY_POINT_LIMIT = 150;
+
+    /**
+     * Lua 脚本：原子性计算每日积分
+     * 从 classpath:lua/point_daily_limit.lua 加载
+     */
+    private static final DefaultRedisScript<Long> POINT_LIMIT_SCRIPT = new DefaultRedisScript<>();
+    static {
+        POINT_LIMIT_SCRIPT.setScriptSource(new ResourceScriptSource(new ClassPathResource("lua/point_daily_limit.lua")));
+        POINT_LIMIT_SCRIPT.setResultType(Long.class);
+    }
 
     private final UserPointService userPointService;
     private final PointLogService pointLogService;
@@ -46,18 +63,30 @@ public class PointBizService {
 
     /**
      * 添加或减少用户积分
-     * 1. 更新用户积分余额（不存在则初始化）
-     * 2. 写积分流水记录
-     * 3. 积分增量缓存到 Redis Hash（定时任务批量更新排行榜）
+     * 1. 每日积分上限检查（正向积分且非管理员调整）
+     * 2. 更新用户积分余额（不存在则初始化）
+     * 3. 写积分流水记录
+     * 4. 积分增量缓存到 Redis Hash（定时任务批量更新排行榜）
      *
-     * @param userId 用户ID
-     * @param points 积分变动值（正数增加，负数减少）
-     * @param type   积分类型
-     * @param bizId  业务ID（可为null）
+     * @param userId      用户ID
+     * @param points      积分变动值（正数增加，负数减少）
+     * @param type        积分类型
+     * @param bizId       业务ID（可为null）
      * @param description 描述信息（可为null）
      */
     @Transactional(rollbackFor = Exception.class)
     public void changePoints(Long userId, Integer points, String type, Long bizId, String description) {
+        // 正向积分且非管理员调整，需检查每日上限
+        Integer effectivePoints = points;
+        if (points > 0 && !ADMIN_ADJUST.equals(type)) {
+            String totalKey = getPointDailyTotalKey(userId, currentYearMonthDay());
+            effectivePoints = getEffectivePoints(points, totalKey);
+            if (effectivePoints == 0) {
+                log.info("用户 {} 今日积分已达上限，跳过", userId);
+                return;
+            }
+        }
+
         // 1. 更新积分余额
         UserPoint exist = userPointService.getOne(
                 new LambdaQueryWrapper<UserPoint>().eq(UserPoint::getUserId, userId)
@@ -65,22 +94,22 @@ public class PointBizService {
         if (exist == null) {
             UserPoint userPoint = new UserPoint();
             userPoint.setUserId(userId);
-            userPoint.setTotalPoints(points.longValue());
-            userPoint.setAvailablePoints(points.longValue());
+            userPoint.setTotalPoints((long) effectivePoints);
+            userPoint.setAvailablePoints((long) effectivePoints);
             userPoint.setFrozenPoints(0L);
             userPointService.save(userPoint);
         } else {
             userPointService.lambdaUpdate()
                     .eq(UserPoint::getUserId, userId)
-                    .setSql(String.format(INCR_AVAILABLE, points))
-                    .setSql(String.format(INCR_TOTAL, points))
+                    .setSql(String.format(INCR_AVAILABLE, effectivePoints))
+                    .setSql(String.format(INCR_TOTAL, effectivePoints))
                     .update();
         }
 
         // 2. 写积分流水
         PointLog pointLog = new PointLog();
         pointLog.setUserId(userId);
-        pointLog.setPoints(points);
+        pointLog.setPoints(effectivePoints);
         pointLog.setType(type);
         pointLog.setBizId(bizId);
         pointLog.setDescription(description);
@@ -88,8 +117,37 @@ public class PointBizService {
         pointLogService.save(pointLog);
 
         // 3. 积分增量缓存到 Redis Hash（定时任务批量更新排行榜）
-        String incrKey = getPointRankIncrKey(DateTimeUtil.currentYearMonth());
-        redisTemplate.opsForHash().increment(incrKey, userId.toString(), points.longValue());
+        String incrKey = getPointRankIncrKey(currentYearMonth());
+        redisTemplate.opsForHash().increment(incrKey, userId.toString(), effectivePoints);
+    }
+
+    /**
+     * 计算实际可发放的积分数（Lua 脚本原子操作，防止并发超发）
+     *
+     * @param points   本次积分变动值
+     * @param totalKey 每日总积分 Redis Key
+     * @return 实际可发放的积分数，0 表示已达上限
+     */
+    private Integer getEffectivePoints(Integer points, String totalKey) {
+        try {
+            // 计算到当天 23:59:59 的剩余秒数
+            LocalDateTime midnight = LocalDateTime.now().toLocalDate().atTime(LocalTime.MAX);
+            long expireSeconds = Duration.between(LocalDateTime.now(), midnight).getSeconds();
+
+            // 执行 Lua 脚本，原子性完成：判断上限 + 递增 + 设置过期
+            Long result = redisTemplate.execute(
+                    POINT_LIMIT_SCRIPT,
+                    Collections.singletonList(totalKey),
+                    points.toString(),
+                    String.valueOf(DAILY_POINT_LIMIT),
+                    String.valueOf(expireSeconds)
+            );
+
+            return result != null ? result.intValue() : points;
+        } catch (Exception e) {
+            log.warn("Redis 每日积分检查失败，降级放行: {}", e.getMessage());
+            return points;
+        }
     }
 
     /**
@@ -127,7 +185,7 @@ public class PointBizService {
      */
     public PointRankVO getRankList(Integer topN) {
         Long userId = UserContextHolder.getUserId();
-        String yearMonth = DateTimeUtil.currentYearMonth();
+        String yearMonth = currentYearMonth();
         String rankKey = getPointRankKey(yearMonth);
 
         // 获取排行榜前N名

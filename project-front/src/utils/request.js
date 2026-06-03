@@ -945,20 +945,26 @@ export const columnApi = {
 }
 
 /**
- * 积分相关 API
+ * 签到相关 API
  */
-export const pointsApi = {
+export const signApi = {
   /**
    * 执行签到
    * @returns {Promise<Object>} 签到结果
    */
-  doSign: () => post('/point/sign'),
+  doSign: () => post('/sign'),
 
   /**
    * 获取签到状态
    * @returns {Promise<Object>} 签到状态
    */
-  getSignStatus: () => get('/point/sign/status'),
+  getSignStatus: () => get('/sign/status'),
+}
+
+/**
+ * 积分相关 API
+ */
+export const pointsApi = {
 
   /**
    * 获取积分余额
@@ -1004,6 +1010,7 @@ export default {
   searchApi,
   aiApi,
   columnApi,
+  signApi,
   pointsApi,
   getToken,
   getRefreshToken,

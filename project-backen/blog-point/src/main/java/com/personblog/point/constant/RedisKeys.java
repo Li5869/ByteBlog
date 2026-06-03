@@ -4,13 +4,13 @@ public class RedisKeys {
 
     /**
      * 签到状态 Bitmap Key 前缀
-     * 完整 Key 格式：point:sign:{userId}:{yyyyMM}
+     * 完整 Key 格式：sign:{userId}:{yyyyMM}
      * 存储内容：用户每月签到状态（Bitmap，offset 为日期-1）
      * 数据类型：String（Bitmap）
      * 过期时间：35 天
      * 用途：记录用户每日签到状态，支持连续签到统计
      */
-    public static final String POINT_SIGN = "point:sign:";
+    public static final String SIGN = "sign:";
 
     /**
      * 用户积分余额缓存前缀
@@ -33,16 +33,6 @@ public class RedisKeys {
     public static final String POINT_RANK = "point:rank:";
 
     /**
-     * 每日积分上限计数 Key 前缀
-     * 完整 Key 格式：point:daily:{bizType}:{userId}:{yyyyMMdd}
-     * 存储内容：当日已获得积分次数
-     * 数据类型：String（数字）
-     * 过期时间：当天 23:59:59
-     * 用途：限制用户每日通过某种方式获得积分的上限
-     */
-    public static final String POINT_DAILY_LIMIT = "point:daily:";
-
-    /**
      * 已发放积分用户集合 Key 前缀
      * 完整 Key 格式：point:awarded:{bizType}:{targetId}
      * 存储内容：已获得积分的用户ID集合
@@ -51,6 +41,16 @@ public class RedisKeys {
      * 用途：防止同一目标重复发放积分（如重复点赞）
      */
     public static final String POINT_AWARDED = "point:awarded:";
+
+    /**
+     * 用户每日总积分上限 Key 前缀
+     * 完整 Key 格式：point:daily:total:{userId}:{yyyyMMdd}
+     * 存储内容：用户当日已获得的积分总数
+     * 数据类型：String（数字）
+     * 过期时间：24 小时
+     * 用途：限制用户每日获得积分的总上限
+     */
+    public static final String POINT_DAILY_TOTAL = "point:daily:total:";
 
     /**
      * 排行榜积分增量缓存 Key 前缀
@@ -71,8 +71,8 @@ public class RedisKeys {
      * @param yearMonth 年月（格式：yyyyMM）
      * @return 完整的 Redis Key
      */
-    public static String getPointSignKey(Long userId, String yearMonth) {
-        return POINT_SIGN + userId + ":" + yearMonth;
+    public static String getSignKey(Long userId, String yearMonth) {
+        return SIGN + userId + ":" + yearMonth;
     }
 
     /**
@@ -96,18 +96,6 @@ public class RedisKeys {
     }
 
     /**
-     * 每日积分上限计数 Key
-     *
-     * @param bizType 业务类型
-     * @param userId 用户ID
-     * @param date 日期（格式：yyyyMMdd）
-     * @return 完整的 Redis Key
-     */
-    public static String getPointDailyLimitKey(String bizType, Long userId, String date) {
-        return POINT_DAILY_LIMIT + bizType + ":" + userId + ":" + date;
-    }
-
-    /**
      * 已发放积分用户集合 Key
      *
      * @param bizType 业务类型
@@ -116,6 +104,17 @@ public class RedisKeys {
      */
     public static String getPointAwardedKey(String bizType, Long targetId) {
         return POINT_AWARDED + bizType + ":" + targetId;
+    }
+
+    /**
+     * 用户每日总积分 Key
+     *
+     * @param userId 用户ID
+     * @param date 日期（格式：yyyyMMdd）
+     * @return 完整的 Redis Key
+     */
+    public static String getPointDailyTotalKey(Long userId, String date) {
+        return POINT_DAILY_TOTAL + userId + ":" + date;
     }
 
     /**

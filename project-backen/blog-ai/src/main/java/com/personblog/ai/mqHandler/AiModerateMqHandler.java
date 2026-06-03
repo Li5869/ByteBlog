@@ -2,6 +2,7 @@ package com.personblog.ai.mqHandler;
 
 import com.personblog.ai.BizService.ContentModerationService;
 import com.personblog.ai.dto.ContentModerationDTO;
+import com.personblog.api.pointAPI.PointMqApi;
 import com.personblog.common.dto.MqMessage.AIModerate.AiModerateMessage;
 import com.personblog.common.dto.MqMessage.Comment.AICommentMessage;
 import com.rabbitmq.client.Channel;
@@ -35,6 +36,7 @@ public class AiModerateMqHandler {
 
     private final ContentModerationService contentModerationService;
     private final RabbitTemplate rabbitTemplate;
+    private final PointMqApi pointMqApi;
     /**
      * 处理内容审核消息
      * 接收来自各业务模块的审核请求，调用AI进行内容审核
@@ -70,6 +72,10 @@ public class AiModerateMqHandler {
                         .articleTitle(message.getTitle())
                         .build();
                 rabbitTemplate.convertAndSend(COMMENT_EXCHANGE, COMMENT_ROUTING_KEY, commentMessage);
+                if(message.getType()==1){
+                    //如果是新创建文章，加积分
+                    pointMqApi.sendArticlePoint(message.getAuthorId(),message.getBizId());
+                }
                 log.info("文章审核通过，已发送AI评论消息, articleId={}", message.getBizId());
             }
 

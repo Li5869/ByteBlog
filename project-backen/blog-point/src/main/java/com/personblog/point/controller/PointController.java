@@ -3,13 +3,17 @@ package com.personblog.point.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.personblog.common.result.JsonData;
 import com.personblog.point.BizService.PointBizService;
-import com.personblog.point.BizService.SignBizService;
 import com.personblog.point.dto.PointLogQueryDTO;
-import com.personblog.point.vo.*;
+import com.personblog.point.vo.PointBalanceVO;
+import com.personblog.point.vo.PointLogVO;
+import com.personblog.point.vo.PointRankVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 积分系统控制器
@@ -20,30 +24,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/point")
 @RequiredArgsConstructor
-@Tag(name = "积分系统", description = "积分签到、查询、排行榜等接口")
+@Tag(name = "积分系统", description = "积分查询、排行榜、流水等接口")
 public class PointController {
-    private final SignBizService signBizService;
+
     private final PointBizService pointBizService;
-
-    /**
-     * 执行签到
-     */
-    @PostMapping("/sign")
-    @Operation(summary = "执行签到", description = "用户每日签到获取积分")
-    public JsonData<SignResultVO> doSign() {
-        SignResultVO vo = signBizService.signup();
-        return JsonData.buildSuccess(vo);
-    }
-
-    /**
-     * 获取签到状态
-     */
-    @GetMapping("/sign/status")
-    @Operation(summary = "获取签到状态", description = "查询当月签到状态和日历")
-    public JsonData<SignStatusVO> getSignStatus() {
-        SignStatusVO vo = signBizService.getStatus();
-        return JsonData.buildSuccess(vo);
-    }
 
     /**
      * 获取积分余额

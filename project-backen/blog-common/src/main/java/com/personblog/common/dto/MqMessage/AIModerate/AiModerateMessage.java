@@ -20,4 +20,6 @@ public class AiModerateMessage {
     private Long authorId;
     //标题
     private String title;
+    //类型(1为发布,2为更新)
+    private Integer type;
 }

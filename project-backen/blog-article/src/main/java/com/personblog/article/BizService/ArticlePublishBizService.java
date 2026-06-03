@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.personblog.api.AIAPI.AiArticleDraftApi;
 import com.personblog.api.AIwritingAPI.WritingTaskApi;
 import com.personblog.api.adminAPI.TagApi;
+import com.personblog.api.pointAPI.PointMqApi;
 import com.personblog.article.dto.article.ArticlePublishDTO;
 import com.personblog.article.entity.Article;
 import com.personblog.article.entity.ArticleTag;
@@ -58,6 +59,7 @@ public class ArticlePublishBizService {
     private final AiArticleDraftApi draftApi;
     private final IColumnArticleService columnArticleService;
     private final CommonArticleService commonArticleService;
+    private final PointMqApi pointMqApi;
     @Resource(name = "ArticleCountExecutor")
     private Executor articleCountExecutor;
     @Transactional(rollbackFor = Exception.class)
@@ -104,7 +106,7 @@ public class ArticlePublishBizService {
             //更新es索引
             commonArticleService.sendSearchSyncMessage(OPERATION_SYNC, articleId);
             commonArticleService.removeArticleCache(articleId,"创建文章后删除缓存");
-            sendCreateMessage(articleId, article);
+            sendCreateMessage(articleId, article,1);
         }
 
         // 关联写作任务（AI写作时传入taskId）
@@ -158,7 +160,8 @@ public class ArticlePublishBizService {
             int delta = 0;
             if ((article.getStatus() == 1 && oldArticle.getStatus() == 0)) {
                 delta = 1;
-                sendCreateMessage(articleId, article);
+                //发送更新处理消息
+                sendCreateMessage(articleId, article,2);
             } else if (article.getStatus() == 0 && oldArticle.getStatus() == 1) {
                 delta = -1;
             }
@@ -374,10 +377,11 @@ public class ArticlePublishBizService {
         }).collect(Collectors.toList());
         articleTagService.saveBatch(relationList);
     }
-    private void sendCreateMessage(Long articleId, Article article) {
+    private void sendCreateMessage(Long articleId, Article article,Integer type) {
         AiModerateMessage moderateMessage = AiModerateMessage.builder()
                 .bizId(articleId)
                 .bizType(ARTICLE)
+                .type(type)
                 .content(article.getContent())
                 .authorId(article.getAuthorId())
                 .title(article.getTitle())

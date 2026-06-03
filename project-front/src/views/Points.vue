@@ -2,7 +2,7 @@
 import {onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {NButton, NIcon, NSpin} from 'naive-ui'
-import {pointsApi} from '@/utils/request'
+import {pointsApi, signApi} from '@/utils/request'
 import {toast} from '@/utils/toast'
 import {formatNumber} from '@/utils/format'
 import {
@@ -61,7 +61,7 @@ const fetchBalance = async () => {
 
 const fetchSignStatus = async () => {
   try {
-    const data = await pointsApi.getSignStatus()
+    const data = await signApi.getSignStatus()
     signStatus.value = data
   } catch (e) {
     toast.error('获取签到状态失败')
@@ -73,7 +73,7 @@ const handleSign = async () => {
   
   signing.value = true
   try {
-    const result = await pointsApi.doSign()
+    const result = await signApi.doSign()
     const msg = result.extraPoints > 0
       ? `签到成功，连续签到${result.continuousDays}天，额外奖励${result.extraPoints}积分`
       : `签到成功，获得${result.points}积分`
@@ -82,9 +82,11 @@ const handleSign = async () => {
     signStatus.value.continuousDays = result.continuousDays
     signStatus.value.totalSignDays = result.totalSignDays
     signStatus.value.signCalendar.push(currentDay)
-    balance.value.todayEarned += result.points
-    balance.value.totalPoints += result.points
-    balance.value.availablePoints += result.points
+    const points = Number(result.points)
+    balance.value.todayEarned += points
+    // totalPoints 和 availablePoints 后端返回的是字符串(Long序列化)，需转换为数字再相加
+    balance.value.totalPoints = Number(balance.value.totalPoints) + points
+    balance.value.availablePoints = Number(balance.value.availablePoints) + points
   } catch (e) {
     toast.error(e.message || '签到失败，请重试')
   } finally {
