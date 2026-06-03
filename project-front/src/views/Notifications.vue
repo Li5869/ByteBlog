@@ -36,7 +36,7 @@ const hasTriggeredClear = ref(false)
 const bizNotifications = ref([])
 const selectedBizNotification = ref(null)
 const selectedGroup = ref(null)  // 选中的分组通知
-const bizFilter = ref('all')  // all | like | comment | reply | follow | collection | answer | adopt
+const bizFilter = ref('all')  // all | like | comment | reply | follow | collection
 
 // 系统通知
 const systemNotifications = ref([])
@@ -917,9 +917,7 @@ const getActionConfig = (actionType, targetType) => {
     comment: { name: '评论', color: '#8b5cf6', icon: '💬', bgColor: 'bg-purple-50 dark:bg-purple-900/20' },
     reply: { name: '回复', color: '#3b82f6', icon: '↩️', bgColor: 'bg-blue-50 dark:bg-blue-900/20' },
     follow: { name: '关注了你', color: '#10b981', icon: '👤', bgColor: 'bg-green-50 dark:bg-green-900/20' },
-    collection: { name: '收藏', color: '#f59e0b', icon: '⭐', bgColor: 'bg-yellow-50 dark:bg-yellow-900/20' },
-    answer: { name: '回答', color: '#06b6d4', icon: '📝', bgColor: 'bg-cyan-50 dark:bg-cyan-900/20' },
-    adopt: { name: '采纳', color: '#22c55e', icon: '✅', bgColor: 'bg-green-50 dark:bg-green-900/20' }
+    collection: { name: '收藏', color: '#f59e0b', icon: '⭐', bgColor: 'bg-yellow-50 dark:bg-yellow-900/20' }
   }
   if (actionType === 'follow') {
     return configs.follow
@@ -940,8 +938,6 @@ const getTargetTypeName = (targetType) => {
   const names = {
     article: '文章',
     comment: '评论',
-    question: '问题',
-    answer: '回答',
     user: '用户'
   }
   return names[targetType] || '内容'
@@ -965,15 +961,6 @@ const goToTarget = (notification) => {
       router.push({
         path: `/article/${notification.relatedId}`,
         query: { commentId: notification.targetId }
-      })
-    }
-  } else if (notification.targetType === 'question') {
-    router.push(`/qa/${notification.targetId}`)
-  } else if (notification.targetType === 'answer') {
-    if (notification.relatedId) {
-      router.push({
-        path: `/qa/${notification.relatedId}`,
-        query: { answerId: notification.targetId }
       })
     }
   } else if (notification.targetType === 'user') {
@@ -1359,7 +1346,7 @@ const handleSseNotification = (notification) => {
               全部
             </button>
             <button
-              v-for="(config, key) in { like: {name: '点赞'}, comment: {name: '评论'}, reply: {name: '回复'}, follow: {name: '关注'}, collection: {name: '收藏'}, answer: {name: '回答'}, adopt: {name: '采纳'} }"
+              v-for="(config, key) in { like: {name: '点赞'}, comment: {name: '评论'}, reply: {name: '回复'}, follow: {name: '关注'}, collection: {name: '收藏'} }"
               :key="key"
               @click="bizFilter = key"
               class="px-3 py-1 text-xs rounded-full transition-colors"

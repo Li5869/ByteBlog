@@ -73,7 +73,6 @@ public class SearchSyncMqHandler {
     private void handleSync(String targetType, Long targetId) {
         switch (targetType) {
             case ARTICLE -> searchSyncService.syncArticle(targetId);
-            case QUESTION -> searchSyncService.syncQuestion(targetId);
             case AUTHOR -> searchSyncService.syncAuthor(targetId);
             case COLUMN -> searchSyncService.syncColumn(targetId);
             default -> log.warn("未知的目标类型: {}", targetType);
@@ -86,7 +85,6 @@ public class SearchSyncMqHandler {
     private void handleDelete(String targetType, Long targetId) {
         switch (targetType) {
             case ARTICLE -> deleteSearchService.deleteArticle(targetId);
-            case QUESTION -> deleteSearchService.deleteQuestion(targetId);
             case AUTHOR -> deleteSearchService.deleteAuthor(targetId);
             case COLUMN -> deleteSearchService.deleteColumn(targetId);
             default -> log.warn("未知的目标类型: {}", targetType);

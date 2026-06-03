@@ -16,13 +16,6 @@ public interface DeleteSearchAPI {
     void deleteArticle(Long articleId);
 
     /**
-     * 删除问题索引
-     *
-     * @param questionId 问题ID
-     */
-    void deleteQuestion(Long questionId);
-
-    /**
      * 删除作者索引
      *
      * @param authorId 作者ID

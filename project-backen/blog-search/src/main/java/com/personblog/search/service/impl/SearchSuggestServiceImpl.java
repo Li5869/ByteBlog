@@ -44,9 +44,8 @@ public class SearchSuggestServiceImpl implements SearchSuggestService {
         if (StrUtil.isBlank(keyword)) {
             return result;
         }
-        int perType = Math.max(1, size / 4);
+        int perType = Math.max(1, size / 3);
         result.setArticles(doSuggest("article", "titleSuggest", keyword, perType, "article"));
-        result.setQuestions(doSuggest("question", "titleSuggest", keyword, perType, "question"));
         result.setAuthors(doSuggest("author", "nicknameSuggest", keyword, perType, "author"));
         result.setColumns(doSuggest("column", "titleSuggest", keyword, perType, "column"));
         return result;

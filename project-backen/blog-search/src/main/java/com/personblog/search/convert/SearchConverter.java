@@ -3,15 +3,12 @@ package com.personblog.search.convert;
 import com.personblog.common.dto.Search.ArticleSearchDTO;
 import com.personblog.common.dto.Search.AuthorSearchDTO;
 import com.personblog.common.dto.Search.ColumnSearchDTO;
-import com.personblog.common.dto.Search.QuestionSearchDTO;
 import com.personblog.search.entity.ArticleDocument;
 import com.personblog.search.entity.AuthorDocument;
 import com.personblog.search.entity.ColumnDocument;
-import com.personblog.search.entity.QuestionDocument;
 import com.personblog.search.vo.ArticleSearchVO;
 import com.personblog.search.vo.AuthorSearchVO;
 import com.personblog.search.vo.ColumnSearchVO;
-import com.personblog.search.vo.QuestionSearchVO;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.suggest.Completion;
 import org.springframework.stereotype.Component;
@@ -61,24 +58,6 @@ public class SearchConverter {
         return vo;
     }
 
-    public QuestionSearchVO convertToQuestionVO(SearchHit<QuestionDocument> hit) {
-        QuestionDocument doc = hit.getContent();
-        QuestionSearchVO vo = new QuestionSearchVO();
-        vo.setId(doc.getId());
-        vo.setTitle(doc.getTitle());
-        vo.setContent(doc.getContent());
-        vo.setAuthorId(doc.getAuthorId());
-        vo.setAuthorName(doc.getAuthorName());
-        vo.setAuthorAvatar(doc.getAuthorAvatar());
-        vo.setTags(doc.getTags());
-        vo.setViews(doc.getViews());
-        vo.setAnswers(doc.getAnswers());
-        vo.setLikes(doc.getLikes());
-        vo.setIsSolved(doc.getIsSolved());
-        vo.setCreatedAt(doc.getCreatedAt());
-        return vo;
-    }
-
     public ColumnSearchVO convertToColumnVO(SearchHit<ColumnDocument> hit) {
         ColumnDocument doc = hit.getContent();
         ColumnSearchVO vo = new ColumnSearchVO();
@@ -116,28 +95,6 @@ public class SearchConverter {
         doc.setCollections(dto.getCollections());
         doc.setIsTop(dto.getIsTop());
         doc.setIsHot(dto.getIsHot());
-        doc.setStatus(dto.getStatus());
-        doc.setCreatedAt(dto.getCreatedAt());
-        doc.setUpdatedAt(dto.getUpdatedAt());
-        long weight = (dto.getViews() != null ? dto.getViews() : 0L)
-                + (dto.getLikes() != null ? dto.getLikes() : 0L);
-        doc.setTitleSuggest(buildTitleCompletion(dto.getTitle(), weight));
-        return doc;
-    }
-
-    public QuestionDocument convertToQuestionDocument(QuestionSearchDTO dto) {
-        QuestionDocument doc = new QuestionDocument();
-        doc.setId(dto.getId());
-        doc.setTitle(dto.getTitle());
-        doc.setContent(dto.getContent());
-        doc.setAuthorId(dto.getAuthorId());
-        doc.setAuthorName(dto.getAuthorName());
-        doc.setAuthorAvatar(dto.getAuthorAvatar());
-        doc.setTags(dto.getTags());
-        doc.setViews(dto.getViews());
-        doc.setAnswers(dto.getAnswers());
-        doc.setLikes(dto.getLikes());
-        doc.setIsSolved(dto.getIsSolved());
         doc.setStatus(dto.getStatus());
         doc.setCreatedAt(dto.getCreatedAt());
         doc.setUpdatedAt(dto.getUpdatedAt());

@@ -3,8 +3,6 @@ package com.personblog.interaction.mqHandler;
 import com.personblog.api.articleAPI.ArticleMqAPI;
 import com.personblog.api.interactionAPI.CommentApi;
 import com.personblog.api.interactionAPI.NotificationApi;
-import com.personblog.api.questionAPI.AnswerApi;
-import com.personblog.api.questionAPI.QuestionApi;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.common.dto.MqMessage.Interaction.LikeMessage;
 import com.personblog.common.dto.MqMessage.Interaction.LikeSaveDBMessage;
@@ -12,10 +10,8 @@ import com.personblog.common.dto.MqMessage.Interaction.SyncLikeCacheMessage;
 import com.personblog.common.dto.MqMessage.notifaction.NotificationMessage;
 import com.personblog.common.dto.User.UserDTO;
 import com.personblog.interaction.bizService.BizLikeService;
-import com.personblog.interaction.service.AnswerLikeService;
 import com.personblog.interaction.service.ArticleLikeService;
 import com.personblog.interaction.service.CommentLikeService;
-import com.personblog.interaction.service.QuestionLikeService;
 import com.personblog.interaction.strategy.LikeStrategy;
 import com.rabbitmq.client.Channel;
 import jakarta.annotation.PostConstruct;
@@ -38,7 +34,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import static com.personblog.common.constant.TargetTypeConstant.*;
+import static com.personblog.common.constant.TargetTypeConstant.ARTICLE;
+import static com.personblog.common.constant.TargetTypeConstant.COMMENT;
 import static com.personblog.interaction.config.mqConfig.InteractionMqConfig.*;
 
 @Slf4j
@@ -48,12 +45,8 @@ public class LikeMqHandler {
     private final ArticleMqAPI articleAPI;
     private final CommentApi commentApi;
     private final BizLikeService likeService;
-    private final QuestionApi questionApi;
-    private final AnswerApi answerApi;
     private final ArticleLikeService articleLikeService;
     private final CommentLikeService commentLikeService;
-    private final QuestionLikeService questionLikeService;
-    private final AnswerLikeService answerLikeService;
     private final RedissonClient redissonClient;
     private final NotificationApi notificationApi;
     private final UseApi useApi;
@@ -69,13 +62,9 @@ public class LikeMqHandler {
     public void init() {
         likeStrategyMap.put(ARTICLE, articleLikeService);
         likeStrategyMap.put(COMMENT, commentLikeService);
-        likeStrategyMap.put(QUESTION, questionLikeService);
-        likeStrategyMap.put(ANSWER, answerLikeService);
 
         likeCountUpdaters.put(ARTICLE, articleAPI::updateLikeCount);
         likeCountUpdaters.put(COMMENT, commentApi::updateLikeCount);
-        likeCountUpdaters.put(QUESTION, questionApi::updateLikeCount);
-        likeCountUpdaters.put(ANSWER, answerApi::updateLikeCount);
     }
     @RabbitListener(queues = LIKE_QUEUE, containerFactory = "rabbitListenerContainerFactory")
     public void handlerLikeMessage(List<LikeMessage> dtos, Channel channel,
@@ -124,7 +113,7 @@ public class LikeMqHandler {
 
             String notifyTitle = dto.getTargetTitle();
             String notifyContent = dto.getTargetContent();
-            if (COMMENT.equalsIgnoreCase(dto.getTargetType()) || ANSWER.equalsIgnoreCase(dto.getTargetType())) {
+            if (COMMENT.equalsIgnoreCase(dto.getTargetType())) {
                 notifyTitle = dto.getTargetContent();
                 notifyContent = null;
             }

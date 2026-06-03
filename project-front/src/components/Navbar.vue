@@ -24,7 +24,7 @@ const searchQuery = ref('')
 const showUserCard = ref(false)
 
 // ========== 搜索建议相关 ==========
-const suggestions = ref({ articles: [], questions: [], authors: [], columns: [] })
+const suggestions = ref({ articles: [], authors: [], columns: [] })
 const showSuggestions = ref(false)
 const selectedIndex = ref(-1)  // 键盘导航选中索引（-1 表示未选中）
 const searchInputRef = ref(null)
@@ -33,15 +33,14 @@ let debounceTimer = null
 // 防抖获取搜索建议
 const fetchSuggestions = async (keyword) => {
   if (!keyword || keyword.trim().length < 1) {
-    suggestions.value = { articles: [], questions: [], authors: [], columns: [] }
+    suggestions.value = { articles: [], authors: [], columns: [] }
     showSuggestions.value = false
     return
   }
   try {
     const data = await searchApi.suggest(keyword.trim(), 12)
-    suggestions.value = data || { articles: [], questions: [], authors: [], columns: [] }
+    suggestions.value = data || { articles: [], authors: [], columns: [] }
     const hasSuggestions = suggestions.value.articles?.length > 0
-        || suggestions.value.questions?.length > 0
         || suggestions.value.authors?.length > 0
         || suggestions.value.columns?.length > 0
     showSuggestions.value = hasSuggestions
@@ -74,7 +73,7 @@ const handleSuggestionClick = (item) => {
   } else if (item.type === 'column') {
     router.push(`/column/${item.id}`)
   } else {
-    router.push({ path: '/search', query: { q: item.title, type: item.type === 'article' ? 'article' : 'question' } })
+    router.push({ path: '/search', query: { q: item.title, type: 'article' } })
   }
 }
 
@@ -82,7 +81,6 @@ const handleSuggestionClick = (item) => {
 const handleKeydown = (e) => {
   if (!showSuggestions.value) return
   const total = (suggestions.value.articles?.length || 0)
-      + (suggestions.value.questions?.length || 0)
       + (suggestions.value.authors?.length || 0)
       + (suggestions.value.columns?.length || 0)
   if (total === 0) return
@@ -97,7 +95,6 @@ const handleKeydown = (e) => {
     e.preventDefault()
     const allItems = [
       ...(suggestions.value.articles || []),
-      ...(suggestions.value.questions || []),
       ...(suggestions.value.authors || []),
       ...(suggestions.value.columns || [])
     ]
@@ -133,7 +130,6 @@ const navLinks = [
   { name: '首页', path: '/' },
   { name: '博客', path: '/blog' },
   { name: '专栏', path: '/columns' },
-  { name: '问答', path: '/qa' },
   { name: 'AI助手', path: '/ai-chat' },
   { name: '我的', path: '/mine' }
 ]
@@ -433,7 +429,7 @@ watch(() => route.query.login, (newVal) => {
               <input
                 v-model="searchQuery"
                 type="text"
-                placeholder="搜索问题、文章..."
+                placeholder="搜索文章..."
                 class="pl-4 pr-2 py-2 text-sm bg-transparent border-none rounded-full focus:outline-none text-gray-900 dark:text-white placeholder-gray-500 w-48 lg:w-64"
                 @keyup.enter="handleKeydown($event) || handleNormalSearch"
                 @keydown="handleKeydown"
@@ -461,21 +457,11 @@ watch(() => route.query.login, (newVal) => {
                     <span class="text-sm text-gray-800 dark:text-gray-200 truncate">{{ item.title }}</span>
                   </div>
                 </template>
-                <!-- 问答建议 -->
-                <template v-if="suggestions.questions?.length">
-                  <div class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50">问答</div>
-                  <div v-for="(item, idx) in suggestions.questions" :key="'q'+item.id"
-                       :class="['px-4 py-2.5 cursor-pointer flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20', selectedIndex === (suggestions.articles?.length || 0) + idx ? 'bg-red-50 dark:bg-red-900/20' : '']"
-                       @click="handleSuggestionClick(item)">
-                    <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <span class="text-sm text-gray-800 dark:text-gray-200 truncate">{{ item.title }}</span>
-                  </div>
-                </template>
                 <!-- 博主建议 -->
                 <template v-if="suggestions.authors?.length">
                   <div class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50">博主</div>
                   <div v-for="(item, idx) in suggestions.authors" :key="'u'+item.id"
-                       :class="['px-4 py-2.5 cursor-pointer flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20', selectedIndex === (suggestions.articles?.length || 0) + (suggestions.questions?.length || 0) + idx ? 'bg-red-50 dark:bg-red-900/20' : '']"
+                       :class="['px-4 py-2.5 cursor-pointer flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20', selectedIndex === (suggestions.articles?.length || 0) + idx ? 'bg-red-50 dark:bg-red-900/20' : '']"
                        @click="handleSuggestionClick(item)">
                     <svg class="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                     <span class="text-sm text-gray-800 dark:text-gray-200 truncate">{{ item.title }}</span>
@@ -485,7 +471,7 @@ watch(() => route.query.login, (newVal) => {
                 <template v-if="suggestions.columns?.length">
                   <div class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50">专栏</div>
                   <div v-for="(item, idx) in suggestions.columns" :key="'c'+item.id"
-                       :class="['px-4 py-2.5 cursor-pointer flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20', selectedIndex === (suggestions.articles?.length || 0) + (suggestions.questions?.length || 0) + (suggestions.authors?.length || 0) + idx ? 'bg-red-50 dark:bg-red-900/20' : '']"
+                       :class="['px-4 py-2.5 cursor-pointer flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20', selectedIndex === (suggestions.articles?.length || 0) + (suggestions.authors?.length || 0) + idx ? 'bg-red-50 dark:bg-red-900/20' : '']"
                        @click="handleSuggestionClick(item)">
                     <svg class="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                     <span class="text-sm text-gray-800 dark:text-gray-200 truncate">{{ item.title }}</span>
@@ -682,21 +668,11 @@ watch(() => route.query.login, (newVal) => {
                 <span class="text-sm text-gray-800 dark:text-gray-200 truncate">{{ item.title }}</span>
               </div>
             </template>
-            <!-- 问答建议 -->
-            <template v-if="suggestions.questions?.length">
-              <div class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50">问答</div>
-              <div v-for="(item, idx) in suggestions.questions" :key="'mq'+item.id"
-                   :class="['px-4 py-3 cursor-pointer flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100', selectedIndex === (suggestions.articles?.length || 0) + idx ? 'bg-red-50 dark:bg-red-900/20' : '']"
-                   @click="handleSuggestionClick(item)">
-                <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span class="text-sm text-gray-800 dark:text-gray-200 truncate">{{ item.title }}</span>
-              </div>
-            </template>
             <!-- 博主建议 -->
             <template v-if="suggestions.authors?.length">
               <div class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50">博主</div>
               <div v-for="(item, idx) in suggestions.authors" :key="'mu'+item.id"
-                   :class="['px-4 py-3 cursor-pointer flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100', selectedIndex === (suggestions.articles?.length || 0) + (suggestions.questions?.length || 0) + idx ? 'bg-red-50 dark:bg-red-900/20' : '']"
+                   :class="['px-4 py-3 cursor-pointer flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100', selectedIndex === (suggestions.articles?.length || 0) + idx ? 'bg-red-50 dark:bg-red-900/20' : '']"
                    @click="handleSuggestionClick(item)">
                 <svg class="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                 <span class="text-sm text-gray-800 dark:text-gray-200 truncate">{{ item.title }}</span>
@@ -706,7 +682,7 @@ watch(() => route.query.login, (newVal) => {
             <template v-if="suggestions.columns?.length">
               <div class="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50">专栏</div>
               <div v-for="(item, idx) in suggestions.columns" :key="'mc'+item.id"
-                   :class="['px-4 py-3 cursor-pointer flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100', selectedIndex === (suggestions.articles?.length || 0) + (suggestions.questions?.length || 0) + (suggestions.authors?.length || 0) + idx ? 'bg-red-50 dark:bg-red-900/20' : '']"
+                   :class="['px-4 py-3 cursor-pointer flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100', selectedIndex === (suggestions.articles?.length || 0) + (suggestions.authors?.length || 0) + idx ? 'bg-red-50 dark:bg-red-900/20' : '']"
                    @click="handleSuggestionClick(item)">
                 <svg class="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                 <span class="text-sm text-gray-800 dark:text-gray-200 truncate">{{ item.title }}</span>

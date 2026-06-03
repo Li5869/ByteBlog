@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 搜索索引同步管理控制器
  * 
  * 职责：管理 Elasticsearch 索引的同步操作
- * 包括：文章、问题、作者、专栏 的单条同步和全量同步
+ * 包括：文章、作者、专栏 的单条同步和全量同步
  *
  * @author LSH
  */
@@ -41,22 +41,6 @@ public class SearchSyncController {
     @PostMapping("/article/all")
     public JsonData<Void> syncAllArticles() {
         searchSyncService.syncAllArticles();
-        return JsonData.buildSuccess();
-    }
-
-    // ==================== 问题索引同步 ====================
-
-    @Operation(summary = "同步问题索引", description = "将指定问题同步到ES索引")
-    @PostMapping("/question/{questionId}")
-    public JsonData<Void> syncQuestion(@PathVariable Long questionId) {
-        searchSyncService.syncQuestion(questionId);
-        return JsonData.buildSuccess();
-    }
-
-    @Operation(summary = "全量同步问题", description = "将所有问题同步到ES索引")
-    @PostMapping("/question/all")
-    public JsonData<Void> syncAllQuestions() {
-        searchSyncService.syncAllQuestions();
         return JsonData.buildSuccess();
     }
 

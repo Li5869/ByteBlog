@@ -16,13 +16,6 @@ public interface SearchSyncApi {
     void syncArticle(Long articleId);
 
     /**
-     * 同步问题到搜索引擎
-     *
-     * @param questionId 问题ID
-     */
-    void syncQuestion(Long questionId);
-
-    /**
      * 同步作者到搜索引擎
      *
      * @param authorId 作者ID

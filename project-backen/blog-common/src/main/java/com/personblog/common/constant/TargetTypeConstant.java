@@ -5,10 +5,6 @@ public class TargetTypeConstant {
     public static final String ARTICLE = "article";
     //评论
     public static final String COMMENT = "comment";
-    //问题
-    public static final String QUESTION = "question";
-    //回答
-    public static final String ANSWER = "answer";
     //作者
     public static final String AUTHOR = "author";
     //专栏

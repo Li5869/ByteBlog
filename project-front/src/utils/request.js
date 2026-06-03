@@ -545,29 +545,6 @@ export const interactionApi = {
 }
 
 /**
- * 问答相关 API
- */
-export const questionApi = {
-  getQuestionPage: (params) => get('/question/questions', params),
-  getQuestionDetail: (id) => get(`/question/questions/${id}`),
-  createQuestion: (data) => post('/question/questions', data),
-  deleteQuestion: (id) => del(`/question/questions/${id}`),
-  getAnswerList: (questionId, params) => get(`/question/questions/${questionId}/answers`, params),
-  createAnswer: (questionId, data) => post(`/question/questions/${questionId}/answers`, data),
-  deleteAnswer: (answerId) => del(`/question/answers/${answerId}`),
-  getHotQuestions: (limit = 10) => get('/question/questions/hot', { limit }),
-  /** 按标签获取相关问题（排除当前问题） */
-  getRelatedQuestions: (tagId, excludeId, limit = 5) =>
-    get('/question/questions', { tagId, size: limit, sortBy: 'newest' }),
-  /** 获取我的问题列表 */
-  getMyQuestions: (params) => get('/question/my/questions', params),
-  /** 获取我的回答列表 */
-  getMyAnswers: (params) => get('/question/my/answers', params),
-  /** 采纳最佳答案 */
-  acceptBestAnswer: (answerId) => post(`/question/answers/${answerId}/accept`),
-}
-
-/**
  * 上传相关 API
  */
 export const uploadApi = {
@@ -1005,7 +982,6 @@ export default {
   tagApi,
   commentApi,
   interactionApi,
-  questionApi,
   uploadApi,
   searchApi,
   aiApi,

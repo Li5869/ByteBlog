@@ -9,7 +9,6 @@ import java.util.List;
 @Data
 public class SuggestResultDTO {
     private List<SuggestItemVO> articles = Collections.emptyList();
-    private List<SuggestItemVO> questions = Collections.emptyList();
     private List<SuggestItemVO> authors = Collections.emptyList();
     private List<SuggestItemVO> columns = Collections.emptyList();
 }

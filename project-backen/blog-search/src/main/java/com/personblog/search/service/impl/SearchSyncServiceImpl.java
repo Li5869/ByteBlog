@@ -1,15 +1,16 @@
 package com.personblog.search.service.impl;
 
-import com.personblog.api.searchAPI.*;
+import com.personblog.api.searchAPI.ArticleSearchDataApi;
+import com.personblog.api.searchAPI.AuthorSearchDataApi;
+import com.personblog.api.searchAPI.ColumnSearchDataApi;
+import com.personblog.api.searchAPI.SearchSyncApi;
 import com.personblog.common.dto.Search.ArticleSearchDTO;
 import com.personblog.common.dto.Search.AuthorSearchDTO;
 import com.personblog.common.dto.Search.ColumnSearchDTO;
-import com.personblog.common.dto.Search.QuestionSearchDTO;
 import com.personblog.search.convert.SearchConverter;
 import com.personblog.search.entity.ArticleDocument;
 import com.personblog.search.entity.AuthorDocument;
 import com.personblog.search.entity.ColumnDocument;
-import com.personblog.search.entity.QuestionDocument;
 import com.personblog.search.service.SearchSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +28,6 @@ import java.util.List;
 public class SearchSyncServiceImpl implements SearchSyncService, SearchSyncApi {
 
     private final ArticleSearchDataApi articleSearchDataApi;
-    private final QuestionSearchDataApi questionSearchDataApi;
     private final AuthorSearchDataApi authorSearchDataApi;
     private final ColumnSearchDataApi columnSearchDataApi;
     private final ElasticsearchOperations elasticsearchOperations;
@@ -62,23 +62,6 @@ public class SearchSyncServiceImpl implements SearchSyncService, SearchSyncApi {
             }
         } catch (Exception e) {
             log.error("同步文章索引失败, articleId={}", articleId, e);
-        }
-    }
-
-    @Override
-    public void syncQuestion(Long questionId) {
-        try {
-            ensureIndexExists(QuestionDocument.class);
-            QuestionSearchDTO dto = questionSearchDataApi.getQuestionForSearch(questionId);
-            if (dto != null) {
-                elasticsearchOperations.save(searchConverter.convertToQuestionDocument(dto));
-                log.info("同步问题索引成功, questionId={}", questionId);
-            } else {
-                elasticsearchOperations.delete(String.valueOf(questionId), QuestionDocument.class);
-                log.info("问题不存在或已删除，移除索引, questionId={}", questionId);
-            }
-        } catch (Exception e) {
-            log.error("同步问题索引失败, questionId={}", questionId, e);
         }
     }
 
@@ -135,26 +118,6 @@ public class SearchSyncServiceImpl implements SearchSyncService, SearchSyncApi {
             log.info("========== 全量同步文章索引完成，共{}条，耗时{}ms ==========", documents.size(), cost);
         } catch (Exception e) {
             log.error("全量同步文章索引失败", e);
-        }
-    }
-
-    @Override
-    public void syncAllQuestions() {
-        log.info("========== 开始全量同步问题索引 ==========");
-        long startTime = System.currentTimeMillis();
-        try {
-            ensureIndexExists(QuestionDocument.class);
-            List<QuestionSearchDTO> questions = questionSearchDataApi.listAllQuestionsForSearch();
-            List<QuestionDocument> documents = questions.stream()
-                    .map(searchConverter::convertToQuestionDocument)
-                    .toList();
-            if (!documents.isEmpty()) {
-                elasticsearchOperations.save(documents);
-            }
-            long cost = System.currentTimeMillis() - startTime;
-            log.info("========== 全量同步问题索引完成，共{}条，耗时{}ms ==========", documents.size(), cost);
-        } catch (Exception e) {
-            log.error("全量同步问题索引失败", e);
         }
     }
 

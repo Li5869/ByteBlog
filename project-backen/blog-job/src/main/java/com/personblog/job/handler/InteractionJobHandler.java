@@ -9,7 +9,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-import static com.personblog.common.constant.TargetTypeConstant.*;
+import static com.personblog.common.constant.TargetTypeConstant.ARTICLE;
+import static com.personblog.common.constant.TargetTypeConstant.COMMENT;
 
 @Component
 @Slf4j
@@ -18,7 +19,7 @@ public class InteractionJobHandler {
     private final LikeApi likeApi;
     private final BrowseHistoryApi browseHistoryApi;
     private final
-    List<String> types = List.of(ARTICLE, COMMENT, QUESTION, ANSWER);
+    List<String> types = List.of(ARTICLE, COMMENT);
 
     @XxlJob("handleLikesTime")
     public void handleLikesTime() {

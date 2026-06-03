@@ -26,16 +26,6 @@ const routes = [
     component: () => import('./views/Article.vue')
   },
   {
-    path: '/qa',
-    name: 'QA',
-    component: () => import('./views/QA.vue')
-  },
-  {
-    path: '/question/:id',
-    name: 'QuestionDetail',
-    component: () => import('./views/QuestionDetail.vue')
-  },
-  {
     path: '/ai-chat',
     name: 'AIChat',
     component: () => import('./views/AIChat.vue')
@@ -85,12 +75,6 @@ const routes = [
     path: '/writing-tasks',
     name: 'WritingTasks',
     component: () => import('./views/WritingTasks.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/create-question',
-    name: 'CreateQuestion',
-    component: () => import('./views/CreateQuestion.vue'),
     meta: { requiresAuth: true }
   },
   {

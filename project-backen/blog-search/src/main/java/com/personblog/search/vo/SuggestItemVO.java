@@ -11,12 +11,12 @@ public class SuggestItemVO {
     @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
-    /** 展示文本：文章/问答标题 或 博主昵称 */
+    /** 展示文本：文章/专栏标题 或 博主昵称 */
     private String title;
 
     /** 博主头像（仅 type=author 时有值） */
     private String avatar;
 
-    /** 类型：article / question / author */
+    /** 类型：article / author / column */
     private String type;
 }
