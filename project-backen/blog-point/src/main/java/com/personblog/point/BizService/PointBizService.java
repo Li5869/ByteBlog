@@ -116,11 +116,10 @@ public class PointBizService {
         pointLog.setCreatedAt(LocalDateTime.now());
         pointLogService.save(pointLog);
 
-        // 3. 积分增量缓存到 Redis Hash（定时任务批量更新排行榜）
+        // 4. 积分增量缓存到 Redis Hash（定时任务批量更新排行榜）
         String incrKey = getPointRankIncrKey(currentYearMonth());
         redisTemplate.opsForHash().increment(incrKey, userId.toString(), effectivePoints);
     }
-
     /**
      * 计算实际可发放的积分数（Lua 脚本原子操作，防止并发超发）
      *

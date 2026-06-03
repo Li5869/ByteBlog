@@ -71,7 +71,7 @@ public class SignBizService {
 
         // MQ 异步：更新积分余额、写积分流水、更新排行榜
         PointMessageDTO message = PointMessageDTO.builder()
-                .userId(userId)
+                .authorId(userId)
                 .points(totalPoints)
                 .type(SIGN)
                 .createTime(LocalDateTime.now())

@@ -20,6 +20,8 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.personblog.point.constant.CommonConstant.AWARDED_CACHE_TTL;
+import static com.personblog.point.constant.RedisKeys.getPointAwardedKey;
 import static com.personblog.point.constant.RedisKeys.getPointRankKey;
 
 @Slf4j
@@ -151,5 +153,48 @@ public class CommonBizService {
             log.warn("获取用户排名失败: {}", e.getMessage());
             return null;
         }
+    }
+
+    public boolean isAlreadyDoIt(Long bizId, Long operatorId, String type) {
+        // 有 bizId 的积分类型（点赞/收藏/文章发布等），需防重复发放
+            if (isPointAlreadyAwarded(operatorId, type, bizId)) {
+                log.info("积分已发放过，跳过: operatorId={}, type={}, bizId={}", operatorId, type, bizId);
+                return true;
+            }
+            return false;
+    }
+
+    /**
+     * 检查积分是否已发放
+     * 优先查 Redis 缓存（Set），未命中再查数据库，实现缓存 + DB 双重保障
+     */
+    private boolean isPointAlreadyAwarded(Long userId, String type, Long bizId) {
+        String awardedKey = getPointAwardedKey(type, bizId);
+        // 1. 查 Redis 缓存
+        Boolean isMember = redisTemplate.opsForSet().isMember(awardedKey, userId.toString());
+        if (Boolean.TRUE.equals(isMember)) {
+            return true;
+        }
+        // 2. 缓存未命中，查数据库
+        boolean existsInDb = pointLogService.exists(
+                new LambdaQueryWrapper<PointLog>()
+                        .eq(PointLog::getUserId, userId)
+                        .eq(PointLog::getType, type)
+                        .eq(PointLog::getBizId, bizId)
+        );
+        // 3. DB 中存在但缓存中没有，回填缓存
+        if (existsInDb) {
+            redisTemplate.opsForSet().add(awardedKey, userId.toString());
+            redisTemplate.expire(awardedKey, AWARDED_CACHE_TTL);
+        }
+        return existsInDb;
+    }
+    /**
+     * 标记积分已发放，写入 Redis Set 缓存
+     */
+    public void markPointAwarded(Long userId, String type, Long bizId) {
+        String awardedKey = getPointAwardedKey(type, bizId);
+        redisTemplate.opsForSet().add(awardedKey, userId.toString());
+        redisTemplate.expire(awardedKey, AWARDED_CACHE_TTL);
     }
 }

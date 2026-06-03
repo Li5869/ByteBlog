@@ -12,8 +12,6 @@ public class PointTypeConstants {
 
     public static final String COMMENT_LIKED = "comment_liked";
 
-    public static final String ANSWER_LIKED = "answer_liked";
-
     public static final String EXCHANGE = "exchange";
 
     public static final String ADMIN_ADJUST = "admin_adjust";

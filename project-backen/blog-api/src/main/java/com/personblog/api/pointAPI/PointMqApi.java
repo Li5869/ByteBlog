@@ -19,21 +19,22 @@ public interface PointMqApi {
     void sendArticlePoint(Long userId, Long articleId);
 
     /**
-     * 发送点赞积分消息
+     * 发送点赞积分消息（给被点赞的作者发放积分）
      *
-     * @param userId   用户ID
-     * @param bizId    业务ID（文章ID、评论ID等）
-     * @param bizType  业务类型（article_liked / comment_liked / answer_liked）
+     * @param likerId    点赞者ID（用于防重复：同一人对同一内容只算一次）
+     * @param authorId   被点赞内容的作者ID（积分接收者）
+     * @param bizId      业务ID（文章ID、评论ID等）
+     * @param targetType 互动目标类型（article / comment）
      */
-    void sendLikePoint(Long userId, Long bizId, String bizType);
+    void sendLikePoint(Long likerId, Long authorId, Long bizId, String targetType);
 
     /**
      * 发送收藏积分消息
      *
-     * @param userId      用户ID
+     * @param operatorId      收藏者id
      * @param articleId   文章ID
      */
-    void sendCollectionPoint(Long userId, Long articleId);
+    void sendCollectionPoint(Long operatorId,Long authorId, Long articleId);
 
     /**
      * 发送管理员调整积分消息

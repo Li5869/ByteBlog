@@ -53,6 +53,7 @@ public class BizLikeService implements LikeApi {
         likeStrategyMap.put(ARTICLE, articleLikeService);
         likeStrategyMap.put(COMMENT, commentLikeService);
     }
+    //判断是否点赞
     public boolean isLiked(Long targetId, Long userId,String targetType) {
         String key = LIKE_BIZ_KEY_PREFIX(targetType,targetId);
         Boolean result=redisTemplate.opsForSet().isMember(key, userId.toString());
@@ -77,7 +78,7 @@ public class BizLikeService implements LikeApi {
         String peopleTimesKey = LIKE_BIZ_KEY_PREFIX(targetType,targetId);
         return redisTemplate.opsForSet().size(peopleTimesKey);
     }
-
+    //获取点赞过的内容id
     public Set<Long> batchIsLike(List<Long> targetIds, String targetType) {
         Long userId = UserContextHolder.getUserId();
         if (userId == null) return Collections.emptySet();
@@ -96,7 +97,7 @@ public class BizLikeService implements LikeApi {
                 .mapToObj(targetIds::get)
                 .collect(Collectors.toSet());
     }
-
+    //获取点赞的赞数
     public Map<Long, Long> getLikesTime(List<Long> targetIds, String targetType) {
         List<Object> objects = redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
             // 使用包装器，而不是直接强制转换
@@ -123,6 +124,7 @@ public class BizLikeService implements LikeApi {
         }
         return result;
     }
+    //同步点赞数据到库
     public void readLikesTimesAnd2DB(String TargetType, int maxSize) {
         String key = LIKES_TIMES_KEY_PREFIX + TargetType;
         Set<ZSetOperations.@NonNull TypedTuple<String>> typedTuples = redisTemplate.opsForZSet().popMin(key, maxSize);
@@ -133,7 +135,7 @@ public class BizLikeService implements LikeApi {
             if (score == null||value==null) {
                 continue;
             }
-            messages.add(com.personblog.common.dto.MqMessage.Interaction.LikeMessage.builder()
+            messages.add(LikeMessage.builder()
                     .likeTimes(score.longValue())
                     .id(Long.valueOf(value))
                     .targetType(TargetType)
@@ -141,7 +143,7 @@ public class BizLikeService implements LikeApi {
         }
         rabbitTemplate.convertAndSend(INTERACTION_EXCHANGE,LIKE_KEY,messages);
     }
-
+    //处理点赞
     public LikedVO doLike(LikedDTO dto) {
         String key = LIKES_TIMES_KEY_PREFIX + dto.getTargetType();
         boolean isSuccess = dto.getIsLike() ? like(dto) : unLike(dto);
@@ -166,6 +168,7 @@ public class BizLikeService implements LikeApi {
         
         return LikedVO.builder().likes(size).build();
     }
+    //保存点赞记录到点赞表
     public void save2DB(LikeSaveDBMessage dtos) {
         LikeStrategy likeStrategy = likeStrategyMap.get(dtos.getTargetType());
         if (likeStrategy == null) {
@@ -177,7 +180,7 @@ public class BizLikeService implements LikeApi {
             likeStrategy.removeLike(dtos.getUserId(), dtos.getTargetId());
         }
     }
-
+    //我的点赞内容列表
     public Page<MyLikeVO> getMyLikes(Long userId, Integer current, Integer size) {
         Page<MyLikeVO> page = new Page<>(current, size);
         return articleLikeMapper.selectMyLikes(page, userId);

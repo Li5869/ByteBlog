@@ -20,8 +20,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class PointMessageDTO {
 
-    /** 用户ID */
-    private Long userId;
+    /** 作者ID */
+    private Long authorId;
 
     /** 积分变动值（正数增加，负数减少） */
     private Integer points;
