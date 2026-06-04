@@ -1,4 +1,4 @@
-package com.personblog.point.BizService;
+package com.personblog.point.bizService;
 
 import com.personblog.common.dto.MqMessage.Point.PointMessageDTO;
 import com.personblog.common.exception.BizException;

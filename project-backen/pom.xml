@@ -27,6 +27,7 @@
         <module>blog-notification</module>
         <module>blog-message</module>
         <module>blog-point</module>
+        <module>blog-coupon</module>
     </modules>
 
     <properties>

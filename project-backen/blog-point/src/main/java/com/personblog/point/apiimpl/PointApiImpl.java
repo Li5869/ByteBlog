@@ -2,7 +2,7 @@ package com.personblog.point.apiimpl;
 
 import com.personblog.api.pointAPI.PointAPI;
 import com.personblog.common.utils.DateTimeUtil;
-import com.personblog.point.BizService.PointBizService;
+import com.personblog.point.bizService.PointBizService;
 import com.personblog.point.constant.RedisKeys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

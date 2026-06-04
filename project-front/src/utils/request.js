@@ -970,6 +970,42 @@ export const pointsApi = {
   },
 }
 
+/**
+ * 优惠券相关 API
+ */
+export const couponApi = {
+
+  /**
+   * 获取优惠券专区列表
+   * @param {number} current - 当前页码
+   * @param {number} size - 每页大小
+   * @param {number|null} type - 领取类型筛选：null-全部，1-免费领取，2-积分兑换
+   * @returns {Promise<Object>} 优惠券列表
+   */
+  getZoneList: (current = 1, size = 20, type = 0) => {
+    return get('/coupon/zone/list', { current, size, type })
+  },
+
+  /**
+   * 获取用户优惠券列表
+   * @param {number} current - 当前页码
+   * @param {number} size - 每页大小
+   * @param {number|null} status - 状态筛选：null-全部，0-未使用，1-已使用，2-已过期
+   * @returns {Promise<Object>} 用户优惠券列表
+   */
+  getMyCoupons: (current = 1, size = 20, status = null) => {
+    const params = { current, size }
+    if (status !== null) params.status = status
+    return get('/coupon/my/list', params)
+  },
+
+  /**
+   * 获取用户优惠券统计
+   * @returns {Promise<Object>} 统计数据 { total, unused, used, expired }
+   */
+  getMyCouponStats: () => get('/coupon/my/stats'),
+}
+
 export default {
   get,
   post,
@@ -988,6 +1024,7 @@ export default {
   columnApi,
   signApi,
   pointsApi,
+  couponApi,
   getToken,
   getRefreshToken,
   getUserInfo,

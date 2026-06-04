@@ -205,7 +205,20 @@ public enum BizCodeEnum {
     /** 今日已签到 */
     POINT_ALREADY_SIGNED(4071, "今日已签到"),
     /** 积分不足 */
-    POINT_NOT_ENOUGH(4072, "积分不足");
+    POINT_NOT_ENOUGH(4072, "积分不足"),
+
+    // ==================== 优惠券系统 (4081-4090) ====================
+
+    /** 优惠券不存在 */
+    COUPON_NOT_EXIST(4081, "优惠券不存在"),
+    /** 优惠券已领完 */
+    COUPON_OUT_OF_STOCK(4082, "优惠券已领完"),
+    /** 已达到领取上限 */
+    COUPON_CLAIM_LIMIT(4083, "已达到领取上限"),
+    /** 积分不足 */
+    COUPON_POINT_NOT_ENOUGH(4084, "积分不足"),
+    /** 优惠券已过期 */
+    COUPON_EXPIRED(4085, "优惠券已过期");
 
     private final String message;
 

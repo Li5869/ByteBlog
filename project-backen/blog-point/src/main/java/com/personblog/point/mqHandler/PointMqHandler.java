@@ -1,8 +1,8 @@
 package com.personblog.point.mqHandler;
 
 import com.personblog.common.dto.MqMessage.Point.PointMessageDTO;
-import com.personblog.point.BizService.CommonBizService;
-import com.personblog.point.BizService.PointBizService;
+import com.personblog.point.bizService.CommonBizService;
+import com.personblog.point.bizService.PointBizService;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

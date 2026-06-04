@@ -1,11 +1,66 @@
 <script setup>
 import {onMounted, onUnmounted, ref, watch} from 'vue'
 import {RouterLink, useRouter} from 'vue-router'
-import {articleApi, columnApi, interactionApi, isLoggedIn, userApi} from '@/utils/request'
+import {articleApi, columnApi, couponApi, interactionApi, isLoggedIn, userApi} from '@/utils/request'
 import {useUserStore} from '@/stores/user'
 import {DEFAULT_AVATAR, DEFAULT_COVER, getAvatar} from '@/utils/defaults'
 import {toast} from '@/utils/toast'
 import {formatNumber} from '@/utils/format'
+
+// 优惠券专区面板控制
+const showCouponPanel = ref(false)
+const couponPanelLoading = ref(false)
+const panelCoupons = ref([])
+
+// 加载首页优惠券（前4条）
+const loadPanelCoupons = async () => {
+  couponPanelLoading.value = true
+  try {
+    const data = await couponApi.getZoneList(1, 4)
+    panelCoupons.value = data.records || []
+  } catch (e) {
+    console.error('加载优惠券失败', e)
+  } finally {
+    couponPanelLoading.value = false
+  }
+}
+
+// 打开面板时加载数据
+const toggleCouponPanel = () => {
+  showCouponPanel.value = !showCouponPanel.value
+  if (showCouponPanel.value && panelCoupons.value.length === 0) {
+    loadPanelCoupons()
+  }
+}
+
+// 格式化优惠金额
+const formatCouponDiscount = (coupon) => {
+  const amount = Number(coupon.discountAmount)
+  const rate = Number(coupon.discountRate)
+  if (coupon.couponType === 1) return `¥${amount}`
+  if (coupon.couponType === 2) return `${(rate * 10).toFixed(0)}折`
+  if (coupon.couponType === 3) return `¥${amount}`
+  return ''
+}
+
+// 领取优惠券（mock，待实现领取接口后对接）
+const claimCoupon = (coupon) => {
+  if (!isLoggedIn()) {
+    toast.error('请先登录')
+    return
+  }
+  if (coupon.claimed) {
+    toast.warning('您已领取过该优惠券')
+    return
+  }
+  if (coupon.stock <= 0) {
+    toast.error('库存不足')
+    return
+  }
+  coupon.claimed = true
+  coupon.stock--
+  toast.success('领取成功！')
+}
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -537,14 +592,162 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <RouterLink 
-      to="/create-article"
-      class="fixed bottom-20 right-4 md:bottom-8 md:right-8 w-14 h-14 rounded-2xl bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-xl shadow-primary-500/30 hover:shadow-2xl hover:shadow-primary-500/40 hover:scale-110 transition-all duration-300 flex items-center justify-center z-40 group"
+    <!-- 优惠券浮动按钮（替换原有+号） -->
+    <button 
+      @click="toggleCouponPanel"
+      class="fixed bottom-20 right-4 md:bottom-8 md:right-8 w-14 h-14 rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-xl shadow-red-500/30 hover:shadow-2xl hover:shadow-red-500/40 hover:scale-110 transition-all duration-300 flex items-center justify-center z-40 group"
     >
-      <svg class="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      <!-- 优惠券图标 -->
+      <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" />
       </svg>
-    </RouterLink>
+    </button>
+
+    <!-- 优惠券专区弹出面板 -->
+    <Teleport to="body">
+      <transition
+        enter-active-class="transition duration-300 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-200 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div 
+          v-if="showCouponPanel"
+          class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+        >
+          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showCouponPanel = false"></div>
+          
+          <transition
+            enter-active-class="transition duration-300 ease-out"
+            enter-from-class="opacity-0 translate-y-8 scale-95"
+            enter-to-class="opacity-100 translate-y-0 scale-100"
+            leave-active-class="transition duration-200 ease-in"
+            leave-from-class="opacity-100 translate-y-0 scale-100"
+            leave-to-class="opacity-0 translate-y-8 scale-95"
+          >
+            <div 
+              v-if="showCouponPanel"
+              class="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden max-h-[80vh] flex flex-col"
+            >
+              <!-- 面板头部 -->
+              <div class="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-red-500 to-orange-500">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="text-lg font-bold text-white">优惠券专区</h3>
+                    <p class="text-xs text-white/80">免费抢券 · 积分兑换</p>
+                  </div>
+                </div>
+                <button 
+                  @click="showCouponPanel = false"
+                  class="p-2 rounded-xl text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <!-- 加载中 -->
+              <div v-if="couponPanelLoading" class="flex-1 flex items-center justify-center py-12">
+                <div class="animate-spin rounded-full h-8 w-8 border-2 border-red-500 border-t-transparent"></div>
+              </div>
+
+              <!-- 优惠券列表 -->
+              <div v-else-if="panelCoupons.length > 0" class="flex-1 overflow-y-auto p-4 space-y-3">
+                <div 
+                  v-for="coupon in panelCoupons" 
+                  :key="coupon.id"
+                  class="flex items-center rounded-xl border overflow-hidden transition-all"
+                  :class="coupon.claimed 
+                    ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700' 
+                    : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:shadow-md'"
+                >
+                  <!-- 左侧金额 -->
+                  <div 
+                    class="flex-shrink-0 w-24 flex flex-col items-center justify-center py-3 px-2"
+                    :class="coupon.claimed ? 'bg-gray-200 dark:bg-gray-700' : 'bg-gradient-to-br from-red-500 to-orange-500'"
+                  >
+                    <div class="text-xl font-bold text-white">
+                      {{ formatCouponDiscount(coupon) }}
+                    </div>
+                    <div class="text-[10px] text-white/80 mt-0.5">
+                      {{ coupon.minOrderAmount > 0 ? `满${coupon.minOrderAmount}可用` : '无门槛' }}
+                    </div>
+                  </div>
+                  
+                  <!-- 右侧信息 -->
+                  <div class="flex-1 px-3 py-2 flex items-center justify-between">
+                    <div class="min-w-0">
+                      <h4 class="text-sm font-medium text-gray-900 dark:text-white truncate"
+                        :class="{ 'text-gray-400 dark:text-gray-500': coupon.claimed }"
+                      >
+                        {{ coupon.couponName }}
+                      </h4>
+                      <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        <template v-if="coupon.totalCount == null">不限量</template>
+                        <template v-else>剩余 <span :class="coupon.stock < 10 ? 'text-red-500' : ''">{{ coupon.stock }}</span> 张</template>
+                      </p>
+                    </div>
+                    <button 
+                      @click="claimCoupon(coupon)"
+                      :disabled="coupon.claimed"
+                      class="flex-shrink-0 ml-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-all"
+                      :class="coupon.claimed 
+                        ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed' 
+                        : coupon.pointsCost > 0 
+                          ? 'bg-purple-500 text-white hover:bg-purple-600 shadow-sm' 
+                          : 'bg-red-500 text-white hover:bg-red-600 shadow-sm'"
+                    >
+                      {{ coupon.claimed ? '已领取' : coupon.pointsCost > 0 ? `${coupon.pointsCost}积分兑换` : '免费领取' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 空状态 -->
+              <div v-else class="flex-1 flex flex-col items-center justify-center py-12 text-gray-400">
+                <svg class="w-12 h-12 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" />
+                </svg>
+                <p class="text-sm">暂无可领取的优惠券</p>
+              </div>
+
+              <!-- 底部查看入口 -->
+              <div class="p-4 border-t border-gray-100 dark:border-gray-700 flex gap-2">
+                <RouterLink 
+                  to="/coupon-zone"
+                  @click="showCouponPanel = false"
+                  class="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors"
+                >
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" />
+                  </svg>
+                  优惠券专区
+                </RouterLink>
+                <RouterLink 
+                  to="/my-coupons"
+                  @click="showCouponPanel = false"
+                  class="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors border border-red-200 dark:border-red-800"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                  我的优惠券
+                </RouterLink>
+              </div>
+            </div>
+          </transition>
+        </div>
+      </transition>
+    </Teleport>
+
   </div>
 </template>
 

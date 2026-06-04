@@ -1,4 +1,4 @@
-package com.personblog.point.BizService;
+package com.personblog.point.bizService;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;

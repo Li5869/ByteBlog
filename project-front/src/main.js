@@ -127,6 +127,17 @@ const routes = [
     name: 'PointsLogs',
     component: () => import('./views/PointsLogs.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/my-coupons',
+    name: 'MyCoupons',
+    component: () => import('./views/MyCoupons.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/coupon-zone',
+    name: 'CouponZone',
+    component: () => import('./views/CouponZone.vue')
   }
 ]
 
