@@ -218,7 +218,15 @@ public enum BizCodeEnum {
     /** 积分不足 */
     COUPON_POINT_NOT_ENOUGH(4084, "积分不足"),
     /** 优惠券已过期 */
-    COUPON_EXPIRED(4085, "优惠券已过期");
+    COUPON_EXPIRED(4085, "优惠券已过期"),
+    /** 已领取过该优惠券 */
+    COUPON_ALREADY_CLAIMED(4086, "已领取过该优惠券"),
+
+    /** 优惠券活动尚未开始 */
+    COUPON_NOT_STARTED(4087, "优惠券活动尚未开始"),
+
+    /** 优惠券已下架 */
+    COUPON_NOT_ON_SHELF(4088, "优惠券已下架");
 
     private final String message;
 

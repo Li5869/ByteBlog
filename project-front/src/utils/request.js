@@ -1004,6 +1004,13 @@ export const couponApi = {
    * @returns {Promise<Object>} 统计数据 { total, unused, used, expired }
    */
   getMyCouponStats: () => get('/coupon/my/stats'),
+
+  /**
+   * 领取优惠券
+   * @param {string} couponTemplateId - 优惠券模板ID（字符串）
+   * @returns {Promise<Object>}
+   */
+  claimCoupon: (couponTemplateId) => post('/coupon/claim', { couponTemplateId: String(couponTemplateId) }),
 }
 
 export default {

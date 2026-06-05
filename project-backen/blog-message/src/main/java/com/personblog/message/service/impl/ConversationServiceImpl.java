@@ -8,7 +8,6 @@ import com.personblog.common.dto.Notification.BatchDeleteResultVO;
 import com.personblog.common.dto.Notification.SenderVO;
 import com.personblog.common.dto.Notification.UnreadCountVO;
 import com.personblog.common.dto.User.UserDTO;
-import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
 import com.personblog.message.entity.Conversation;
 import com.personblog.message.mapper.ConversationMapper;
@@ -24,8 +23,7 @@ import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
-import static com.personblog.common.enums.BizCodeEnum.NO_POWER;
-import static com.personblog.common.enums.BizCodeEnum.PARAMETER_ERROR;
+import static com.personblog.common.enums.BizCodeEnum.*;
 
 @Service
 @RequiredArgsConstructor
@@ -78,7 +76,7 @@ public class ConversationServiceImpl extends ServiceImpl<ConversationMapper, Con
     public void deleteConversation(Long userId, Long id) {
         Conversation conversation = this.getById(id);
         if (conversation == null) {
-            throw new BizException(BizCodeEnum.NOT_FOUND_NOTIFICATION);
+            throw new BizException(NOT_FOUND_NOTIFICATION);
         }
 
         if (!conversation.getUserId().equals(userId)) {

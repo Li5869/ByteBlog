@@ -16,11 +16,11 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import static com.personblog.common.constant.PointTypeConstants.SIGN;
 import static com.personblog.common.enums.BizCodeEnum.POINT_ALREADY_SIGNED;
 import static com.personblog.common.utils.DateTimeUtil.currentYearMonth;
 import static com.personblog.point.config.mqConfig.PointMqConfig.POINT_EXCHANGE;
 import static com.personblog.point.config.mqConfig.PointMqConfig.POINT_SIGN_KEY;
-import static com.personblog.point.constant.PointTypeConstants.SIGN;
 import static com.personblog.point.constant.RedisKeys.getSignKey;
 
 @Slf4j

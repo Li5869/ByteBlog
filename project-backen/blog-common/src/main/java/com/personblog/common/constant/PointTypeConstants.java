@@ -1,4 +1,4 @@
-package com.personblog.point.constant;
+package com.personblog.common.constant;
 
 public class PointTypeConstants {
 

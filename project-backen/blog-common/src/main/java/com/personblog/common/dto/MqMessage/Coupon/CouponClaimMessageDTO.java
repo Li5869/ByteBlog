@@ -36,8 +36,17 @@ public class CouponClaimMessageDTO {
     /** 优惠金额 */
     private BigDecimal discountAmount;
 
+    /** 折扣率（折扣券专用） */
+    private BigDecimal discountRate;
+
     /** 最低消费金额 */
     private BigDecimal minOrderAmount;
+
+    /** 最大优惠金额（折扣券上限） */
+    private BigDecimal maxDiscountAmount;
+
+    /** 兑换所需积分（免费领取时为 0 或 null） */
+    private Integer pointsCost;
 
     /** 来源：1-免费领取 2-积分兑换 */
     private Short sourceType;

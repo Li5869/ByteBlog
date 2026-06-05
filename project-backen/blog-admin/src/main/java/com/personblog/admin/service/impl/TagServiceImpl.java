@@ -30,6 +30,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.personblog.common.enums.BizCodeEnum.TAG_REPEAT;
+
 /**
  * 标签表 服务实现类
  *
@@ -139,7 +141,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
                 .eq(Tag::getName, tag.getName())
                 .exists();
         if (exists) {
-            throw new BizException(BizCodeEnum.TAG_REPEAT.getCode(), "标签名称已存在");
+            throw new BizException(TAG_REPEAT);
         }
 
         tag.setUseCount(0L);
@@ -170,7 +172,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements ITagS
                     .ne(Tag::getId, tag.getId())
                     .exists();
             if (exists) {
-                throw new BizException(BizCodeEnum.TAG_REPEAT.getCode(), "标签名称已存在");
+                throw new BizException(TAG_REPEAT.getCode(), "标签名称已存在");
             }
         }
 

@@ -45,8 +45,8 @@ const filteredCoupons = computed(() => coupons.value)
 
 // 判断优惠券是否未到抢券时间
 const isNotStarted = (coupon) => {
-  if (!coupon.startTime) return false
-  return new Date(coupon.startTime).getTime() > Date.now()
+  if (!coupon.claimStartTime) return false
+  return new Date(coupon.claimStartTime).getTime() > Date.now()
 }
 
 // 更新所有倒计时
@@ -55,8 +55,8 @@ const updateCountdowns = () => {
   const newCountdowns = {}
 
   coupons.value.forEach(coupon => {
-    if (!coupon.startTime) return
-    const start = new Date(coupon.startTime).getTime()
+    if (!coupon.claimStartTime) return
+    const start = new Date(coupon.claimStartTime).getTime()
     const diff = start - now
 
     if (diff <= 0) {
@@ -167,7 +167,9 @@ const formatStock = (coupon) => {
 }
 
 // 领取优惠券（后端校验积分和库存，前端仅做登录检查）
-const claimCoupon = (coupon) => {
+const claimingId = ref(null) // 正在领取的券ID，防重复点击
+
+const claimCoupon = async (coupon) => {
   if (!isLoggedIn()) {
     toast.error('请先登录')
     return
@@ -176,12 +178,19 @@ const claimCoupon = (coupon) => {
     toast.warning('您已领取过该优惠券')
     return
   }
-  if (coupon.stock <= 0) {
-    toast.error('库存不足')
-    return
+  if (claimingId.value) return // 防重复点击
+
+  claimingId.value = coupon.id
+  try {
+    await couponApi.claimCoupon(coupon.id)
+    toast.success('领取成功！')
+    // 更新本地状态
+    coupon.claimed = true
+  } catch (e) {
+    toast.error(e.message || '领取失败')
+  } finally {
+    claimingId.value = null
   }
-  // TODO: 对接领取接口后替换
-  toast.success('领取成功！')
 }
 </script>
 
@@ -318,15 +327,17 @@ const claimCoupon = (coupon) => {
                 <button
                   v-else
                   @click="claimCoupon(coupon)"
-                  :disabled="coupon.claimed"
+                  :disabled="coupon.claimed || claimingId === coupon.id"
                   class="w-full px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
                   :class="coupon.claimed
                     ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                    : coupon.pointsCost > 0
-                      ? 'bg-purple-500 text-white hover:bg-purple-600'
-                      : 'bg-red-500 text-white hover:bg-red-600'"
+                    : claimingId === coupon.id
+                      ? 'bg-gray-400 text-white cursor-wait'
+                      : coupon.pointsCost > 0
+                        ? 'bg-purple-500 text-white hover:bg-purple-600'
+                        : 'bg-red-500 text-white hover:bg-red-600'"
                 >
-                  {{ coupon.claimed ? '已领取' : '立即领取' }}
+                  {{ coupon.claimed ? '已领取' : claimingId === coupon.id ? '领取中...' : '立即领取' }}
                 </button>
               </div>
             </div>

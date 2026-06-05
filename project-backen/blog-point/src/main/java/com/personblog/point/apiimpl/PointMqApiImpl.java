@@ -10,10 +10,10 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+import static com.personblog.common.constant.PointTypeConstants.*;
 import static com.personblog.common.constant.TargetTypeConstant.ARTICLE;
 import static com.personblog.common.constant.TargetTypeConstant.COMMENT;
 import static com.personblog.point.config.mqConfig.PointMqConfig.*;
-import static com.personblog.point.constant.PointTypeConstants.*;
 
 /**
  * 积分消息发送 API 实现

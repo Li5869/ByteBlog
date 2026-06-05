@@ -31,9 +31,9 @@ import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.personblog.common.constant.PointTypeConstants.ADMIN_ADJUST;
 import static com.personblog.common.utils.DateTimeUtil.currentYearMonth;
 import static com.personblog.common.utils.DateTimeUtil.currentYearMonthDay;
-import static com.personblog.point.constant.PointTypeConstants.ADMIN_ADJUST;
 import static com.personblog.point.constant.RedisKeys.*;
 
 @Slf4j

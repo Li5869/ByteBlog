@@ -52,6 +52,12 @@ public class CouponZoneVO {
     @Schema(description = "兑换所需积分（免费领取时为 0）")
     private Integer pointsCost;
 
+    @Schema(description = "抢购开始时间（null 表示上架即可抢）")
+    private LocalDateTime claimStartTime;
+
+    @Schema(description = "抢购结束时间（null 表示不限时）")
+    private LocalDateTime claimEndTime;
+
     @Schema(description = "当前库存")
     private Integer stock;
 
@@ -72,7 +78,4 @@ public class CouponZoneVO {
 
     @Schema(description = "当前用户是否已领取（未登录为 false）")
     private Boolean claimed;
-
-    @Schema(description = "当前用户已领取数量")
-    private Integer claimedCount;
 }

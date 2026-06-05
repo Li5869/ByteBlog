@@ -49,10 +49,16 @@ public class CouponTemplate {
     /** 剩余库存（不限量时为null） */
     private Integer stock;
 
-    /** 有效期开始时间 */
+    /** 抢购开始时间（null 表示上架即可抢） */
+    private LocalDateTime claimStartTime;
+
+    /** 抢购结束时间（null 表示不限时） */
+    private LocalDateTime claimEndTime;
+
+    /** 有效期开始时间（券本身的使用起始时间） */
     private LocalDateTime startTime;
 
-    /** 有效期结束时间 */
+    /** 有效期结束时间（券本身的使用截止时间） */
     private LocalDateTime endTime;
 
     /** 有效天数（领取后N天类型） */
