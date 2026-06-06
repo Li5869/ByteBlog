@@ -5,6 +5,7 @@ import com.personblog.common.result.JsonData;
 import com.personblog.coupon.bizService.CouponBizService;
 import com.personblog.coupon.dto.CouponClaimDTO;
 import com.personblog.coupon.dto.CouponZoneQueryDTO;
+import com.personblog.coupon.vo.CouponClaimVO;
 import com.personblog.coupon.vo.CouponDetailVO;
 import com.personblog.coupon.vo.CouponZoneVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -48,13 +49,15 @@ public class CouponController {
 
     /**
      * 领优惠券
+     * 使用本地消息表保证消息可靠投递，积分扣减在 MQ 消费者中异步处理
+     *
      * @param dto 优惠券请求信息
-     * @return 领取成功信息
+     * @return 领取结果
      */
     @PostMapping("/claim")
-    @Operation(summary = "领取优惠券(包含积分消费领取)",description = "领优惠券")
-    public JsonData<Void> claimCoupon(@RequestBody CouponClaimDTO dto){
-       couponBizService.claimCoupon(dto);
-       return JsonData.buildSuccess();
+    @Operation(summary = "领取优惠券(包含积分消费领取)", description = "领优惠券")
+    public JsonData<CouponClaimVO> claimCoupon(@RequestBody CouponClaimDTO dto) {
+        CouponClaimVO vo = couponBizService.claimCoupon(dto);
+        return JsonData.buildSuccess(vo);
     }
 }

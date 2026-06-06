@@ -1,7 +1,7 @@
 package com.personblog.admin.mqHandler;
 
-import com.personblog.admin.entity.MqErrorLog;
 import com.personblog.admin.service.IMqErrorLogService;
+import com.personblog.common.entity.MqErrorLog;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.common.dto.User.UserDTO;
+import com.personblog.common.enums.BizCodeEnum;
+import com.personblog.common.exception.BizException;
 import com.personblog.common.utils.UserContextHolder;
 import com.personblog.point.dto.PointLogQueryDTO;
 import com.personblog.point.entity.PointLog;
@@ -63,10 +65,11 @@ public class PointBizService {
 
     /**
      * 添加或减少用户积分
-     * 1. 每日积分上限检查（正向积分且非管理员调整）
-     * 2. 更新用户积分余额（不存在则初始化）
-     * 3. 写积分流水记录
-     * 4. 积分增量缓存到 Redis Hash（定时任务批量更新排行榜）
+     * 1. 积分扣减时检查余额是否充足
+     * 2. 每日积分上限检查（正向积分且非管理员调整）
+     * 3. 更新用户积分余额（不存在则初始化）
+     * 4. 写积分流水记录
+     * 5. 积分增量缓存到 Redis Hash（定时任务批量更新排行榜）
      *
      * @param userId      用户ID
      * @param points      积分变动值（正数增加，负数减少）
@@ -76,6 +79,16 @@ public class PointBizService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void changePoints(Long userId, Integer points, String type, Long bizId, String description) {
+        // 积分扣减时，检查余额是否充足
+        if (points < 0) {
+            UserPoint userPoint = userPointService.getOne(
+                    new LambdaQueryWrapper<UserPoint>().eq(UserPoint::getUserId, userId)
+            );
+            if (userPoint == null || userPoint.getAvailablePoints() < -points) {
+                throw new BizException(BizCodeEnum.POINT_NOT_ENOUGH);
+            }
+        }
+
         // 正向积分且非管理员调整，需检查每日上限
         Integer effectivePoints = points;
         if (points > 0 && !ADMIN_ADJUST.equals(type)) {

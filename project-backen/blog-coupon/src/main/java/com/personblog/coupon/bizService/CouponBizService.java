@@ -1,12 +1,15 @@
 package com.personblog.coupon.bizService;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.personblog.api.pointAPI.PointAPI;
 import com.personblog.common.dto.MqMessage.Coupon.CouponClaimMessageDTO;
+import com.personblog.common.entity.LocalMessage;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
+import com.personblog.common.service.LocalMessageService;
 import com.personblog.common.utils.UserContextHolder;
 import com.personblog.coupon.dto.CouponClaimDTO;
 import com.personblog.coupon.dto.CouponZoneQueryDTO;
@@ -14,11 +17,11 @@ import com.personblog.coupon.entity.CouponTemplate;
 import com.personblog.coupon.entity.UserCoupon;
 import com.personblog.coupon.service.CouponTemplateService;
 import com.personblog.coupon.service.UserCouponService;
+import com.personblog.coupon.vo.CouponClaimVO;
 import com.personblog.coupon.vo.CouponDetailVO;
 import com.personblog.coupon.vo.CouponZoneVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -51,8 +54,8 @@ public class CouponBizService {
     private final UserCouponService userCouponService;
     private final StringRedisTemplate redisTemplate;
     private final PointAPI pointAPI;
+    private final LocalMessageService localMessageService;
     private static final DefaultRedisScript<Long> COUPON_CLAIM_SCRIPT = new DefaultRedisScript<>();
-    private final RabbitTemplate rabbitTemplate;
 
     static {
         COUPON_CLAIM_SCRIPT.setScriptSource(new ResourceScriptSource(new ClassPathResource("lua/coupon_claim.lua")));
@@ -156,18 +159,29 @@ public class CouponBizService {
         return vo;
     }
 
-    //抢券
-    public void claimCoupon(CouponClaimDTO dto) {
+    /**
+     * 抢券（Redis 扣减 + 本地消息表 + 失败回滚补偿）
+     * 流程：
+     * 1. 前置校验（登录、券状态、积分充足性）
+     * 2. Redis 原子操作（去重 + 扣库存）
+     * 3. 写本地消息表（持久化），若写入失败 → 回滚 Redis
+     * 4. 尝试立即发送 MQ（失败由定时任务补偿）
+     * 5. 返回成功状态
+     *
+     * @param dto 领取请求参数
+     * @return 领取结果
+     */
+    public CouponClaimVO claimCoupon(CouponClaimDTO dto) {
         Long userId = UserContextHolder.getUserId();
         Long couponId = dto.getCouponTemplateId();
         String userCouponKey = getCouponUsersKey(couponId);
 
-        // 前置校验：登录、券状态（不做重复领取检查，留给后续原子操作）
+        // 1. 前置校验：登录、券状态、积分充足性
         CouponTemplate coupon = valid(userCouponKey, userId, couponId);
 
         boolean isUnlimited = coupon.getTotalCount() == null;
 
-        // 【并发安全】先通过 Redis 原子操作完成去重+扣库存，再冻积分
+        // 2. Redis 原子操作：先扣减库存 + 去重
         if (isUnlimited) {
             // 无限量券：SADD 原子去重（返回 1 表示新加入，0 表示已存在）
             Long added = redisTemplate.opsForSet().add(userCouponKey, userId.toString());
@@ -194,18 +208,7 @@ public class CouponBizService {
             }
         }
 
-        // 【并发安全】Redis 去重成功后，再冻结积分；失败则回滚 Redis 标记
-        Integer pointsCost = coupon.getPointsCost();
-        if (pointsCost != null && pointsCost > 0) {
-            boolean frozenPoints = pointAPI.freezePoints(userId, pointsCost);
-            if (!frozenPoints) {
-                // 积分不足，回滚 Redis 去重标记，避免用户状态异常
-                rollbackRedisClaim(userCouponKey, couponId, userId, isUnlimited);
-                throw new BizException(COUPON_POINT_NOT_ENOUGH);
-            }
-        }
-
-        // 计算用户优惠券过期时间：validDays 优先，否则用模板 endTime
+        // 3. Redis 扣减成功，构建 MQ 消息体
         LocalDateTime userExpireTime;
         if (coupon.getValidDays() != null && coupon.getValidDays() > 0) {
             userExpireTime = LocalDateTime.now().plusDays(coupon.getValidDays());
@@ -213,7 +216,6 @@ public class CouponBizService {
             userExpireTime = coupon.getEndTime();
         }
 
-        // 发送 MQ 消息异步落库
         CouponClaimMessageDTO messageDTO = CouponClaimMessageDTO.builder()
                 .couponType(coupon.getCouponType())
                 .couponTemplateId(couponId)
@@ -228,27 +230,59 @@ public class CouponBizService {
                 .userId(userId)
                 .createTime(LocalDateTime.now())
                 .build();
-        rabbitTemplate.convertAndSend(COUPON_EXCHANGE, COUPON_CLAIM_KEY, messageDTO);
+
+        // 4. 写本地消息表（持久化），失败则回滚 Redis
+        LocalMessage localMessage = LocalMessage.builder()
+                .bizType("COUPON_CLAIM")
+                .bizId(couponId.toString())
+                .bizUserId(userId.toString())
+                .exchange(COUPON_EXCHANGE)
+                .routingKey(COUPON_CLAIM_KEY)
+                .messageBody(JSONUtil.toJsonStr(messageDTO))
+                .build();
+
+        try {
+            localMessageService.save(localMessage);
+        } catch (Exception e) {
+            // 本地消息表写入失败 → 回滚 Redis 操作（恢复库存 + 移除去重标记）
+            rollbackRedis(isUnlimited, couponId, userId, userCouponKey);
+            log.error("本地消息表写入失败，已回滚 Redis: userId={}, couponId={}", userId, couponId, e);
+            throw new BizException(BizCodeEnum.OPERATION_ERROR);
+        }
+
+        // 5. 尝试立即发送 MQ（发送失败不影响主流程，定时任务会补偿）
+        try {
+            localMessageService.trySend(localMessage);
+        } catch (Exception e) {
+            log.warn("MQ 立即发送失败，等待定时补偿: userId={}, couponId={}", userId, couponId);
+        }
+
+        log.info("优惠券领取请求已提交: userId={}, couponId={}", userId, couponId);
+
+        // 6. 返回成功（消息已持久化，MQ 发送成功与否由定时任务保证）
+        return CouponClaimVO.builder()
+                .success(true)
+                .build();
     }
 
     /**
-     * 回滚 Redis 中的领取标记（积分冻结失败时调用）
-     * 无限量券：SREM 移除用户标记
-     * 限量券：INCR 恢复库存 + SREM 移除用户标记
+     * 回滚 Redis 操作（恢复库存 + 移除去重标记）
+     * 用于本地消息表写入失败时的补偿
      */
-    private void rollbackRedisClaim(String userCouponKey, Long couponId, Long userId, boolean isUnlimited) {
+    private void rollbackRedis(boolean isUnlimited, Long couponId, Long userId, String userCouponKey) {
         try {
-            // 移除用户已领取标记
-            redisTemplate.opsForSet().remove(userCouponKey, userId.toString());
-            if (!isUnlimited) {
-                // 限量券：恢复库存
+            if (isUnlimited) {
+                // 无限量券：从 Set 中移除用户
+                redisTemplate.opsForSet().remove(userCouponKey, userId.toString());
+            } else {
+                // 限量券：恢复库存 + 移除去重标记
                 String stockKey = getCouponStockKey(couponId);
                 redisTemplate.opsForValue().increment(stockKey);
+                redisTemplate.opsForSet().remove(userCouponKey, userId.toString());
             }
-            log.warn("回滚 Redis 领取标记成功: couponId={}, userId={}", couponId, userId);
-        } catch (Exception e) {
-            // 回滚失败需要记录，后续可通过定时任务补偿
-            log.error("回滚 Redis 领取标记失败: couponId={}, userId={}", couponId, userId, e);
+        } catch (Exception ex) {
+            // Redis 回滚也失败，记录日志，由人工处理或后续补偿
+            log.error("Redis 回滚失败，请人工处理: userId={}, couponId={}", userId, couponId, ex);
         }
     }
 
@@ -259,7 +293,7 @@ public class CouponBizService {
             throw new BizException(BizCodeEnum.NOT_LOGIN);
         }
 
-        // 已领取过（Redis 快速拦截）
+        // 已领取过（快速失败优化：提前拦截，避免后续无意义的 DB 查询和 Feign 调用）
         if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(userCouponKey, userId.toString()))) {
             throw new BizException(COUPON_ALREADY_CLAIMED);
         }

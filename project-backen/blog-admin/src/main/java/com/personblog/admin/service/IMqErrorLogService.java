@@ -1,7 +1,7 @@
 package com.personblog.admin.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.personblog.admin.entity.MqErrorLog;
+import com.personblog.common.entity.MqErrorLog;
 
 /**
  * MQ消息死信队列错误日志 服务类
