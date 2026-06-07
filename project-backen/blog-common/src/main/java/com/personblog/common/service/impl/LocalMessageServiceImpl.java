@@ -34,35 +34,6 @@ public class LocalMessageServiceImpl extends ServiceImpl<LocalMessageMapper, Loc
     private static final int STATUS_PENDING = 0;    // 待发送
     private static final int STATUS_SUCCESS = 1;    // 已完成（发送成功）
     private static final int STATUS_FAILED = 2;     // 已失败（超过重试次数）
-
-    /**
-     * 默认最大重试次数
-     */
-    private static final int DEFAULT_MAX_RETRY = 5;
-
-    @Override
-    public void saveAndTrySend(LocalMessage message) {
-        // 1. 初始化消息状态
-        if (message.getStatus() == null) {
-            message.setStatus(STATUS_PENDING);
-        }
-        if (message.getRetryCount() == null) {
-            message.setRetryCount(0);
-        }
-        if (message.getMaxRetry() == null) {
-            message.setMaxRetry(DEFAULT_MAX_RETRY);
-        }
-        message.setNextRetryTime(LocalDateTime.now());
-        message.setCreatedAt(LocalDateTime.now());
-        message.setUpdatedAt(LocalDateTime.now());
-
-        // 2. 写入消息表
-        this.save(message);
-
-        // 3. 立即尝试发送
-        trySend(message);
-    }
-
     @Override
     public void trySend(LocalMessage message) {
         try {

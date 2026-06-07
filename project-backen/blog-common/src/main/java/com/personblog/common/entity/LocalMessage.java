@@ -46,7 +46,7 @@ public class LocalMessage {
     /** 消息体JSON */
     private String messageBody;
 
-    /** 状态：0-待发送 1-发送中 2-发送成功 3-消费成功 4-发送失败 */
+    /** 状态：0-待发送 1-已完成 2-已失败 */
     private Integer status;
 
     /** 已重试次数 */

@@ -12,16 +12,6 @@ import com.personblog.common.entity.LocalMessage;
 public interface LocalMessageService extends IService<LocalMessage> {
 
     /**
-     * 保存并尝试发送消息
-     * 1. 写入消息表（状态：待发送）
-     * 2. 立即尝试发送 MQ
-     * 3. 发送成功则更新状态为已完成
-     *
-     * @param message 本地消息
-     */
-    void saveAndTrySend(LocalMessage message);
-
-    /**
      * 尝试发送已持久化的消息到 MQ
      * 发送成功则更新状态为已完成，失败则保留待发送状态等待定时任务补偿
      *

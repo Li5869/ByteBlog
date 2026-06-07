@@ -3,7 +3,6 @@ package com.personblog.coupon.mqHandler;
 import cn.hutool.json.JSONUtil;
 import com.personblog.common.dto.MqMessage.Coupon.CouponClaimMessageDTO;
 import com.personblog.coupon.bizService.MqBizService;
-import com.personblog.coupon.service.UserCouponService;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +27,6 @@ import static com.personblog.coupon.config.mqConfig.CouponMqConfig.COUPON_CLAIM_
 public class CouponMqHandler {
 
     private final MqBizService mqBizService;
-    private final UserCouponService userCouponService;
     /**
      * 处理优惠券领取消息
      * 成功 → ACK（消息从队列移除）
@@ -47,7 +45,6 @@ public class CouponMqHandler {
                     message.getUserId(), message.getCouponTemplateId());
             mqBizService.handleCouponClaim(message);
 
-            // 更新本地消息表状态为已完成（可选，依赖定时任务清理）
             channel.basicAck(deliveryTag, false);
             log.info("优惠券领取处理成功: userId={}, couponTemplateId={}",
                     message.getUserId(), message.getCouponTemplateId());

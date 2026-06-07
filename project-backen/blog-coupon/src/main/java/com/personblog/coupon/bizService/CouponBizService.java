@@ -286,6 +286,48 @@ public class CouponBizService {
         }
     }
 
+    /**
+     * 核销优惠券（标记为已使用）
+     * 供其他模块调用（如 VIP 订单模块）
+     *
+     * @param userId   用户ID
+     * @param couponId 用户优惠券ID（tb_user_coupon.id）
+     * @param orderId  使用的订单ID
+     */
+    public void useCoupon(Long userId, Long couponId, Long orderId) {
+        // 1. 查询用户优惠券
+        UserCoupon userCoupon = userCouponService.getById(couponId);
+        if (userCoupon == null) {
+            throw new BizException(COUPON_NOT_EXIST);
+        }
+
+        // 2. 校验归属
+        if (!userCoupon.getUserId().equals(userId)) {
+            throw new BizException(COUPON_NOT_EXIST);
+        }
+
+        // 3. 校验状态：必须是未使用
+        if (userCoupon.getStatus() != 0&&userCoupon.getStatus()!=3) {
+            throw new BizException(COUPON_STATUS_ERROR);
+        }
+
+        // 4. 校验是否过期
+        if (userCoupon.getExpireTime() != null && userCoupon.getExpireTime().isBefore(LocalDateTime.now())) {
+            // 更新为已过期
+            userCoupon.setStatus((short) 2);
+            userCouponService.updateById(userCoupon);
+            throw new BizException(COUPON_EXPIRED);
+        }
+
+        // 5. 更新为已使用
+        userCoupon.setStatus((short) 1);
+        userCoupon.setUseTime(LocalDateTime.now());
+        userCoupon.setOrderId(orderId);
+        userCouponService.updateById(userCoupon);
+
+        log.info("优惠券核销成功: userId={}, couponId={}, orderId={}", userId, couponId, orderId);
+    }
+
     //前置校验
     private CouponTemplate valid(String userCouponKey, Long userId, Long couponId) {
         // 未登录

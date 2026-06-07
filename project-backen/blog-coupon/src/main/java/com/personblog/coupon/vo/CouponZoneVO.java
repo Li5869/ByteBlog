@@ -38,16 +38,16 @@ public class CouponZoneVO {
     private Short claimType;
 
     @Schema(description = "优惠金额（满减券/立减券）")
-    private BigDecimal discountAmount;
+    private Integer discountAmount;
 
     @Schema(description = "折扣率（折扣券，如 0.8 表示八折）")
     private BigDecimal discountRate;
 
     @Schema(description = "最低消费金额（0 表示无门槛）")
-    private BigDecimal minOrderAmount;
+    private Integer minOrderAmount;
 
     @Schema(description = "最大优惠金额（折扣券上限，null 表示无上限）")
-    private BigDecimal maxDiscountAmount;
+    private Integer maxDiscountAmount;
 
     @Schema(description = "兑换所需积分（免费领取时为 0）")
     private Integer pointsCost;

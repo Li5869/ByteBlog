@@ -94,8 +94,10 @@ public class PointApiImpl implements PointAPI {
     @Override
     public void confirmDeductPoints(Long userId, Integer points, String type, Long bizId, String description) {
         // 确认扣减：减少冻结积分（积分已在预扣减时从可用积分中扣除）
+        // ge 条件防御重复调用导致 frozen_points 变为负数
         userPointService.lambdaUpdate()
                 .eq(UserPoint::getUserId, userId)
+                .ge(UserPoint::getFrozenPoints, points)
                 .setSql("frozen_points = frozen_points - " + points)
                 .update();
         // 写积分流水
@@ -112,8 +114,10 @@ public class PointApiImpl implements PointAPI {
     @Override
     public void cancelDeductPoints(Long userId, Integer points) {
         // 取消扣减：恢复可用积分，减少冻结积分
+        // ge 条件防御空回滚：Try 从未执行时 frozen_points=0，避免变为负数
         userPointService.lambdaUpdate()
                 .eq(UserPoint::getUserId, userId)
+                .ge(UserPoint::getFrozenPoints, points)
                 .setSql("available_points = available_points + " + points)
                 .setSql("frozen_points = frozen_points - " + points)
                 .update();

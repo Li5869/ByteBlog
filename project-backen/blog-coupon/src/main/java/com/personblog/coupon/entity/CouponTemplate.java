@@ -31,17 +31,17 @@ public class CouponTemplate {
     /** 领取类型：1-免费领取 2-积分兑换 */
     private Short claimType;
 
-    /** 优惠金额 */
-    private BigDecimal discountAmount;
+    /** 优惠金额（积分，整数） */
+    private Integer discountAmount;
 
     /** 折扣率（折扣券专用） */
     private BigDecimal discountRate;
 
-    /** 最低消费金额 */
-    private BigDecimal minOrderAmount;
+    /** 最低消费金额（积分，整数） */
+    private Integer minOrderAmount;
 
-    /** 最大优惠金额（折扣券封顶） */
-    private BigDecimal maxDiscountAmount;
+    /** 最大优惠金额（积分，整数，折扣券封顶） */
+    private Integer maxDiscountAmount;
 
     /** 总库存（null表示不限量） */
     private Integer totalCount;

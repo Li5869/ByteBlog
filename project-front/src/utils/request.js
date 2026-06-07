@@ -1013,6 +1013,80 @@ export const couponApi = {
   claimCoupon: (couponTemplateId) => post('/coupon/claim', { couponTemplateId: String(couponTemplateId) }),
 }
 
+/**
+ * VIP 会员相关 API
+ */
+export const vipApi = {
+  /**
+   * 获取 VIP 套餐列表
+   * @returns {Promise<Array>} 套餐列表
+   */
+  getPlans: () => get('/vip/plans'),
+
+  /**
+   * 获取套餐详情
+   * @param {string} planId - 套餐ID
+   * @returns {Promise<Object>} 套餐详情
+   */
+  getPlanDetail: (planId) => get(`/vip/plans/${planId}`),
+
+  /**
+   * 获取当前用户会员信息
+   * @returns {Promise<Object>} 会员状态 { isVip, vipLevel, startTime, endTime, totalMonths, remainDays }
+   */
+  getMembership: () => get('/vip/membership'),
+
+  /**
+   * 查询可用优惠券（VIP订单场景）
+   * @param {string} planId - 套餐ID（筛选满足最低消费的优惠券）
+   * @returns {Promise<Array>} 可用优惠券列表
+   */
+  getAvailableCoupons: (planId) => get('/coupon/my/available', { planId }),
+
+  /**
+   * 创建预订单
+   * @param {Object} data - { planId, couponId? }
+   * @returns {Promise<Object>} 订单信息
+   */
+  createOrder: (data) => post('/vip/orders', data),
+
+  /**
+   * 确认购买（TCC Try 阶段，冻结积分）
+   * @param {string} orderId - 订单ID
+   * @returns {Promise<Object>} 订单状态
+   */
+  confirmOrder: (orderId) => post(`/vip/orders/${orderId}/confirm`),
+
+  /**
+   * 修改订单优惠券（仅待确认状态可修改）
+   * @param {Object} data - { couponId? } 不传表示取消使用优惠券
+   * @returns {Promise<Object>} 更新后的订单信息
+   */
+  updateOrderCoupon: (orderId, data) => put(`/vip/orders/${orderId}`, data),
+
+  /**
+   * 取消订单（TCC Cancel 阶段，释放积分）
+   * @param {string} orderId - 订单ID
+   * @param {string} reason - 取消原因（可选）
+   * @returns {Promise<Object>} 订单状态
+   */
+  cancelOrder: (orderId, reason = '用户主动取消') => post(`/vip/orders/${orderId}/cancel`, { reason }),
+
+  /**
+   * 查询订单详情
+   * @param {string} orderId - 订单ID
+   * @returns {Promise<Object>} 订单详情（含时间线、canConfirm、canCancel）
+   */
+  getOrder: (orderId) => get(`/vip/orders/${orderId}`),
+
+  /**
+   * 我的订单列表
+   * @param {Object} params - { current, size, status?, bizType? }
+   * @returns {Promise<Object>} 分页订单列表
+   */
+  getOrderList: (params = {}) => get('/vip/orders', params),
+}
+
 export default {
   get,
   post,
@@ -1032,6 +1106,7 @@ export default {
   signApi,
   pointsApi,
   couponApi,
+  vipApi,
   getToken,
   getRefreshToken,
   getUserInfo,

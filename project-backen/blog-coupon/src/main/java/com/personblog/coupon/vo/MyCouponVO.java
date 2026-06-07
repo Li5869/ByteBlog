@@ -39,16 +39,16 @@ public class MyCouponVO {
     private Short couponType;
 
     @Schema(description = "优惠金额")
-    private BigDecimal discountAmount;
+    private Integer discountAmount;
 
     @Schema(description = "折扣率")
     private BigDecimal discountRate;
 
     @Schema(description = "最低消费金额")
-    private BigDecimal minOrderAmount;
+    private Integer minOrderAmount;
 
     @Schema(description = "最大优惠金额")
-    private BigDecimal maxDiscountAmount;
+    private Integer maxDiscountAmount;
 
     @Schema(description = "状态：0-未使用 1-已使用 2-已过期")
     private Short status;

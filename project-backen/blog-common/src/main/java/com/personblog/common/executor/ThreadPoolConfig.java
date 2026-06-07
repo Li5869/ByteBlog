@@ -97,4 +97,14 @@ public class ThreadPoolConfig {
     public Executor dlqExecutor() {
         return createExecutor("dlq-retry-", 2, 4, 64);
     }
+
+    // ==================== 优惠券计算线程池 ====================
+
+    /**
+     * 优惠券最优计算线程池（并行计算优惠金额，CPU密集型，小线程池即可）
+     */
+    @Bean(name = "CouponCalcExecutor")
+    public Executor couponCalcExecutor() {
+        return createExecutor("coupon-calc-", 2, 4, 64);
+    }
 }

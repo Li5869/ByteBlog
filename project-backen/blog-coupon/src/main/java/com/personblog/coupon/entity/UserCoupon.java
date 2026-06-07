@@ -34,14 +34,17 @@ public class UserCoupon {
     /** 类型（冗余） */
     private Short couponType;
 
-    /** 优惠金额（冗余） */
-    private BigDecimal discountAmount;
+    /** 优惠金额（积分，整数，冗余） */
+    private Integer discountAmount;
 
     /** 折扣率（冗余，折扣券专用） */
     private BigDecimal discountRate;
+    
+    /** 最低消费金额（积分，整数，冗余） */
+    private Integer minOrderAmount;
 
-    /** 最低消费金额（冗余） */
-    private BigDecimal minOrderAmount;
+    /** 最大优惠金额（积分，整数，折扣券封顶，冗余） */
+    private Integer maxDiscountAmount;
 
     /** 状态：0-未使用 1-已使用 2-已过期 3-已冻结 */
     private Short status;
