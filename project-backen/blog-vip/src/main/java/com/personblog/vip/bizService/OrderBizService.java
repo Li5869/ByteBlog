@@ -9,13 +9,10 @@ import com.personblog.api.couponAPI.vo.BestCouponVO;
 import com.personblog.api.pointAPI.PointAPI;
 import com.personblog.common.constant.BizType;
 import com.personblog.common.constant.OrderStatus;
-import com.personblog.common.dto.MqMessage.Vip.OrderConfirmMessageDTO;
-import com.personblog.common.entity.LocalMessage;
 import com.personblog.common.entity.Order;
 import com.personblog.common.enums.BizCodeEnum;
 import com.personblog.common.exception.BizException;
 import com.personblog.common.service.IOrderService;
-import com.personblog.common.service.LocalMessageService;
 import com.personblog.common.utils.OrderNoUtil;
 import com.personblog.common.utils.UserContextHolder;
 import com.personblog.vip.dto.CreateOrderDTO;
@@ -23,6 +20,7 @@ import com.personblog.vip.dto.OrderQueryDTO;
 import com.personblog.vip.dto.UpdateOrderCouponDTO;
 import com.personblog.vip.entity.VipPlan;
 import com.personblog.vip.service.IVipPlanService;
+import com.personblog.vip.tcc.TccTransactionManager;
 import com.personblog.vip.util.OrderUtil;
 import com.personblog.vip.vo.ConfirmOrderVO;
 import com.personblog.vip.vo.CreateOrderVO;
@@ -41,8 +39,12 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import static com.personblog.common.constant.OrderStatus.FROZEN;
-import static com.personblog.vip.config.mqConfig.VipOrderMqConfig.*;
+import static com.personblog.common.constant.TccBizType.COUPON_FREEZE;
+import static com.personblog.common.constant.TccBizType.POINT_FREEZE;
+import static com.personblog.vip.config.mqConfig.VipOrderMqConfig.ORDER_DELAY_KEY;
+import static com.personblog.vip.config.mqConfig.VipOrderMqConfig.VIP_ORDER_EXCHANGE;
 import static com.personblog.vip.constant.RedisKeys.*;
+import static com.personblog.vip.constant.TccXid.xid;
 
 
 /**
@@ -62,7 +64,8 @@ public class OrderBizService {
     private final RedissonClient redissonClient;
     private final PointAPI pointAPI;
     private final RabbitTemplate rabbitTemplate;
-    private final LocalMessageService localMessageService;
+    private final TccTransactionManager tccManager;
+    private final CompensationService compensationService;
     private final VipMembershipBizService membershipBizService;
     /**
      * 查询订单详情（含时间线、操作权限）
@@ -213,15 +216,14 @@ public class OrderBizService {
         return vo;
     }
     /**
-     * 确认下单（TCC 模式：Try 冻结资源 → 同步 Confirm 提交 → 失败自动 Cancel 回滚）
-     * <p>
-     * 同步 Confirm 保证用户立即感知结果；本地消息表兜底进程崩溃场景。
+     * 确认下单（TCC 模式：Try 冻结资源 → Confirm 提交 → 失败 Cancel 回滚）
      */
     public ConfirmOrderVO confirmOrder(Long orderId) {
         Long userId = UserContextHolder.getUserId();
         String key = getConfirmOrderLockKey(orderId);
         RLock lock = redissonClient.getLock(key);
         boolean locked = false;
+        String tccXid = xid(orderId);
         try {
             locked = lock.tryLock(5, 30, TimeUnit.SECONDS);
             if (!locked) {
@@ -233,53 +235,37 @@ public class OrderBizService {
             valid(order, userId);
 
             // ========== Try 阶段：冻结积分 ==========
-            boolean pointFreeze = pointAPI.freezePoints(userId, order.getActualPoints());
-            if (!pointFreeze) {
-                throw new BizException(BizCodeEnum.POINT_NOT_ENOUGH);
-            }
+            tccManager.tryBranch(tccXid, POINT_FREEZE,
+                () -> {
+                    if (!pointAPI.freezePoints(userId, order.getActualPoints())) {
+                        throw new BizException(BizCodeEnum.POINT_NOT_ENOUGH);
+                    }
+                },
+                () -> pointAPI.cancelDeductPoints(userId, order.getActualPoints())
+            );
 
-            // ========== Try 阶段：冻结优惠券（失败需回滚积分） ==========
+            // ========== Try 阶段：冻结优惠券 ==========
             if (order.getCouponId() != null) {
-                boolean couponFreeze = couponAPI.freezeCoupon(order.getCouponId(), userId);
-                if (!couponFreeze) {
-                    // 内联补偿：回滚已冻结的积分
-                    pointAPI.cancelDeductPoints(userId, order.getActualPoints());
-                    throw new BizException(BizCodeEnum.COUPON_STATUS_ERROR);
-                }
+                tccManager.tryBranch(tccXid, COUPON_FREEZE,
+                    () -> {
+                        if (!couponAPI.freezeCoupon(order.getCouponId(), userId)) {
+                            throw new BizException(BizCodeEnum.COUPON_STATUS_ERROR);
+                        }
+                    },
+                    () -> {
+                        // 优惠券冻结失败，回滚积分
+                        tccManager.cancelBranch(tccXid, POINT_FREEZE,
+                            () -> pointAPI.cancelDeductPoints(userId, order.getActualPoints()));
+                    }
+                );
             }
 
-            // Try 成功，订单状态 -> FROZEN
+            // Try 全部成功，订单状态 -> FROZEN
             order.setStatus(FROZEN);
             orderService.updateById(order);
 
-            // 写本地消息表（持久化，用于进程崩溃时 MQ 兜底重试）
-            OrderConfirmMessageDTO msgDTO = OrderConfirmMessageDTO.builder()
-                    .orderId(orderId)
-                    .orderNo(order.getOrderNo())
-                    .userId(userId)
-                    .build();
-            LocalMessage localMessage = LocalMessage.builder()
-                    .bizId(orderId.toString())
-                    .bizUserId(userId.toString())
-                    .bizType("PAID_VIP")
-                    .exchange(VIP_ORDER_EXCHANGE)
-                    .routingKey(ORDER_CONFIRM_KEY)
-                    .messageBody(JSONUtil.toJsonStr(msgDTO))
-                    .build();
-            localMessageService.save(localMessage);
-            // 尝试立即发送 MQ（失败不影响主流程，定时任务会补偿）
-            try {
-                localMessageService.trySend(localMessage);
-            } catch (Exception e) {
-                log.warn("MQ 立即发送失败，等待定时补偿: orderId={}", orderId);
-            }
-
-            // ========== Confirm 阶段：同步提交（用户立即感知结果） ==========
-            executeConfirm(order, userId);
-
-            // 同步Confirm成功，标记本地消息为已完成（避免定时任务无意义重试）
-            localMessage.setStatus(1);
-            localMessageService.updateById(localMessage);
+            // ========== Confirm 阶段：同步提交 ==========
+            executeConfirm(order, userId, tccXid);
 
             // Confirm 成功，返回已完成
             ConfirmOrderVO vo = new ConfirmOrderVO();
@@ -301,34 +287,49 @@ public class OrderBizService {
     }
 
     /**
-     * Confirm 阶段：实扣积分、核销优惠券、激活VIP
-     * 任意一步失败则 Cancel 回滚所有已冻结资源
+     * Confirm 阶段：激活VIP、实扣积分、核销优惠券
+     * 任意一步失败则补偿已成功的操作 + Cancel 回滚冻结资源
      */
-    private void executeConfirm(Order order, Long userId) {
+    private void executeConfirm(Order order, Long userId, String tccXid) {
+        boolean isVip = false;
+        boolean deductPoint = false;
+        boolean useCoupon = false;
         try {
-            // 1. 确认扣减积分（冻结 → 实扣）
-            pointAPI.confirmDeductPoints(userId, order.getActualPoints(),
-                    "VIP_PURCHASE", order.getId(), "VIP会员购买");
-
-            // 2. 核销优惠券
-            if (order.getCouponId() != null) {
-                couponAPI.useCoupon(userId, order.getCouponId(), order.getId());
-            }
-
-            // 3. 激活VIP会员
+            // 1. 激活VIP会员
             VipPlan plan = planService.getById(order.getBizId());
             if (plan != null) {
                 membershipBizService.activateVip(userId, plan.getDurationMonths(), order.getId());
             }
+            isVip = true;
 
-            // 4. 更新订单状态为已完成
+            // 2. 确认扣减积分（冻结 → 实扣）
+            pointAPI.confirmDeductPoints(userId, order.getActualPoints(),
+                    "VIP_PURCHASE", order.getId(), "VIP会员购买");
+            deductPoint = true;
+
+            // 3. 核销优惠券
+            if (order.getCouponId() != null) {
+                couponAPI.useCoupon(userId, order.getCouponId(), order.getId());
+                useCoupon = true;
+            }
+
+            // 4. 全部成功，统一确认 TCC 分支
+            tccManager.confirmBranch(tccXid, POINT_FREEZE, () -> {});
+            if (order.getCouponId() != null) {
+                tccManager.confirmBranch(tccXid, COUPON_FREEZE, () -> {});
+            }
+
+            // 5. 更新订单状态为已完成
             order.setStatus(OrderStatus.COMPLETED);
             orderService.updateById(order);
             log.info("订单确认完成: orderId={}, userId={}", order.getId(), userId);
         } catch (Exception e) {
-            // Confirm 任意一步失败 → Cancel 回滚已冻结资源 + 关闭订单
-            log.error("同步Confirm失败，开始Cancel回滚, orderId={}", order.getId(), e);
-            cancelFrozenResources(order);
+            // 补偿已成功的操作
+            compensationService.compensateConfirmFailure(userId, order, tccXid, isVip, useCoupon, deductPoint);
+            log.error("Confirm失败，执行补偿回滚, orderId={}", order.getId(), e);
+
+            // Cancel TCC 分支状态（释放冻结）
+            cancelFrozenResources(order, tccXid);
             order.setStatus(OrderStatus.CLOSED);
             orderService.updateById(order);
             throw new BizException(BizCodeEnum.ORDER_STATUS_ERROR);
@@ -337,28 +338,19 @@ public class OrderBizService {
 
     /**
      * Cancel 阶段：释放冻结的积分和优惠券
-     * 异常仅记录日志（需人工处理），防止影响主流程
+     * 复用入口：OrderBizService.confirmOrder 失败时、VipMqBizService 超时取消时
      */
-    private void cancelFrozenResources(Order order) {
-        Long orderId = order.getId();
+    public void cancelFrozenResources(Order order, String tccXid) {
         Long userId = order.getUserId();
 
         // 释放冻结的积分
-        try {
-            pointAPI.cancelDeductPoints(userId, order.getActualPoints());
-            log.info("Cancel阶段：释放冻结积分成功, orderId={}, points={}", orderId, order.getActualPoints());
-        } catch (Exception e) {
-            log.error("Cancel阶段：释放冻结积分异常，需人工处理, orderId={}, points={}", orderId, order.getActualPoints(), e);
-        }
+        tccManager.cancelBranch(tccXid, POINT_FREEZE,
+            () -> pointAPI.cancelDeductPoints(userId, order.getActualPoints()));
 
         // 释放冻结的优惠券
         if (order.getCouponId() != null) {
-            try {
-                couponAPI.releaseCoupon(order.getCouponId(), userId);
-                log.info("Cancel阶段：释放冻结优惠券成功, orderId={}, couponId={}", orderId, order.getCouponId());
-            } catch (Exception e) {
-                log.error("Cancel阶段：释放冻结优惠券异常，需人工处理, orderId={}, couponId={}", orderId, order.getCouponId(), e);
-            }
+            tccManager.cancelBranch(tccXid, COUPON_FREEZE,
+                () -> couponAPI.releaseCoupon(order.getCouponId(), userId));
         }
     }
 

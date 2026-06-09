@@ -122,4 +122,20 @@ public class PointApiImpl implements PointAPI {
                 .setSql("frozen_points = frozen_points - " + points)
                 .update();
     }
+    //confirm失败，退回积分
+    @Override
+    public void refundPoints(Long userId, Integer actualPoints, String vipPurchaseCancel, Long id, String Reason) {
+        boolean update = userPointService.lambdaUpdate()
+                .eq(UserPoint::getUserId, userId)
+                .setSql("available_points = available_points + " + actualPoints)
+                .update();
+        if(update){
+            PointLog pointLog = new PointLog();
+            pointLog.setUserId(userId);
+            pointLog.setDescription(Reason);
+            pointLog.setType(vipPurchaseCancel);
+            pointLog.setBizId(id);
+            pointLogService.save(pointLog);
+        }
+    }
 }

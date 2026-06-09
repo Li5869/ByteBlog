@@ -35,4 +35,5 @@ public interface CouponAPI {
     void releaseCoupon(Long couponId, Long userId);
 
 
+    void refundCoupon(Long couponId, Long userId);
 }

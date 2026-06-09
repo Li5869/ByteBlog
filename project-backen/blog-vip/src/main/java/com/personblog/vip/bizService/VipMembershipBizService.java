@@ -111,4 +111,9 @@ public class VipMembershipBizService {
                     userId, orderId, durationMonths, membership.getEndTime(), isExpired);
         }
     }
+    //confirm失败，退回会员
+    public void deactivateVip(Long userId) {
+        vipMembershipService.remove(new LambdaQueryWrapper<VipMembership>()
+                .eq(VipMembership::getUserId,userId));
+    }
 }

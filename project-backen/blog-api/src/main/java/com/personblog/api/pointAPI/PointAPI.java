@@ -43,4 +43,5 @@ public interface PointAPI {
      */
     void cancelDeductPoints(Long userId, Integer points);
 
+    void refundPoints(Long userId, Integer actualPoints, String vipPurchaseCancel, Long OrderId, String Reason);
 }

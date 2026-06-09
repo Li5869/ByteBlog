@@ -76,6 +76,15 @@ public class CouponAPIImpl implements CouponAPI {
                 .set(UserCoupon::getStatus, 0)
                 .update();
     }
+    //confirm失败，退回优惠券
+    @Override
+    public void refundCoupon(Long couponId, Long userId) {
+        userCouponService.lambdaUpdate()
+                .eq(UserCoupon::getUserId,userId)
+                .eq(UserCoupon::getId,couponId)
+                .eq(UserCoupon::getStatus,1)
+                .set(UserCoupon::getStatus,0);
+    }
 
     /**
      * 计算单张优惠券的实际优惠金额
