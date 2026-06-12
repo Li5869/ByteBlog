@@ -159,8 +159,9 @@ public class LikeMqHandler {
         try {
             boolean tryLock = lock.tryLock(5, 30, TimeUnit.SECONDS);
             if (!tryLock) {
-                log.warn("获取锁超时, targetType={}, 消息将重新入队", dto.getTargetType());
-                channel.basicNack(deliveryTag, false, true);
+                // 获取锁失败说明已有其他线程正在同步，当前数据已落库，等待下次点赞触发同步即可
+                log.info("获取锁超时, targetType={}, 已有其他线程同步，直接ACK等待下次同步", dto.getTargetType());
+                channel.basicAck(deliveryTag, false);
                 return;
             }
             log.info("开始同步点赞缓存, targetType={}", dto.getTargetType());
