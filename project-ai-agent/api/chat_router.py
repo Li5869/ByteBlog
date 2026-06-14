@@ -12,7 +12,7 @@ from loguru import logger
 from models.schemas import ApiResponse, ChatRequest
 from services.business.chat_service import get_chat_service
 from services.core.memory_service import get_memory_service
-from tools import ALL_TOOLS
+from tools import DIRECT_TOOLS, SUB_AGENT_TOOLS, WRITING_TOOLS
 
 router = APIRouter()
 
@@ -56,9 +56,10 @@ async def clear_history(conversation_id: str):
 @router.get("/tools")
 async def list_tools():
     """获取可用工具列表"""
+    all_tools = DIRECT_TOOLS + SUB_AGENT_TOOLS + WRITING_TOOLS
     tools_info = [
         {"name": tool.name, "description": tool.description}
-        for tool in ALL_TOOLS
+        for tool in all_tools
     ]
     return ApiResponse(data={"tools": tools_info})
 

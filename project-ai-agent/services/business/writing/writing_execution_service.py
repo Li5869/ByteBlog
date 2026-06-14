@@ -201,6 +201,7 @@ async def _run_execute_phase(task_id: str):
         db_task_id = int(task_id)
         await task_service.update_status(db_task_id, "executing", "title")
 
+        # 进度回调：处理节点内 writer() 发射的 phase/token 事件
         async def progress_handler(event):
             await _push_event(task_id, event)
             if event.get("type") == "phase":
@@ -215,10 +216,12 @@ async def _run_execute_phase(task_id: str):
                 elif step:
                     await task_service.update_status(db_task_id, "executing", step)
 
-        agent.progress_callback = progress_handler
-
         async for event in agent.execute_stream(thread_id=task_id):
-            if event.get("type") == "reflection_result":
+            # phase/token 事件由 StreamWriter 发射，统一通过 progress_handler 处理
+            if event.get("type") in ("phase", "token"):
+                await progress_handler(event)
+
+            elif event.get("type") == "reflection_result":
                 await task_service.update_status(db_task_id, "reflecting", "reflecting")
                 # 保存评估结果到数据库
                 reflection_data = event.get("data")
@@ -227,6 +230,7 @@ async def _run_execute_phase(task_id: str):
                     # 持久化修订次数
                     revision_count = reflection_data.get("revision_count", 0)
                     await task_service.update_revision_count(db_task_id, revision_count)
+                await _push_event(task_id, event)
 
             elif event.get("type") == "finalize_ready":
                 writing_result = event.get("data")
@@ -247,6 +251,7 @@ async def _run_execute_phase(task_id: str):
                     "all_tag_names": writing_result.get("allTagNames"),
                 }
                 await task_service.save_draft(db_task_id, user_id, draft_data)
+                await _push_event(task_id, event)
 
             elif event.get("type") == "done":
                 await _set_task_status(task_id, status="finalized")
@@ -254,8 +259,7 @@ async def _run_execute_phase(task_id: str):
             elif event.get("type") == "error":
                 await _set_task_status(task_id, status="error", error=event.get("data", ""))
                 await task_service.update_status(db_task_id, "error", None)
-            
-            await _push_event(task_id, event)
+                await _push_event(task_id, event)
             
             if event.get("type") in ("done", "error"):
                 break
@@ -268,7 +272,6 @@ async def _run_execute_phase(task_id: str):
         await _set_task_status(task_id, status="error", error=str(e))
         await task_service.update_status(db_task_id, "error", None)
     finally:
-        agent.progress_callback = None
         _cleanup_task(task_id)
 
 

@@ -19,20 +19,22 @@
   - custom 流模式：通过 get_stream_writer() 发射自定义事件
 """
 
-from langgraph.graph import StateGraph, END
-from langgraph.graph.message import add_messages
-from langgraph.checkpoint.memory import MemorySaver
-from langgraph.config import get_stream_writer
-from typing import TypedDict, List, Optional, Any, Literal, Annotated, Sequence
+import asyncio
 from dataclasses import dataclass, field
+from typing import TypedDict, List, Optional, Literal, Annotated, Sequence
+
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage, SystemMessage
 from langchain_deepseek import ChatDeepSeek
-from tools import ALL_TOOLS
-from tools.user_tool import set_current_user_id
-import asyncio
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.config import get_stream_writer
+from langgraph.graph import StateGraph, END
+from langgraph.graph.message import add_messages
 from loguru import logger
-from config.settings import get_settings
+
 from config.prompts import get_prompt_manager
+from config.settings import get_settings
+from tools import DIRECT_TOOLS, SUB_AGENT_TOOLS, WRITING_TOOLS
+from tools.user_tool import set_current_user_id
 
 
 @dataclass
@@ -106,7 +108,11 @@ class SmartAgent:
             },
         )
 
-        self.tools = ALL_TOOLS
+        # Supervisor 工具列表：通用工具 + Sub-Agent 工具
+        self.direct_tools = DIRECT_TOOLS
+        self.sub_agent_tools = SUB_AGENT_TOOLS
+        self.writing_tools = WRITING_TOOLS
+        self.tools = self.direct_tools + self.sub_agent_tools + self.writing_tools
         # bind_tools 在初始化时执行一次（工具列表不变，无需每次调用时重复绑定）
         self.llm_with_tools = self.llm.bind_tools(self.tools)
         self.prompt_manager = prompt_manager
@@ -327,12 +333,10 @@ class SmartAgent:
             "user_id": user_id,
         }
 
-        config = {"configurable": {"thread_id": "smart_agent"}}
+        config = {"configurable": {"thread_id": conversation_id}}
 
         if user_id:
             set_current_user_id(user_id)
-
-        final_answer = ""
 
         try:
             # 使用 LangGraph 原生流式 API，只监听 custom 流模式
@@ -368,6 +372,18 @@ class SmartAgent:
                         tool_name=tool_name,
                         tool_args=tool_args,
                         extra=extra,
+                    )
+                elif event_type == "sub_agent_tool_call":
+                    # Sub-Agent 工具调用 → 转发到前端 tool_call 块
+                    agent_name = data.get("agent", "sub_agent")
+                    tool_name = data.get("tool_name", "")
+                    tool_args = data.get("tool_args", {})
+                    accumulated_thinking += f"\n🔧 [{agent_name}] 调用工具: {tool_name}"
+                    yield StreamEvent(
+                        event_type="tool_call",
+                        content=data.get("content", ""),
+                        tool_name=f"[{agent_name}] {tool_name}",
+                        tool_args=tool_args,
                     )
 
             # 获取最终状态以提取 final_answer

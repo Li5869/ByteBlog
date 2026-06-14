@@ -4,8 +4,9 @@
 
 职责：
   作为 PromptManager 类的统一入口门面，所有提示词的实际内容定义在同级子模块中：
-    - smart_agent_prompts.py  — SmartAgent 提示词
-    - writing_prompts.py      — WritingAgent 提示词
+    - smart_agent_prompts.py   — SmartAgent 提示词
+    - sub_agent_prompts.py     — Sub-Agent 提示词（SearchAgent, KnowledgeAgent）
+    - writing_prompts.py       — WritingAgent 提示词
 
 用法：
   from config.prompts import PromptManager, get_prompt_manager
@@ -17,6 +18,10 @@ from typing import Optional
 from models.writing_models import WritingPlan
 from config.prompts.smart_agent_prompts import (
     get_smart_agent_system_prompt as _get_smart_agent_system_prompt,
+)
+from config.prompts.sub_agent_prompts import (
+    get_search_agent_system_prompt as _get_search_agent_system_prompt,
+    get_knowledge_agent_system_prompt as _get_knowledge_agent_system_prompt,
 )
 from config.prompts.writing_prompts import (
     get_writing_plan_prompt as _get_writing_plan_prompt,
@@ -39,12 +44,27 @@ class PromptManager:
     def get_smart_agent_system_prompt() -> str:
         """
         获取 SmartAgent 系统提示词
-
-        渐进式披露策略：不预注入 Skills 描述，Agent 通过工具按需获取。
-
         定义位置：prompts/smart_agent_prompts.py
         """
         return _get_smart_agent_system_prompt()
+
+    # ==================== Sub-Agent ====================
+
+    @staticmethod
+    def get_search_agent_system_prompt() -> str:
+        """
+        获取搜索专家 Agent 系统提示词
+        定义位置：prompts/sub_agent_prompts.py
+        """
+        return _get_search_agent_system_prompt()
+
+    @staticmethod
+    def get_knowledge_agent_system_prompt() -> str:
+        """
+        获取知识库专家 Agent 系统提示词
+        定义位置：prompts/sub_agent_prompts.py
+        """
+        return _get_knowledge_agent_system_prompt()
 
     # ==================== WritingAgent ====================
 

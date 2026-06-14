@@ -30,7 +30,3 @@ THINKING_TAGS: tuple[str, ...] = (
 # ==================== 默认过期时间 ====================
 DEFAULT_TTL_SECONDS: int = 3600 * 24 * 7  # 7 天
 WRITING_TASK_TTL_SECONDS: int = 7200      # 2 小时
-
-# ==================== 数据库连接 ====================
-PSYCOPG_SCHEME: str = "postgresql+psycopg://"
-POSTGRES_SCHEME: str = "postgresql://"
