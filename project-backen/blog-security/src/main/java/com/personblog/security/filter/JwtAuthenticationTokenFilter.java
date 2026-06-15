@@ -1,6 +1,5 @@
 package com.personblog.security.filter;
 
-import com.personblog.common.utils.UserContextHolder;
 import com.personblog.security.entity.LoginUser;
 import com.personblog.security.service.UserDetailsServiceImpl;
 import com.personblog.security.utils.JwtUtil;
@@ -57,52 +56,44 @@ public class JwtAuthenticationTokenFilter extends OncePerRequestFilter {
                                     HttpServletResponse response, 
                                     FilterChain filterChain) throws ServletException, IOException {
         
-        try {
-            // 1. 从请求头中提取 Token
-            String token = resolveToken(request);
-            
-            // 2. 如果 Token 存在且有效，进行认证
-            if (StringUtils.hasText(token) && jwtUtil.validateToken(token)) {
+        // 1. 从请求头中提取 Token
+        String token = resolveToken(request);
 
-                // 2.1 从 Token 中解析用户ID
-                Long userId = jwtUtil.getUserIdFromToken(token);
-                log.debug("JWT Token 验证通过，用户ID: {}", userId);
-                
-                // 2.2 从 Redis 获取登录用户信息
-                LoginUser loginUser = userDetailsService.getLoginUserByToken(token);
-                if (loginUser != null) {
-                    // 2.3 刷新 Token 过期时间（活跃用户不过期）
-                    userDetailsService.refreshToken(token);
-                    
-                    // 2.4 设置用户上下文（供业务代码使用）
-                    UserContextHolder.setUserId(loginUser.getUserId());
-                    
-                    // 2.5 创建认证对象
-                    UsernamePasswordAuthenticationToken authentication = 
-                        new UsernamePasswordAuthenticationToken(
-                            loginUser,
-                            null,
-                            loginUser.getAuthorities()
-                        );
-                    
-                    // 2.6 设置认证详情（包含请求信息）
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    
-                    // 2.7 将认证信息存入 SecurityContext
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                    
-                    log.debug("用户认证成功: {}", loginUser.getUsername());
-                } else {
-                    log.debug("Redis 中未找到登录信息，Token 可能已失效");
-                }
+        // 2. 如果 Token 存在且有效，进行认证
+        if (StringUtils.hasText(token) && jwtUtil.validateToken(token)) {
+
+            // 2.1 从 Token 中解析用户ID
+            Long userId = jwtUtil.getUserIdFromToken(token);
+            log.debug("JWT Token 验证通过，用户ID: {}", userId);
+
+            // 2.2 从 Redis 获取登录用户信息
+            LoginUser loginUser = userDetailsService.getLoginUserByToken(token);
+            if (loginUser != null) {
+                // 2.3 刷新 Token 过期时间（活跃用户不过期）
+                userDetailsService.refreshToken(token);
+
+                // 2.4 创建认证对象（UserContextHolder 通过 SecurityContextHolder 自动获取用户信息）
+                UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                        loginUser,
+                        null,
+                        loginUser.getAuthorities()
+                    );
+
+                // 2.5 设置认证详情（包含请求信息）
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                // 2.6 将认证信息存入 SecurityContext（UserContextHolder 自动从中读取用户 ID）
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                log.debug("用户认证成功: {}", loginUser.getUsername());
+            } else {
+                log.debug("Redis 中未找到登录信息，Token 可能已失效");
             }
-            
-            // 3. 继续过滤器链
-            filterChain.doFilter(request, response);
-        } finally {
-            // 4. 清理 ThreadLocal，避免内存泄漏
-            UserContextHolder.clearUserId();
         }
+
+        // 3. 继续过滤器链
+        filterChain.doFilter(request, response);
     }
 
     /**

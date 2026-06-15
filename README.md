@@ -36,7 +36,7 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 | 模块 | 能力 | 实现方式 |
 |------|------|----------|
 | 🤖 **AI 写作 Agent** | Plan-and-Execute 四阶段工作流（规划→执行→反思→定稿），四角色 LLM 差异化 temperature 配置，5 维质量评估自动微调，SSE 实时推送子步骤进度，Redis 任务状态管理支持断点恢复 | LangGraph StateGraph + DeepSeek |
-| 💬 **AI 智能对话** | ReAct 范式循环推理（thinking 节点统一推理与回答 → judge 路由 → tool_executor 执行工具），DeepSeek 思考模式实时输出思维链，Parent-Child RAG 技术（pgvector 检索 Child Chunks → 聚合还原 Parent Documents），多工具并发调度（asyncio.gather），SSE 流式输出，add_messages reducer 状态管理，Skill 渐进式披露 + 向量化检索节省 Token + 三级降级策略 | LangGraph ReAct + pgvector |
+| 💬 **AI 智能对话** | Supervisor + Sub-Agent 多 Agent 架构（SmartAgent 调度 SearchAgent / KnowledgeAgent / WritingAgent），ReAct 范式循环推理，DeepSeek 思考模式实时输出思维链，Parent-Child RAG 技术（pgvector 检索 Child Chunks → 聚合还原 Parent Documents），Sub-Agent 基于 create_agent 预构建 ReAct 循环，SSE 流式输出，Skill 渐进式披露 + 向量化检索节省 Token + 三级降级策略 | LangGraph ReAct + create_agent + pgvector |
 | 📚 **RAG 知识库** | Parent-Child 文档切片策略（Child 450 字符 / Parent 1500 字符），OpenAI Embedding 向量化，pgvector 余弦相似度检索，管理端支持文档上传与管理 | OpenAI Embedding + pgvector |
 | 🎯 **积分系统** | 用户签到、积分记录、排行榜、积分发放（文章发布/点赞/收藏等场景），MQ 异步处理保障最终一致性 | Redis + RabbitMQ |
 | 🎫 **优惠券系统** | 高并发限时限量领券，Redis Lua 脚本原子操作（SISMEMBER 去重 + DECR 扣库存 + SADD 标记），本地消息表保证 MQ 可靠投递，消费端三层防超卖（幂等 + DB WHERE stock>0 + 回补 Redis） | Redis Lua + RabbitMQ + 本地消息表 |
@@ -183,11 +183,12 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 ┌──────────────────────────────────────────────────────────────────────┐
 │           Python AI Agent 服务 (:8000)                               │
 │                                                                      │
-│  ┌────────────────────┐  ┌────────────────┐  ┌───────────────────┐  │
-│  │  Writing Agent     │  │  Smart Agent   │  │  RAG Agent        │  │
-│  │  Plan→Execute→     │  │  ReAct 循环    │  │  文档→分块→向量化  │  │
-│  │  Reflect→Finalize  │  │  多工具调用     │  │  语义检索→LLM 回答 │  │
-│  └────────────────────┘  └────────────────┘  └───────────────────┘  │
+│  ┌────────────────────┐  ┌────────────────────────────────┐  │
+│  │  Writing Agent     │  │  Smart Agent (Supervisor)      │  │
+│  │  Plan→Execute→     │  │  ReAct 循环 + 多 Agent 调度     │  │
+│  │  Reflect→Finalize  │  │  ├─ SearchAgent (create_agent) │  │
+│  └────────────────────┘  │  └─ KnowledgeAgent (create_agent)│  │
+│                          └────────────────────────────────┘  │
 │                                                                      │
 │  ┌──────────────────────────────────────────────────────────────┐    │
 │  │  共享基础设施层                                               │    │
@@ -320,7 +321,7 @@ project-backen/  —— Spring Boot 4 + Maven 多模块（16 个子模块）
 
 ## AI Agent 架构
 
-Python AI Agent 服务（FastAPI :8000）包含三个独立 Agent，共享底层基础设施层：
+Python AI Agent 服务（FastAPI :8000）采用 **Supervisor + Sub-Agent** 多 Agent 架构，SmartAgent 作为 Supervisor 调度专业 Sub-Agent，共享底层基础设施层：
 
 ```
 project-ai-agent/
@@ -334,8 +335,12 @@ project-ai-agent/
 │   └── knowledge_router.py# 知识库文档上传/管理
 │
 ├── agents/                # LangGraph Agent
-│   ├── smart_agent.py     # ReAct 循环推理 Agent
-│   └── writing_agent.py   # Plan-and-Execute 写作 Agent
+│   ├── smart_agent.py     # Supervisor Agent（ReAct 循环推理，调度 Sub-Agent）
+│   ├── writing_agent.py   # Plan-and-Execute 写作 Agent
+│   └── sub_agents/        # Sub-Agent 模块
+│       ├── search_agent.py    # 搜索专家（基于 create_agent）
+│       ├── knowledge_agent.py # 知识库专家（基于 create_agent）
+│       └── tools.py           # Sub-Agent @tool 注册
 │
 ├── skills/                # Skills 渐进式披露
 │   ├── loader.py           # SKILL.md 加载器
@@ -347,11 +352,11 @@ project-ai-agent/
 │   └── writing-assistant/  # 写作助手
 │
 ├── tools/                 # Agent 工具集
-│   ├── article_tool.py      # ES 文章搜索
+│   ├── __init__.py          # 工具注册表（DIRECT_TOOLS / SUB_AGENT_TOOLS / WRITING_TOOLS）
+│   ├── article_tool.py      # ES 文章搜索 + Java API 文章内容获取
 │   ├── vector_tool.py       # pgvector 知识库（Parent-Child RAG）
 │   ├── author_tool.py       # 作者搜索
 │   ├── blog_tool.py         # 分类/标签
-│   ├── smart_search_tool.py # 站内→外部 二级降级搜索
 │   ├── skill_tool.py        # Skill 详情披露工具
 │   ├── user_tool.py         # 用户上下文（contextvars 协程安全）
 │   ├── writing_tool.py      # 写作任务工具（启动/查询/执行/发布）
@@ -364,7 +369,7 @@ project-ai-agent/
 │   └── business/            # 业务逻辑层（写作内容/质量/标签/任务）
 │
 ├── models/                # Pydantic 数据模型
-├── config/prompts/        # 8 个 Prompt 模板集中管理
+├── config/prompts/        # Prompt 模板集中管理（含 Sub-Agent 提示词）
 └── vectorstore/           # pgvector 向量存储封装
 ```
 
@@ -464,54 +469,105 @@ project-ai-agent/
 
 ---
 
-### Smart Agent 工具调用
+### Smart Agent — Supervisor + Sub-Agent 架构
 
-基于 **LangGraph StateGraph** 的 **Thinking→Judge→ToolExecutor** ReAct 循环图，thinking 节点统一负责推理与回答输出，judge 根据 `tool_calls` 路由至工具执行或结束。
+基于 **LangGraph StateGraph** 的 **Supervisor (tool-calling)** 多 Agent 架构。SmartAgent 作为 Supervisor，通过 LLM tool-calling 自主决定调用哪个专业 Sub-Agent 或直接使用工具，Sub-Agent 基于 `create_agent` 预构建 ReAct 循环，无需手写图。
 
-**工作流：**
+**架构总览：**
 
 ```
-thinking ──→ judge ──→ (有 tool_calls) ──→ tool_executor ──→ thinking (循环)
-    │
-    └──→ (无 tool_calls) ──→ END
+┌─────────────────────────────────────────────────────────────────────┐
+│  SmartAgent（Supervisor）— ReAct 循环推理                           │
+│                                                                     │
+│  thinking ──→ judge ──→ tool_executor ──→ thinking (循环)           │
+│      │                                                              │
+│      └──→ (无 tool_calls) ──→ END                                   │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │  DIRECT_TOOLS（Supervisor 直接调用）                         │    │
+│  │  get_the_time / get_current_user_id / get_current_user_info │    │
+│  │  get_skill_details / list_available_skills / search_skill_guide│  │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │  SUB_AGENT_TOOLS（@tool 包装的专业 Agent）                   │    │
+│  │                                                             │    │
+│  │  ┌──────────────────┐    ┌──────────────────┐              │    │
+│  │  │ search_agent     │    │ knowledge_agent  │              │    │
+│  │  │ 搜索专家          │    │ 知识库专家        │              │    │
+│  │  │ (create_agent)   │    │ (create_agent)   │              │    │
+│  │  │                  │    │                  │              │    │
+│  │  │ · 文章搜索        │    │ · RAG 知识库检索  │              │    │
+│  │  │ · 博主搜索        │    │                  │              │    │
+│  │  │ · 分类查询        │    │                  │              │    │
+│  │  │ · 外部博客搜索    │    │                  │              │    │
+│  │  │ · 网页爬取        │    │                  │              │    │
+│  │  └──────────────────┘    └──────────────────┘              │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │  WRITING_TOOLS（异步两阶段写作流程）                          │    │
+│  │  writing_start / writing_status / writing_action             │    │
+│  │  writing_result / writing_publish                            │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-**核心机制：**
+**Supervisor 核心机制：**
 
 - **DeepSeek 官方思考模式**：`reasoning_content`（思维链）→ `thinking` 事件，`content`（最终回答）→ `chunk` 事件，天然分离无需额外解析
 - **LangGraph 原生 custom 流模式**：thinking 节点通过 `get_stream_writer()` 实时发射 thinking / chunk / tool_call 事件，零缓存回放
-- **add_messages reducer**：节点只需返回新消息，LangGraph 自动追加到消息历史，代码简洁且不易出错
+- **Sub-Agent 事件转发**：Sub-Agent 的工具调用事件通过 `stream_writer` 转发到 Supervisor，显示在前端思考块中
+- **add_messages reducer**：节点只需返回新消息，LangGraph 自动追加到消息历史
 - **并发工具调用**：`asyncio.gather` 同时执行多个工具调用
 - **迭代次数控制**：超过最大迭代次数强制结束，防止无限循环
-- **content + tool_calls 并发输出**：模型可先回答部分内容（如"让我查一下数据库"），同时发起工具调用，下轮基于工具结果继续完善回答
 
-**工具列表（22 个）：**
+**Sub-Agent 设计：**
+
+| 特性 | 实现方式 |
+|------|---------|
+| **预构建 ReAct 循环** | `langchain.agents.create_agent` 一行创建，无需手写 StateGraph |
+| **独立工具集** | SearchAgent 拥有搜索相关工具，KnowledgeAgent 拥有 RAG 检索工具 |
+| **非思考模式** | DeepSeek Chat（thinking: disabled），快速响应无需思维链分层 |
+| **流式事件转发** | `stream_mode=["updates", "custom"]` + `version="v2"` 提取工具调用事件 |
+| **单例模式** | `get_search_agent()` / `get_knowledge_agent()` 全局单例 |
+
+**工具分类总览：**
+
+| 分类 | 工具 | 功能 | 来源 |
+|------|------|------|------|
+| **DIRECT_TOOLS** | `get_the_time` | 获取当前日期时间 | 系统时钟 |
+| | `get_current_user_id` | 获取当前登录用户 ID | 用户上下文 |
+| | `get_current_user_info` | 获取当前登录用户详细信息 | 用户上下文 |
+| | `get_skill_details` | 获取 Skill 详细使用指南 | Skills 文件 |
+| | `list_available_skills` | 列出所有可用 Skills | Skills 文件 |
+| | `search_skill_guide` | 语义搜索 Skill 指南片段 | pgvector |
+| **SUB_AGENT_TOOLS** | `search_agent` | 搜索专家（文章/博主/分类/外部搜索/爬取） | SearchAgent |
+| | `knowledge_agent` | 知识库专家（RAG 语义检索） | KnowledgeAgent |
+| **WRITING_TOOLS** | `writing_start` | 启动写作任务，异步生成计划 | WritingAgent |
+| | `writing_status` | 查询写作任务状态及计划内容 | WritingAgent |
+| | `writing_action` | 执行写作动作（确认/修订/取消） | WritingAgent |
+| | `writing_result` | 获取写作成果链接 | WritingAgent |
+| | `writing_publish` | 发布或保存草稿 | WritingAgent |
+
+**SearchAgent 内部工具：**
 
 | 工具 | 功能 | 来源 |
 |------|------|------|
 | `search_articles_by_keyword` | ES 关键词搜索文章 | Elasticsearch |
-| `search_knowledge_base` | Parent-Child RAG 语义检索（支持 category 过滤） | pgvector |
-| `search_authors_by_keyword` | ES 博主搜索（用户名/昵称/简介） | Elasticsearch |
 | `get_hot_articles` | 获取浏览量最高的热门文章 | Elasticsearch |
+| `search_authors_by_keyword` | ES 博主搜索 | Elasticsearch |
 | `get_hot_authors` | 获取粉丝数最多的热门博主 | Elasticsearch |
-| `get_article_by_id` | 根据 ID 获取文章详情 | Elasticsearch |
-| `get_article_content_by_id` | 根据 ID 获取文章完整 Markdown 正文 | Java API |
 | `get_author_by_id` | 根据 ID 获取博主详细信息 | Elasticsearch |
 | `get_category_list` | 获取所有文章分类 | Java API |
-| `get_the_time` | 获取当前日期时间、星期、时间段描述 | 系统时钟 |
-| `get_current_user_id` | 获取当前登录用户 ID | 用户上下文 |
-| `get_current_user_info` | 获取当前登录用户详细信息（昵称/邮箱/头像等） | 用户上下文 |
-| `get_skill_details` | 获取 Skill 详细使用指南（渐进式披露） | Skills 文件 |
-| `list_available_skills` | 列出所有可用 Skills 及简要描述 | Skills 文件 |
-| `search_skill_guide` | 语义搜索 Skill 指南片段（低 Token 消耗） | Skills 文件 |
-| `search_external_tech_blogs` | 站外技术博客搜索（站内结果不足时补充） | Tavily |
-| `scrape_webpage` | 爬取单个网页内容，提取正文转 Markdown | Web 爬虫 |
-| `scrape_multiple_webpages` | 并发爬取多个网页（最多 5 个） | Web 爬虫 |
-| `writing_start` | 启动写作任务，异步生成计划 | 写作 Agent |
-| `writing_status` | 查询写作任务状态及计划内容 | 写作 Agent |
-| `writing_action` | 执行写作动作（确认/修订/取消） | 写作 Agent |
-| `writing_result` | 获取写作成果链接 | 写作 Agent |
-| `writing_publish` | 发布或保存草稿 | 写作 Agent |
+| `scrape_webpage` | 爬取网页内容转 Markdown | Web 爬虫 |
+| `search_external_tech_blogs` | 站外技术博客搜索（条件加载） | Tavily |
+
+**KnowledgeAgent 内部工具：**
+
+| 工具 | 功能 | 来源 |
+|------|------|------|
+| `search_knowledge_base` | Parent-Child RAG 语义检索（支持 category 过滤） | pgvector |
 
 ![SmartAgent 智能对话与知识库问答](docs/演示素材/RAG知识库相关问答.gif)
 > *SmartAgent 智能对话能力展示，包括 RAG 知识库问答、文章搜索、工具调用等核心功能*
