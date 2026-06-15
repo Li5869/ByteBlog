@@ -66,11 +66,11 @@ public class JwtAuthenticationTokenFilter extends OncePerRequestFilter {
             Long userId = jwtUtil.getUserIdFromToken(token);
             log.debug("JWT Token 验证通过，用户ID: {}", userId);
 
-            // 2.2 从 Redis 获取登录用户信息
-            LoginUser loginUser = userDetailsService.getLoginUserByToken(token);
+            // 2.2 验证 Token 有效性并获取用户信息（比对 Redis 中存储的 token）
+            LoginUser loginUser = userDetailsService.getLoginUser(userId, token);
             if (loginUser != null) {
                 // 2.3 刷新 Token 过期时间（活跃用户不过期）
-                userDetailsService.refreshToken(token);
+                userDetailsService.refreshToken(userId);
 
                 // 2.4 创建认证对象（UserContextHolder 通过 SecurityContextHolder 自动获取用户信息）
                 UsernamePasswordAuthenticationToken authentication =
