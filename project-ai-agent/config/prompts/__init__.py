@@ -22,6 +22,7 @@ from config.prompts.smart_agent_prompts import (
 from config.prompts.sub_agent_prompts import (
     get_search_agent_system_prompt as _get_search_agent_system_prompt,
     get_knowledge_agent_system_prompt as _get_knowledge_agent_system_prompt,
+    get_code_execution_agent_system_prompt as _get_code_execution_agent_system_prompt,
 )
 from config.prompts.writing_prompts import (
     get_writing_plan_prompt as _get_writing_plan_prompt,
@@ -65,6 +66,14 @@ class PromptManager:
         定义位置：prompts/sub_agent_prompts.py
         """
         return _get_knowledge_agent_system_prompt()
+
+    @staticmethod
+    def get_code_execution_agent_system_prompt() -> str:
+        """
+        获取代码执行专家 Agent 系统提示词
+        定义位置：prompts/sub_agent_prompts.py
+        """
+        return _get_code_execution_agent_system_prompt()
 
     # ==================== WritingAgent ====================
 

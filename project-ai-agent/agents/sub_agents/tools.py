@@ -20,6 +20,7 @@ from typing import Annotated
 
 from agents.sub_agents.search_agent import get_search_agent
 from agents.sub_agents.knowledge_agent import get_knowledge_agent
+from agents.sub_agents.code_execution_agent import get_code_execution_agent
 
 
 # ==================== 搜索专家 ====================
@@ -63,6 +64,32 @@ async def knowledge_agent(
     调用此工具时，请给出清晰的知识库查询描述。
     """
     agent = get_knowledge_agent()
+    writer = get_stream_writer()
+    result = await agent.execute(task=task, stream_writer=writer)
+    return result
+
+
+# ==================== 代码执行专家 ====================
+
+@tool
+async def code_execution_agent(
+    task: Annotated[str, "需要执行的代码任务描述，如'执行这段 Python 代码'"],
+) -> str:
+    """
+    代码执行专家：擅长执行和验证各种编程语言的代码。
+
+    适用场景：
+    - 用户要求执行、运行某段代码
+    - 用户问"这段代码输出什么"
+    - 用户需要验证代码的正确性
+    - 用户需要调试代码，分析执行错误
+    - 用户想测试某个算法或代码片段
+
+    支持语言：Python、JavaScript、Java、C++、Go、Rust 等 60+ 语言
+
+    调用此工具时，请包含要执行的代码内容和编程语言。
+    """
+    agent = get_code_execution_agent()
     writer = get_stream_writer()
     result = await agent.execute(task=task, stream_writer=writer)
     return result

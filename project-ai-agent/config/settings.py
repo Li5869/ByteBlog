@@ -65,6 +65,14 @@ class Settings(BaseSettings):
     # ===== 外部 API =====
     tavily_api_key: str = ""
 
+    # ===== Firecrawl 网页爬取 =====
+    firecrawl_enabled: bool = True
+    firecrawl_api_key: str = ""
+
+    # ===== Judge0 代码执行 =====
+    code_execution_enabled: bool = True
+    code_execution_timeout: int = 10  # 执行超时时间（秒）
+
     # ===== 博客后端 API =====
     backend_api_base: str = "http://localhost:8080/api"
     backend_api_key: str = ""

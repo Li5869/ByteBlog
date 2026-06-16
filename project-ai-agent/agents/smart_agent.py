@@ -153,11 +153,11 @@ class SmartAgent:
 
     async def _thinking_node(self, state: AgentState) -> dict:
         """
-        思考节点：流式调用 LLM，实时发射 thinking/chunk 事件。
+        思考节点：流式调用 LLM，实时发射 thinking 事件。
 
         DeepSeek 思考模式下 reasoning_content 和 content 天然分离：
-        - reasoning_content → thinking 事件（思维链）
-        - content → chunk 事件（最终回答）
+        - reasoning_content → thinking 事件（通过 custom 模式发射）
+        - content → 由 messages 流模式自动处理（无需手动发射）
 
         使用 add_messages reducer，只需返回新消息，LangGraph 自动追加。
         """
@@ -178,10 +178,9 @@ class SmartAgent:
                     reasoning_chunks.append(rc)
                     writer({"type": "thinking", "content": rc})
 
-            # content：最终回答 → 实时发射 chunk 事件
+            # content 由 messages 流模式自动处理，无需手动发射
             if chunk.content:
                 content_chunks.append(chunk.content)
-                writer({"type": "chunk", "content": chunk.content})
 
         tool_calls = full_response.tool_calls if full_response and hasattr(full_response, "tool_calls") else []
         reasoning_content = "".join(reasoning_chunks)
@@ -301,10 +300,9 @@ class SmartAgent:
         """
         流式对话入口
 
-        使用 LangGraph 原生流式能力（custom 流模式）：
-        - thinking 事件：思维链（reasoning_content）
-        - chunk 事件：最终回答（content）
-        - tool_call 事件：工具调用/执行结果
+        使用 LangGraph 原生流式能力（messages + custom 双流模式）：
+        - messages 模式：直接获取 LLM token，延迟更低
+        - custom 模式：获取 thinking / tool_call 等自定义事件
 
         Args:
             message: 用户消息
@@ -339,52 +337,61 @@ class SmartAgent:
             set_current_user_id(user_id)
 
         try:
-            # 使用 LangGraph 原生流式 API，只监听 custom 流模式
+            # 使用 messages + custom 双流模式，messages 直接获取 LLM token
             async for chunk in self.graph.astream(
                 initial_state,
-                stream_mode="custom",
+                stream_mode=["messages", "custom"],
                 version="v2",
                 config=config,
             ):
-                data = chunk["data"]
-                event_type = data.get("type", "")
+                chunk_type = chunk.get("type", "")
 
-                if event_type == "thinking":
-                    accumulated_thinking += data.get("content", "")
-                    yield StreamEvent(
-                        event_type="thinking",
-                        content=data.get("content", "")
-                    )
-                elif event_type == "chunk":
-                    accumulated_response += data.get("content", "")
-                    yield StreamEvent(
-                        event_type="chunk",
-                        content=data.get("content", "")
-                    )
-                elif event_type == "tool_call":
-                    tool_name = data.get("tool_name", "")
-                    tool_args = data.get("tool_args", {})
-                    extra = data.get("extra", {})
-                    accumulated_thinking += f"\n🔧 调用工具: {tool_name}"
-                    yield StreamEvent(
-                        event_type="tool_call",
-                        content=data.get("content", ""),
-                        tool_name=tool_name,
-                        tool_args=tool_args,
-                        extra=extra,
-                    )
-                elif event_type == "sub_agent_tool_call":
-                    # Sub-Agent 工具调用 → 转发到前端 tool_call 块
-                    agent_name = data.get("agent", "sub_agent")
-                    tool_name = data.get("tool_name", "")
-                    tool_args = data.get("tool_args", {})
-                    accumulated_thinking += f"\n🔧 [{agent_name}] 调用工具: {tool_name}"
-                    yield StreamEvent(
-                        event_type="tool_call",
-                        content=data.get("content", ""),
-                        tool_name=f"[{agent_name}] {tool_name}",
-                        tool_args=tool_args,
-                    )
+                # messages 模式：直接获取 LLM token（延迟更低）
+                if chunk_type == "messages":
+                    msg, metadata = chunk["data"]
+                    # 过滤掉工具执行结果，只保留 LLM 的 token
+                    if msg.content and metadata.get("langgraph_node") == "thinking":
+                        accumulated_response += msg.content
+                        yield StreamEvent(
+                            event_type="chunk",
+                            content=msg.content
+                        )
+
+                # custom 模式：thinking / tool_call 等自定义事件
+                elif chunk_type == "custom":
+                    data = chunk["data"]
+                    event_type = data.get("type", "")
+
+                    if event_type == "thinking":
+                        accumulated_thinking += data.get("content", "")
+                        yield StreamEvent(
+                            event_type="thinking",
+                            content=data.get("content", "")
+                        )
+                    elif event_type == "tool_call":
+                        tool_name = data.get("tool_name", "")
+                        tool_args = data.get("tool_args", {})
+                        extra = data.get("extra", {})
+                        accumulated_thinking += f"\n🔧 调用工具: {tool_name}"
+                        yield StreamEvent(
+                            event_type="tool_call",
+                            content=data.get("content", ""),
+                            tool_name=tool_name,
+                            tool_args=tool_args,
+                            extra=extra,
+                        )
+                    elif event_type == "sub_agent_tool_call":
+                        # Sub-Agent 工具调用 → 转发到前端 tool_call 块
+                        agent_name = data.get("agent", "sub_agent")
+                        tool_name = data.get("tool_name", "")
+                        tool_args = data.get("tool_args", {})
+                        accumulated_thinking += f"\n🔧 [{agent_name}] 调用工具: {tool_name}"
+                        yield StreamEvent(
+                            event_type="tool_call",
+                            content=data.get("content", ""),
+                            tool_name=f"[{agent_name}] {tool_name}",
+                            tool_args=tool_args,
+                        )
 
             # 获取最终状态以提取 final_answer
             final_state = await self.graph.aget_state(config)
