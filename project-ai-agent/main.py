@@ -39,9 +39,7 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     setup_logging()
 
-    # ===== LangSmith 可观测性配置 =====
-    # LangSmith 通过环境变量自动追踪 LangChain/LangGraph 调用
-    # 无需手动埋点，自动采集 LLM 调用、工具执行、节点流转等
+    # LangSmith 可观测性配置
     if settings.langchain_tracing_v2:
         import os
         os.environ["LANGCHAIN_TRACING_V2"] = "true"
@@ -143,7 +141,6 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
     settings = get_settings()
-    # 全局 WindowsSelectorEventLoopPolicy 已在文件顶部设置，无需 loop_factory 特殊处理
     uvicorn.run(
         "main:app",
         host=settings.host,

@@ -38,22 +38,6 @@ class EmbeddingService:
         )
         self._initialized = True
 
-    def embed_query(self, text: str) -> List[float]:
-        """将查询文本转换为向量"""
-        return self.embeddings.embed_query(text)
-
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        """将文档列表转换为向量列表"""
-        return self.embeddings.embed_documents(texts)
-
-    async def aembed_query(self, text: str) -> List[float]:
-        """异步：将查询文本转换为向量"""
-        return await self.embeddings.aembed_query(text)
-
-    async def aembed_documents(self, texts: List[str]) -> List[List[float]]:
-        """异步：将文档列表转换为向量列表"""
-        return await self.embeddings.aembed_documents(texts)
-
     def get_embeddings(self) -> OpenAIEmbeddings:
         """获取 Embeddings 实例"""
         return self.embeddings

@@ -53,16 +53,7 @@ def list_available_skills() -> str:
         所有 Skills 的名称和简要描述列表
     """
     loader = get_skill_loader()
-    skills = loader.load()
-    
-    if not skills:
-        return "暂无可用的 Skills"
-    
-    lines = ["**可用的 Skills**：", ""]
-    for i, (name, skill) in enumerate(skills.items(), 1):
-        lines.append(f"{i}. **{name}**：{skill['description']}")
-    
-    return "\n".join(lines)
+    return loader.get_skill_brief()
 
 
 @tool

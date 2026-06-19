@@ -63,6 +63,20 @@ class UserInfoDTO(BaseModel):
 
 # ==================== Skill 相关 ====================
 
+class SkillChunk(BaseModel):
+    """Skill 文档的一个语义切片"""
+
+    chunk_id: str
+    skill_name: str
+    skill_description: str
+    section_title: str
+    section_level: int
+    content: str
+    chunk_index: int
+    total_chunks: int
+    source_path: str
+
+
 class SkillIndexData(BaseModel):
     """Skill 索引重建响应数据（字段名与 Java SkillStatsVO 一致）"""
     totalSkills: int = Field(default=0, description="已索引的 Skill 数量")

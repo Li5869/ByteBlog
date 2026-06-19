@@ -12,7 +12,7 @@ from typing import Optional
 import yaml
 from loguru import logger
 
-from services.skill.models import SkillChunk
+from models.schemas import SkillChunk
 
 
 _HEADING_RE = re.compile(r"^(#{2,3})\s+(.+)$", re.MULTILINE)

@@ -31,7 +31,6 @@ public class CouponMqHandler {
      * 处理优惠券领取消息
      * 成功 → ACK（消息从队列移除）
      * 失败 → NACK + 不重回队列（进入死信队列 coupon_claim_dlq）
-     *
      * 注意：积分扣减已改为直接扣减模式（非 TCC），消费失败无需回滚积分
      */
     @RabbitListener(queues = COUPON_CLAIM_QUEUE, containerFactory = "rabbitListenerContainerFactory", concurrency = "5")
