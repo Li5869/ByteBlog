@@ -10,6 +10,7 @@
 from config.settings import get_settings
 from tools.firecrawl_tool import FIRECRAWL_TOOLS
 from tools.common_tool import get_the_time
+from tools.memory_tool import recall_memory, save_memory
 from tools.user_tool import get_current_user_id, get_current_user_info, set_current_user_id
 from tools.skill_tool import get_skill_details, list_available_skills, search_skill_guide
 from tools.writing_tool import (
@@ -36,6 +37,9 @@ DIRECT_TOOLS = [
     get_skill_details,
     list_available_skills,
     search_skill_guide,
+    # 记忆工具（按需召回/保存用户记忆）
+    recall_memory,
+    save_memory,
 ]
 # ==================== Sub-Agent 工具（@tool 包装的专业 Agent）====================
 

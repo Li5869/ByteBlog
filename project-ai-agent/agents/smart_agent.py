@@ -2,11 +2,16 @@
 智能 Agent（LangGraph ReAct）
 
 工作流：
-  thinking ──→ judge ──→ (有 tool_calls) ──→ tool_executor ──→ thinking (循环)
-      │
-      └──→ (无 tool_calls) ──→ END
+  memory_recall ──→ thinking ──→ judge ──→ (有 tool_calls) ──→ tool_executor ──→ thinking (循环)
+       │                │
+       │                └──→ (无 tool_calls) ──→ END
+       │
+       ▼
+    首轮召回用户记忆，注入上下文
+    后续轮次跳过（消息历史自然延续上下文）
 
 架构说明：
+  - memory_recall 节点：首轮对话时召回用户记忆，注入上下文
   - thinking 节点：负责 LLM 推理，输出 reasoning_content 和 content
   - tool_executor 节点：负责执行工具，发射工具事件
   - judge 路由：根据是否有 tool_calls 决定进入 tool_executor 还是结束
@@ -29,10 +34,12 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.config import get_stream_writer
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
+from langsmith import traceable
 from loguru import logger
 
 from config.prompts import get_prompt_manager
 from config.settings import get_settings
+from services.core.long_term_memory_service import get_long_term_memory_service
 from tools import DIRECT_TOOLS, SUB_AGENT_TOOLS, WRITING_TOOLS
 from tools.user_tool import set_current_user_id
 
@@ -125,18 +132,23 @@ class SmartAgent:
 
     def _build_graph(self):
         """
-        构建 Thinking→Judge→ToolExecutor→Thinking 循环图
+        构建 MemoryRecall→Thinking→Judge→ToolExecutor→Thinking 循环图
 
         流程：
-        1. thinking：LLM 推理，输出 reasoning_content 和 content
-        2. judge：根据 tool_calls 决定路由
-        3. tool_executor：执行工具（如果有）
-        4. 回到 thinking：基于工具结果继续推理
+        1. memory_recall：首轮对话时召回用户记忆，注入上下文
+        2. thinking：LLM 推理，输出 reasoning_content 和 content
+        3. judge：根据 tool_calls 决定路由
+        4. tool_executor：执行工具（如果有）
+        5. 回到 thinking：基于工具结果继续推理
         """
         workflow = StateGraph(AgentState)
+        workflow.add_node("memory_recall", self._memory_recall_node)
         workflow.add_node("thinking", self._thinking_node)
         workflow.add_node("tool_executor", self._tool_executor_node)
-        workflow.set_entry_point("thinking")
+
+        # 入口改为 memory_recall
+        workflow.set_entry_point("memory_recall")
+        workflow.add_edge("memory_recall", "thinking")
 
         # thinking 节点后，根据是否有 tool_calls 决定路由
         workflow.add_conditional_edges("thinking", self._judge, {
@@ -150,6 +162,105 @@ class SmartAgent:
         return workflow.compile(checkpointer=MemorySaver())
 
     # ==================== 节点函数 ====================
+
+    async def _memory_recall_node(self, state: AgentState) -> dict:
+        """
+        记忆召回节点：仅在对话首轮召回用户记忆。
+
+        判断首轮：消息历史中 HumanMessage 数量 <= 1
+        非首轮跳过：消息历史自然延续上下文，无需重复召回
+
+        记忆上下文作为 SystemMessage 注入，供 LLM 参考。
+        """
+        messages = state.get("messages", [])
+        user_id = state.get("user_id")
+
+        # 统计 HumanMessage 数量（排除 SystemMessage）
+        human_messages = [m for m in messages if isinstance(m, HumanMessage)]
+
+        # 非首轮或无用户信息，跳过召回
+        if len(human_messages) > 1 or not user_id:
+            logger.debug(f"[MemoryRecall] 跳过召回: human_messages={len(human_messages)}, user_id={user_id}")
+            return {"messages": []}
+
+        # 获取用户消息内容（用于记忆召回的查询）
+        user_message = human_messages[0].content if human_messages else ""
+
+        try:
+            # 调用 LongTermMemoryService 召回记忆
+            memory_service = get_long_term_memory_service()
+            memories = await memory_service.recall_memories(
+                user_id=user_id,
+                query=user_message,
+                top_k=5
+            )
+
+            # 格式化记忆上下文
+            memory_context = self._format_memory_context(memories)
+
+            if not memory_context:
+                logger.debug("[MemoryRecall] 无记忆上下文，跳过注入")
+                return {"messages": []}
+
+            # 将记忆上下文作为 SystemMessage 注入
+            logger.info(f"[MemoryRecall] 注入记忆上下文: user_id={user_id}")
+            return {"messages": [SystemMessage(content=memory_context)]}
+
+        except Exception as e:
+            logger.error(f"[MemoryRecall] 记忆召回失败: {e}")
+            return {"messages": []}
+
+    def _format_memory_context(self, memories: dict) -> str:
+        """
+        格式化记忆上下文为可读字符串。
+
+        Args:
+            memories: 按类型分组的记忆字典 {"profile": [...], "habits": [...], "episodes": [...]}
+
+        Returns:
+            格式化的记忆上下文字符串，如果无记忆则返回空字符串
+        """
+        profile = memories.get("profile", [])
+        habits = memories.get("habits", [])
+        episodes = memories.get("episodes", [])
+
+        # 如果没有任何记忆，返回空字符串
+        if not profile and not habits and not episodes:
+            return ""
+
+        context_parts = ["[用户记忆]"]
+
+        # 用户画像（语义记忆）
+        if profile:
+            profile_texts = []
+            for mem in profile:
+                memory_content = mem.get("memory", "") if isinstance(mem, dict) else str(mem)
+                if memory_content:
+                    profile_texts.append(memory_content)
+            if profile_texts:
+                context_parts.append(f"用户画像：{'；'.join(profile_texts)}")
+
+        # 交互习惯（程序记忆）
+        if habits:
+            habits_texts = []
+            for mem in habits:
+                memory_content = mem.get("memory", "") if isinstance(mem, dict) else str(mem)
+                if memory_content:
+                    habits_texts.append(memory_content)
+            if habits_texts:
+                context_parts.append(f"交互习惯：{'；'.join(habits_texts)}")
+
+        # 相关经历（情节记忆）
+        if episodes:
+            episodes_texts = []
+            for mem in episodes:
+                memory_content = mem.get("memory", "") if isinstance(mem, dict) else str(mem)
+                if memory_content:
+                    episodes_texts.append(memory_content)
+            if episodes_texts:
+                context_parts.append(f"相关经历：{'；'.join(episodes_texts)}")
+
+        return "\n".join(context_parts)
 
     async def _thinking_node(self, state: AgentState) -> dict:
         """
@@ -294,6 +405,11 @@ class SmartAgent:
 
     # ==================== 流式调用入口 ====================
 
+    @traceable(
+        name="smart_agent_chat",
+        metadata={"agent_type": "smart_agent"},
+        tags=["chat", "react", "multi-agent"]
+    )
     async def astream_chat_with_result(
         self, message: str, user_id: str | None = None, conversation_id: str = ""
     ):
@@ -303,6 +419,11 @@ class SmartAgent:
         使用 LangGraph 原生流式能力（messages + custom 双流模式）：
         - messages 模式：直接获取 LLM token，延迟更低
         - custom 模式：获取 thinking / tool_call 等自定义事件
+
+        LangSmith 自动追踪整个调用链：
+        - LLM 调用（prompt/completion/Token 消耗/延迟）
+        - 工具调用（工具名称/参数/返回结果）
+        - 节点执行（节点名称/状态变更/边路由）
 
         Args:
             message: 用户消息
@@ -331,7 +452,17 @@ class SmartAgent:
             "user_id": user_id,
         }
 
-        config = {"configurable": {"thread_id": conversation_id}}
+        # LangSmith 追踪配置：通过 metadata 关联业务维度
+        config = {
+            "configurable": {
+                "thread_id": conversation_id,
+            },
+            "metadata": {
+                "user_id": user_id or "anonymous",
+                "conversation_id": conversation_id,
+                "agent_type": "smart_agent",
+            }
+        }
 
         if user_id:
             set_current_user_id(user_id)
@@ -350,7 +481,11 @@ class SmartAgent:
                 if chunk_type == "messages":
                     msg, metadata = chunk["data"]
                     # 过滤掉工具执行结果，只保留 LLM 的 token
-                    if msg.content and metadata.get("langgraph_node") == "thinking":
+                    # 同时跳过携带 tool_calls 的 AIMessage 的 content（SystemMessage 无 tool_calls 属性，用 getattr 安全访问）：
+                    #   LLM 调用工具时附带的内容是"过渡话语"，会被 final_answer 完整覆盖，
+                    #   如果在 chunk 中输出，会与 done 事件的 content 重复。
+                    has_tool_calls = getattr(msg, 'tool_calls', None)
+                    if msg.content and not has_tool_calls and metadata.get("langgraph_node") == "thinking":
                         accumulated_response += msg.content
                         yield StreamEvent(
                             event_type="chunk",

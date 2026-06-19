@@ -74,3 +74,16 @@ class SkillStatusData(BaseModel):
     skills: dict[str, int] = Field(default_factory=dict, description="各 Skill 的切片数量映射")
     totalSkills: int = Field(default=0, description="已索引的 Skill 数量")
     totalChunks: int = Field(default=0, description="切片总数")
+
+
+# ==================== 记忆提取相关 ====================
+
+class MemoryExtractItem(BaseModel):
+    """记忆提取请求中的单个对话项"""
+    conversation_id: str = Field(..., description="会话ID")
+    user_id: str = Field(..., description="用户ID")
+
+
+class MemoryExtractRequest(BaseModel):
+    """记忆提取请求（由 Java XXL-Job 调用）"""
+    conversations: List[MemoryExtractItem] = Field(..., description="待提取的对话列表")

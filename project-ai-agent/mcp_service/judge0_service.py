@@ -174,10 +174,13 @@ class Judge0Service:
                 "language": language,
             }
         except httpx.HTTPStatusError as e:
+            # 记录详细的错误信息，便于诊断问题
             logger.error(f"[Judge0] HTTP 错误: {e.response.status_code}")
+            logger.error(f"[Judge0] 响应内容: {e.response.text[:500]}")
+            logger.error(f"[Judge0] 请求参数: language_id={payload.get('language_id')}, code_length={len(payload.get('source_code', ''))}")
             return {
                 "success": False,
-                "error": f"Judge0 API 错误: {e.response.status_code}",
+                "error": f"Judge0 API 错误: {e.response.status_code} - {e.response.text[:200]}",
                 "language": language,
             }
         except Exception as e:

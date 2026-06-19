@@ -37,11 +37,10 @@ class Settings(BaseSettings):
     port: int = 8000
 
     # ===== LLM 配置（统一）=====
-    openai_base_url: str = "https://api.openai.com"
+    openai_base_url: str = "https://api.chatanywhere.tech/v1"
     openai_api_key: str = ""
 
     # 具体模型名称
-    model_name: str = "gpt-4o-mini"
     embedding_model: str = "text-embedding-3-small"
 
     # DeepSeek 专属（写作 Agent 等高创意场景）
@@ -73,6 +72,41 @@ class Settings(BaseSettings):
     code_execution_enabled: bool = True
     code_execution_timeout: int = 10  # 执行超时时间（秒）
 
+    # ===== 长期记忆配置（Mem0）=====
+    memory_enabled: bool = True  # 记忆功能总开关
+    memory_recall_top_k: int = 5  # 记忆召回数量
+    memory_activity_marker_ttl: int = 300  # Redis 活跃标记 TTL（秒），需大于 XXL-Job 扫描间隔
+
+    @property
+    def memory_config(self) -> dict:
+        """Mem0 配置（自托管 pgvector）"""
+        return {
+            "vector_store": {
+                "provider": "pgvector",
+                "config": {
+                    "connection_string": self.database_url,
+                    "collection_name": "user_memories",
+                    "embedding_model_dims": self.vector_dimension,
+                }
+            },
+            "llm": {
+                "provider": "openai",  # DeepSeek 兼容 OpenAI 接口
+                "config": {
+                    "model": self.model_name_deepseek,
+                    "api_key": self.openai_api_key_deepseek,
+                    "openai_base_url": self.openai_base_url_deepseek,
+                }
+            },
+            "embedder": {
+                "provider": "openai",
+                "config": {
+                    "model": self.embedding_model,
+                    "api_key": self.openai_api_key,
+                    "openai_base_url": self.openai_base_url,
+                }
+            }
+        }
+
     # ===== 博客后端 API =====
     backend_api_base: str = "http://localhost:8080/api"
     backend_api_key: str = ""
@@ -88,6 +122,12 @@ class Settings(BaseSettings):
     nacos_service_name: str = "python-ai"
     nacos_username: str = ""
     nacos_password: str = ""
+
+    # ===== LangSmith 可观测性 =====
+    langchain_tracing_v2: bool = False  # 是否开启追踪
+    langchain_api_key: str = ""  # LangSmith API Key
+    langchain_project: str = "byteblog-agent-dev"  # 项目名称
+    langchain_endpoint: str = ""  # 可选：非美国区域需要设置（如 https://api.eu.langchain.com）
 
     # Pydantic v2 配置
     model_config = SettingsConfigDict(

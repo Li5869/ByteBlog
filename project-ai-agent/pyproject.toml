@@ -35,6 +35,8 @@ dependencies = [
     "firecrawl-py>=1.0.0",
     # 网页爬取与解析
     "trafilatura>=1.12.0",
+    # 长期记忆引擎
+    "mem0ai>=2.0.0",
     # HTTP 客户端
     "httpx>=0.28.0",
     # 数据验证与配置

@@ -16,4 +16,13 @@ public class RedisKeys {
      * 数据类型：List/String
      */
     public static final String REDIS_MEMORY_PREFIX = "chat:memory:";
+
+    /**
+     * 对话活跃标记 Key 前缀（长期记忆提取用）
+     * 完整 Key 格式：chat:active:{conversationId}
+     * 存储内容：{"user_id": "...", "last_active": "2026-06-14T10:30:00"}
+     * 数据类型：String (JSON)
+     * TTL: 300s (Python 端设置，大于 XXL-Job 扫描间隔，防止误删)
+     */
+    public static final String REDIS_CHAT_ACTIVE_PREFIX = "chat:active:";
 }

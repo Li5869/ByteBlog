@@ -48,6 +48,14 @@ public final class PythonAiApiConstants {
         private Skill() {}
     }
 
+    /** 用户长期记忆相关API路径 */
+    public static final class Memory {
+        /** 批量提取对话记忆接口（由 Java XXL-Job 调用） */
+        public static final String EXTRACT = "/api/v1/memory/extract";
+
+        private Memory() {}
+    }
+
     /** Python 服务统一响应中的 JSON 字段名 */
     public static final class Fields {
         /** 响应码字段 */

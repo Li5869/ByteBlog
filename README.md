@@ -35,8 +35,10 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 
 | 模块 | 能力 | 实现方式 |
 |------|------|----------|
-| 🤖 **AI 写作 Agent** | Plan-and-Execute 四阶段工作流（规划→执行→反思→定稿），四角色 LLM 差异化 temperature 配置，5 维质量评估自动微调，SSE 实时推送子步骤进度，Redis 任务状态管理支持断点恢复 | LangGraph StateGraph + DeepSeek |
-| 💬 **AI 智能对话** | Supervisor + Sub-Agent 多 Agent 架构（SmartAgent 调度 SearchAgent / KnowledgeAgent / WritingAgent），ReAct 范式循环推理，DeepSeek 思考模式实时输出思维链，Parent-Child RAG 技术（pgvector 检索 Child Chunks → 聚合还原 Parent Documents），Sub-Agent 基于 create_agent 预构建 ReAct 循环，SSE 流式输出，Skill 渐进式披露 + 向量化检索节省 Token + 三级降级策略 | LangGraph ReAct + create_agent + pgvector |
+| 🤖 **AI 写作 Agent** | Plan-and-Execute 四阶段工作流（规划→执行→反思→定稿），四角色 LLM 差异化 temperature 配置，5 维质量评估自动微调，SSE 实时推送子步骤进度，Redis 任务状态管理支持断点恢复 | LangGraph StateGraph |
+| 💬 **AI 智能对话** | Supervisor + Sub-Agent 多 Agent 架构（SmartAgent 调度 SearchAgent / KnowledgeAgent / WritingAgent / CodeExecutionAgent），记忆召回节点（memory_recall_node）首轮自动注入用户记忆，ReAct 范式循环推理，LLM 思考模式实时输出思维链，Parent-Child RAG 技术（pgvector 检索 Child Chunks → 聚合还原 Parent Documents），Sub-Agent 基于 create_agent 预构建 ReAct 循环，SSE 流式输出，Skill 渐进式披露 + 向量化检索节省 Token + 三级降级策略 | LangGraph ReAct + create_agent + pgvector |
+| 🧠 **长期记忆** | Mem0 记忆引擎（自托管 pgvector），CoALA 三类记忆模型（语义/情节/程序），双重召回策略（首轮自动召回 + recall_memory 工具按需召回），双重存储策略（save_memory 工具主动存储 + XXL-Job 后台定时提取），Redis 活跃标记 + Java XXL-Job 跨服务调度，WebClient 异步调用 Python 提取 API，Mem0 自动去重 + 时序推理 | Mem0 + XXL-Job + WebClient |
+| 🖥️ **代码执行** | CodeExecutionAgent（Judge0 CE 沙箱），支持 60+ 编程语言，Supervisor 按需调度，沙箱隔离安全执行 | Judge0 CE + httpx |
 | 📚 **RAG 知识库** | Parent-Child 文档切片策略（Child 450 字符 / Parent 1500 字符），OpenAI Embedding 向量化，pgvector 余弦相似度检索，管理端支持文档上传与管理 | OpenAI Embedding + pgvector |
 | 🎯 **积分系统** | 用户签到、积分记录、排行榜、积分发放（文章发布/点赞/收藏等场景），MQ 异步处理保障最终一致性 | Redis + RabbitMQ |
 | 🎫 **优惠券系统** | 高并发限时限量领券，Redis Lua 脚本原子操作（SISMEMBER 去重 + DECR 扣库存 + SADD 标记），本地消息表保证 MQ 可靠投递，消费端三层防超卖（幂等 + DB WHERE stock>0 + 回补 Redis） | Redis Lua + RabbitMQ + 本地消息表 |
@@ -84,7 +86,7 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 | FastAPI | ≥0.115.0 | Web 框架 + SSE 流式 |
 | LangChain | ≥1.2.0 | LLM 调用链 |
 | LangGraph | ≥0.3.0 | Agent 有向图工作流 |
-| LangChain-OpenAI | ≥1.2.0 | OpenAI / DeepSeek 接入 |
+| LangChain-OpenAI | ≥1.2.0 | LLM 接入（兼容 OpenAI 协议） |
 | LangChain-Postgres | ≥0.0.17 | pgvector 检查点存储 |
 | LangChain-Tavily | ≥0.2.0 | 外部搜索工具 |
 | OpenAI SDK | ≥1.60.0 | 原生客户端 |
@@ -92,7 +94,9 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 | pgvector | ≥0.2.5, <0.4 | 向量数据库 |
 | Redis | ≥5.2.0 | 对话记忆 / 任务状态 |
 | psycopg | ≥3.2.0 | PostgreSQL 驱动 |
-| httpx | ≥0.28.0 | HTTP 异步客户端 |
+| mem0ai | ≥2.0.0 | 用户长期记忆引擎（Mem0 AsyncMemory） |
+| firecrawl-py | ≥1.0.0 | Firecrawl 网页爬取 |
+| httpx | ≥0.28.0 | HTTP 异步客户端（含 Judge0 调用） |
 | uvicorn | ≥0.34.0 | ASGI 服务器 |
 | loguru | ≥0.7.3 | 日志 |
 
@@ -183,23 +187,24 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 ┌──────────────────────────────────────────────────────────────────────┐
 │           Python AI Agent 服务 (:8000)                               │
 │                                                                      │
-│  ┌────────────────────┐  ┌────────────────────────────────┐  │
-│  │  Writing Agent     │  │  Smart Agent (Supervisor)      │  │
-│  │  Plan→Execute→     │  │  ReAct 循环 + 多 Agent 调度     │  │
-│  │  Reflect→Finalize  │  │  ├─ SearchAgent (create_agent) │  │
-│  └────────────────────┘  │  └─ KnowledgeAgent (create_agent)│  │
-│                          └────────────────────────────────┘  │
+│  ┌────────────────────┐  ┌────────────────────────────────────┐     │
+│  │  Writing Agent     │  │  Smart Agent (Supervisor)          │     │
+│  │  Plan→Execute→     │  │  memory_recall → ReAct 循环        │     │
+│  │  Reflect→Finalize  │  │  ├─ SearchAgent (create_agent)     │     │
+│  └────────────────────┘  │  ├─ KnowledgeAgent (create_agent)   │     │
+│                        │  │  └─ CodeExecutionAgent (Judge0)    │     │
+│                          └────────────────────────────────────┘     │
 │                                                                      │
 │  ┌──────────────────────────────────────────────────────────────┐    │
 │  │  共享基础设施层                                               │    │
-│  │  services/ → LLM/Embedding/Memory/Blog/Task                  │    │
-│  │  tools/    → ES搜索/向量检索/作者搜索/分类标签/混合搜索       │    │
+│  │  services/ → LLM/Embedding/Mem0/Blog/Task                     │    │
+│  │  tools/    → ES搜索/向量检索/作者搜索/代码执行/记忆工具       │    │
 │  └──────────────────────────────────────────────────────────────┘    │
 └─────────────────────────────┬────────────────────────────────────────┘
                               │
                      ┌────────┴────────┐
                      ▼                 ▼
-               DeepSeek / OpenAI     Tavily Search
+               LLM / Embedding        Tavily Search
                (LLM 推理 + Embedding) (外部互联网搜索)
 ```
 
@@ -220,6 +225,7 @@ project-backen/  —— Spring Boot 4 + Maven 多模块（16 个子模块）
 │
 ├── blog-api/         # 模块间接口契约层
 │   ├── adminAPI/              TagApi、AdminLogApi（后台管理接口）
+│   ├── AIAPI/                 AICommentApi、MemoryExtractApi、AiArticleDraftApi（AI 接口）
 │   ├── interactionAPI/        LikeApi、FollowApi、BrowseHistoryApi（互动接口）
 │   ├── messageAPI/            ConversationApi（私信接口）
 │   ├── searchAPI/             SearchSyncApi（搜索同步接口）
@@ -308,11 +314,14 @@ project-backen/  —— Spring Boot 4 + Maven 多模块（16 个子模块）
 ├── blog-ai/          # AI 能力集成
 │   ├── PythonAgentChatService（WebClient + Reactor Flux SSE 流式）
 │   ├── PythonWritingService（写作任务全生命周期管理）
+│   ├── AIMemoryService（记忆提取：Redis 扫描 → WebClient 调用 Python → 清理标记）
 │   ├── NacosPromptProperties（@RefreshScope 动态 Prompt）
 │   ├── config/mqConfig/       AiMqConfig（MQ 配置已迁移）
 │   └── mqHandler/             AiTitleMqHandler、AiModerateMqHandler
 │
 ├── blog-job/         # XXL-Job 定时任务
+│   ├── AIMemoryJobHandler      # 记忆提取定时任务（每3分钟扫描过期对话，调用 Python 提取记忆）
+│   └── PointJobHandler         # 排行榜刷新
 │
 └── blog-application/ # 启动模块（聚合所有子模块）
 ```
@@ -332,23 +341,25 @@ project-ai-agent/
 │   ├── chat_router.py     # 智能对话 SSE 流式接口
 │   ├── writing_router.py  # 写作任务全生命周期接口
 │   ├── rag_router.py      # RAG 知识库问答
-│   └── knowledge_router.py# 知识库文档上传/管理
+│   ├── knowledge_router.py# 知识库文档上传/管理
+│   ├── skill_router.py    # Skills 技能查询
+│   └── memory_router.py   # 记忆提取 API（XXL-Job 调用）
 │
 ├── agents/                # LangGraph Agent
-│   ├── smart_agent.py     # Supervisor Agent（ReAct 循环推理，调度 Sub-Agent）
+│   ├── smart_agent.py     # Supervisor Agent（memory_recall + ReAct 循环推理，调度 Sub-Agent）
 │   ├── writing_agent.py   # Plan-and-Execute 写作 Agent
 │   └── sub_agents/        # Sub-Agent 模块
-│       ├── search_agent.py    # 搜索专家（基于 create_agent）
-│       ├── knowledge_agent.py # 知识库专家（基于 create_agent）
-│       └── tools.py           # Sub-Agent @tool 注册
+│       ├── search_agent.py        # 搜索专家（基于 create_agent）
+│       ├── knowledge_agent.py     # 知识库专家（基于 create_agent）
+│       ├── code_execution_agent.py # 代码执行专家（Judge0 CE）
+│       └── tools.py               # Sub-Agent @tool 注册
 │
 ├── skills/                # Skills 渐进式披露
 │   ├── loader.py           # SKILL.md 加载器
 │   ├── smart-chat/         # 智能对话
-│   ├── article-search/     # 文章搜索
-│   ├── author-discovery/   # 博主探索
-│   ├── knowledge-qa/       # 知识库问答
-│   ├── smart-search/       # 综合搜索
+│   ├── search-agent/       # 搜索专家
+│   ├── knowledge-agent/    # 知识库问答
+│   ├── code-execution-agent/ # 代码执行
 │   └── writing-assistant/  # 写作助手
 │
 ├── tools/                 # Agent 工具集
@@ -361,12 +372,14 @@ project-ai-agent/
 │   ├── user_tool.py         # 用户上下文（contextvars 协程安全）
 │   ├── writing_tool.py      # 写作任务工具（启动/查询/执行/发布）
 │   ├── common_tool.py       # 通用工具（时间/用户信息）
+│   ├── memory_tool.py       # 记忆工具（recall_memory / save_memory）
+│   ├── code_execution_tool.py # 代码执行工具（Judge0 CE）
 │   └── web_scraper_tool.py  # 网页爬取工具
 │
 ├── services/              # 三层服务架构
-│   ├── core/                # 基础设施层（LLM/Embedding/Memory/Nacos）
+│   ├── core/                # 基础设施层（LLM/Embedding/Mem0/Nacos）
 │   ├── store/               # 数据存储层（ES/PostgreSQL/pgvector）
-│   └── business/            # 业务逻辑层（写作内容/质量/标签/任务）
+│   └── business/            # 业务逻辑层（对话/记忆提取/写作内容/质量/标签/任务）
 │
 ├── models/                # Pydantic 数据模型
 ├── config/prompts/        # Prompt 模板集中管理（含 Sub-Agent 提示词）
@@ -471,17 +484,19 @@ project-ai-agent/
 
 ### Smart Agent — Supervisor + Sub-Agent 架构
 
-基于 **LangGraph StateGraph** 的 **Supervisor (tool-calling)** 多 Agent 架构。SmartAgent 作为 Supervisor，通过 LLM tool-calling 自主决定调用哪个专业 Sub-Agent 或直接使用工具，Sub-Agent 基于 `create_agent` 预构建 ReAct 循环，无需手写图。
+基于 **LangGraph StateGraph** 的 **Supervisor (tool-calling)** 多 Agent 架构。SmartAgent 作为 Supervisor，通过 LLM tool-calling 自主决定调用哪个专业 Sub-Agent 或直接使用工具，Sub-Agent 基于 `create_agent` 预构建 ReAct 循环，无需手写图。入口为 `memory_recall_node`，首轮对话自动注入用户长期记忆（Mem0），后续轮次跳过召回进入 ReAct 推理循环。
 
 **架构总览：**
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  SmartAgent（Supervisor）— ReAct 循环推理                           │
+│  SmartAgent（Supervisor）— memory_recall + ReAct 循环推理             │
 │                                                                     │
-│  thinking ──→ judge ──→ tool_executor ──→ thinking (循环)           │
-│      │                                                              │
-│      └──→ (无 tool_calls) ──→ END                                   │
+│  memory_recall ──→ thinking ──→ judge ──→ tool_executor ──→ thinking│
+│       │                   │                                         │
+│       │                   └──→ (无 tool_calls) ──→ END              │
+│       ▼                                                             │
+│    首轮召回用户记忆，注入上下文                                       │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐    │
 │  │  DIRECT_TOOLS（Supervisor 直接调用）                         │    │
@@ -503,6 +518,20 @@ project-ai-agent/
 │  │  │ · 外部博客搜索    │    │                  │              │    │
 │  │  │ · 网页爬取        │    │                  │              │    │
 │  │  └──────────────────┘    └──────────────────┘              │    │
+│  │                                                             │    │
+│  │  ┌──────────────────┐                                      │    │
+│  │  │ code_execution   │                                      │    │
+│  │  │ 代码执行专家      │                                      │    │
+│  │  │ (Judge0 CE)      │                                      │    │
+│  │  │                  │                                      │    │
+│  │  │ · 60+ 语言执行    │                                      │    │
+│  │  │ · 沙箱隔离        │                                      │    │
+│  │  └──────────────────┘                                      │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │  MEMORY_TOOLS（用户长期记忆工具）                             │    │
+│  │  recall_memory / save_memory                                │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐    │
@@ -515,7 +544,8 @@ project-ai-agent/
 
 **Supervisor 核心机制：**
 
-- **DeepSeek 官方思考模式**：`reasoning_content`（思维链）→ `thinking` 事件，`content`（最终回答）→ `chunk` 事件，天然分离无需额外解析
+- **记忆召回节点**：`memory_recall_node` 作为图入口，首轮对话自动从 Mem0 召回用户记忆（语义/情节/程序三类），通过 SystemMessage 注入上下文；`recall_memory` / `save_memory` 工具支持 LLM 按需召回和主动存储
+- **LLM 思考模式**：`reasoning_content`（思维链）→ `thinking` 事件，`content`（最终回答）→ `chunk` 事件，天然分离无需额外解析
 - **LangGraph 原生 custom 流模式**：thinking 节点通过 `get_stream_writer()` 实时发射 thinking / chunk / tool_call 事件，零缓存回放
 - **Sub-Agent 事件转发**：Sub-Agent 的工具调用事件通过 `stream_writer` 转发到 Supervisor，显示在前端思考块中
 - **add_messages reducer**：节点只需返回新消息，LangGraph 自动追加到消息历史
@@ -527,8 +557,8 @@ project-ai-agent/
 | 特性 | 实现方式 |
 |------|---------|
 | **预构建 ReAct 循环** | `langchain.agents.create_agent` 一行创建，无需手写 StateGraph |
-| **独立工具集** | SearchAgent 拥有搜索相关工具，KnowledgeAgent 拥有 RAG 检索工具 |
-| **非思考模式** | DeepSeek Chat（thinking: disabled），快速响应无需思维链分层 |
+| **独立工具集** | SearchAgent 拥有搜索相关工具，KnowledgeAgent 拥有 RAG 检索工具，CodeExecutionAgent 拥有代码执行工具 |
+| **非思考模式** | LLM 快速响应模式（thinking: disabled），快速响应无需思维链分层 |
 | **流式事件转发** | `stream_mode=["updates", "custom"]` + `version="v2"` 提取工具调用事件 |
 | **单例模式** | `get_search_agent()` / `get_knowledge_agent()` 全局单例 |
 
@@ -544,6 +574,9 @@ project-ai-agent/
 | | `search_skill_guide` | 语义搜索 Skill 指南片段 | pgvector |
 | **SUB_AGENT_TOOLS** | `search_agent` | 搜索专家（文章/博主/分类/外部搜索/爬取） | SearchAgent |
 | | `knowledge_agent` | 知识库专家（RAG 语义检索） | KnowledgeAgent |
+| | `code_execution_agent` | 代码执行专家（60+ 语言，Judge0 沙箱） | CodeExecutionAgent |
+| **MEMORY_TOOLS** | `recall_memory` | 按需召回用户历史记忆（语义/情节/程序） | Mem0 LongTermMemoryService |
+| | `save_memory` | 主动保存重要信息到用户记忆 | Mem0 LongTermMemoryService |
 | **WRITING_TOOLS** | `writing_start` | 启动写作任务，异步生成计划 | WritingAgent |
 | | `writing_status` | 查询写作任务状态及计划内容 | WritingAgent |
 | | `writing_action` | 执行写作动作（确认/修订/取消） | WritingAgent |
@@ -915,8 +948,9 @@ ByteBlog/
 
 | 路由前缀 | 功能 |
 |---------|------|
-| `/api/v1/chat` | 智能对话（SSE 流式 + 工具调用 + 深度思考） |
+| `/api/v1/chat` | 智能对话（SSE 流式 + 工具调用 + 深度思考 + 记忆召回） |
 | `/api/v1/writing` | AI 写作（4 阶段工作流 + SSE 流式进度） |
 | `/api/v1/rag` | RAG 知识库问答 |
 | `/api/v1/knowledge` | 知识库文档上传/管理 |
 | `/api/v1/skill` | Skills 技能查询（渐进式披露） |
+| `/api/v1/memory` | 记忆提取 API（XXL-Job 跨服务调用，批量提取对话记忆） |
