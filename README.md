@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/Spring%20AI-2.0.0--M4-6DB33F?style=flat-square&logo=spring&logoColor=white" alt="Spring AI">
   <img src="https://img.shields.io/badge/Vue_3-3.5.13-4FC08D?style=flat-square&logo=vuedotjs&logoColor=white" alt="Vue 3">
   <img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/LangGraph-0.3+-1C3C3C?style=flat-square&logo=langchain&logoColor=white" alt="LangGraph">
+  <img src="https://img.shields.io/badge/LangGraph-1.1+-1C3C3C?style=flat-square&logo=langchain&logoColor=white" alt="LangGraph">
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/PostgreSQL-18-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL">
@@ -25,7 +25,7 @@
 
 ## 项目简介
 
-ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆盖 **文章发布、积分系统、AI 智能写作与对话、全文检索、实时互动** 等核心场景。项目采用 **模块化单体架构**，后端 16 个 Maven 模块严格分层，通过 `blog-api` 契约接口层解决跨模块循环依赖；AI 侧采用 **Spring AI + Python Agent 双引擎架构**，Spring AI 处理简单同步任务（摘要、审核），Python LangChain/LangGraph 处理复杂异步工作流（对话、写作、RAG）。
+ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆盖 **文章发布、积分系统、AI 智能写作与对话、全文检索、实时互动** 等核心场景。项目采用 **模块化单体架构**，后端 17 个 Maven 模块严格分层，通过 `blog-api` 契约接口层解决跨模块循环依赖；AI 侧采用 **Spring AI + Python Agent 双引擎架构**，Spring AI 处理轻量同步任务（对话标题生成、文章标题润色、摘要提取、内容审核），Python LangChain/LangGraph 处理复杂异步工作流（对话、写作、RAG）。
 
 技术选型对标工业级应用：JDK 21 虚拟线程压榨并发性能、Caffeine + Redis + DB 三级缓存对抗热点、Elasticsearch 毫秒级全文搜索、RabbitMQ 异步解耦削峰、WebSocket + SSE 双通道实时推送、LangGraph 智能 Agent 驱动 AI 写作与对话、Nacos 服务发现与配置中心实现动态配置管理。
 
@@ -37,9 +37,9 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 |------|------|----------|
 | 🤖 **AI 写作 Agent** | Plan-and-Execute 四阶段工作流（规划→执行→反思→定稿），四角色 LLM 差异化 temperature 配置，5 维质量评估自动微调，SSE 实时推送子步骤进度，Redis 任务状态管理支持断点恢复 | LangGraph StateGraph |
 | 💬 **AI 智能对话** | Supervisor + Sub-Agent 多 Agent 架构（SmartAgent 调度 SearchAgent / KnowledgeAgent / WritingAgent / CodeExecutionAgent），记忆召回节点（memory_recall_node）首轮自动注入用户记忆，ReAct 范式循环推理，LLM 思考模式实时输出思维链，Parent-Child RAG 技术（pgvector 检索 Child Chunks → 聚合还原 Parent Documents），Sub-Agent 基于 create_agent 预构建 ReAct 循环，SSE 流式输出，Skill 渐进式披露 + 向量化检索节省 Token + 三级降级策略 | LangGraph ReAct + create_agent + pgvector |
-| 🧠 **长期记忆** | Mem0 记忆引擎（自托管 pgvector），CoALA 三类记忆模型（语义/情节/程序），双重召回策略（首轮自动召回 + recall_memory 工具按需召回），双重存储策略（save_memory 工具主动存储 + XXL-Job 后台定时提取），Redis 活跃标记 + Java XXL-Job 跨服务调度，WebClient 异步调用 Python 提取 API，Mem0 自动去重 + 时序推理 | Mem0 + XXL-Job + WebClient |
+| 🧠 **三层记忆系统** | 短期记忆——LangGraph MemorySaver 检查点持久化完整消息历史；中期记忆——LangMem summarize_messages 增量压缩（200K token 阈值触发，RunningSummary 避免重复压缩，独立 DeepSeek v4 flash 模型），超长对话自动摘要注入上下文；长期记忆——Mem0 记忆引擎（自托管 pgvector），CoALA 三类记忆模型（语义/情节/程序），双重召回策略（首轮自动召回 + recall_memory 工具按需召回），双重存储策略（save_memory 工具主动存储 + XXL-Job 后台定时提取），Redis 活跃标记 + Java XXL-Job 跨服务调度，Mem0 自动去重 + 时序推理 | LangGraph Checkpointer + LangMem + Mem0 + XXL-Job |
 | 🖥️ **代码执行** | CodeExecutionAgent（Judge0 CE 沙箱），支持 60+ 编程语言，Supervisor 按需调度，沙箱隔离安全执行 | Judge0 CE + httpx |
-| 📚 **RAG 知识库** | Parent-Child 文档切片策略（Child 450 字符 / Parent 1500 字符），OpenAI Embedding 向量化，pgvector 余弦相似度检索，管理端支持文档上传与管理 | OpenAI Embedding + pgvector |
+| 📚 **RAG 知识库** | Parent-Child 文档切片策略（Child 450 字符 / Parent 1500 字符），OpenAI Embedding 向量化，pgvector 余弦相似度检索，category 分类隔离（project/interview/general 元数据过滤），管理端支持文档上传与管理 | OpenAI Embedding + pgvector |
 | 🎯 **积分系统** | 用户签到、积分记录、排行榜、积分发放（文章发布/点赞/收藏等场景），MQ 异步处理保障最终一致性 | Redis + RabbitMQ |
 | 🎫 **优惠券系统** | 高并发限时限量领券，Redis Lua 脚本原子操作（SISMEMBER 去重 + DECR 扣库存 + SADD 标记），本地消息表保证 MQ 可靠投递，消费端三层防超卖（幂等 + DB WHERE stock>0 + 回补 Redis） | Redis Lua + RabbitMQ + 本地消息表 |
 | 👑 **VIP 会员** | TCC 分布式事务（Try 冻结 → Confirm 提交 → Cancel 回滚），积分冻结与券核销跨模块协调，分支状态机解决空回滚与悬挂，Confirm 部分失败逆序补偿，Redisson 分布式锁 + RabbitMQ 延迟队列超时自动取消 | TCC + Redisson + RabbitMQ |
@@ -62,7 +62,7 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 |------|------|------|
 | JDK | 21 | 运行时 + 虚拟线程 |
 | Spring Boot | 4.0.4 | 主框架 |
-| Spring AI | 2.0.0-M4 | 内容审核 / 摘要生成 / 文章润色 |
+| Spring AI | 2.0.0-M4 | 对话标题生成 / 文章标题润色 / 摘要提取 / 内容审核 |
 | Spring Cloud Alibaba | 2025.1.0.0 | 微服务生态 |
 | Nacos | 2.x | 服务发现 + 配置中心 |
 | Spring Data Redis / RabbitMQ / Elasticsearch | 内置 | 数据访问 |
@@ -85,7 +85,7 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 | Python | ≥3.12 | 运行时 |
 | FastAPI | ≥0.115.0 | Web 框架 + SSE 流式 |
 | LangChain | ≥1.2.0 | LLM 调用链 |
-| LangGraph | ≥0.3.0 | Agent 有向图工作流 |
+| LangGraph | ≥1.1.0 | Agent 有向图工作流 |
 | LangChain-OpenAI | ≥1.2.0 | LLM 接入（兼容 OpenAI 协议） |
 | LangChain-Postgres | ≥0.0.17 | pgvector 检查点存储 |
 | LangChain-Tavily | ≥0.2.0 | 外部搜索工具 |
@@ -95,6 +95,8 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 | Redis | ≥5.2.0 | 对话记忆 / 任务状态 |
 | psycopg | ≥3.2.0 | PostgreSQL 驱动 |
 | mem0ai | ≥2.0.0 | 用户长期记忆引擎（Mem0 AsyncMemory） |
+| langmem | ≥0.0.30 | 中期记忆（对话压缩 summarize_messages） |
+| langchain-deepseek | ≥1.0.1 | DeepSeek LLM 接入 |
 | firecrawl-py | ≥1.0.0 | Firecrawl 网页爬取 |
 | httpx | ≥0.28.0 | HTTP 异步客户端（含 Judge0 调用） |
 | uvicorn | ≥0.34.0 | ASGI 服务器 |
@@ -122,7 +124,7 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 
 | 截图 | 内容 | 展示亮点 |
 |------|------|----------|
-| ![主页展示](D:\code\Java\agent-project\ByteBlog\docs\gif\主页展示.gif) | 首页文章列表 + 分类导航 + 热门标签 | 整体 UI 风格、响应式布局、Tailwind 设计 |
+| ![主页展示](docs/演示素材/主页展示.gif) | 首页文章列表 + 分类导航 + 热门标签 | 整体 UI 风格、响应式布局、Tailwind 设计 |
 | ![文章详情](docs/演示素材/文章详情.gif) | 文章详情页（Markdown 渲染 + 评论区 + 点赞/收藏按钮） | 文章阅读体验、评论交互、社交互动 |
 | ![AI 助手全流程写作](docs/演示素材/AI助手调用写作agent完成全流程写作功能.gif) | SmartAgent调用写作Agent全流程（用户输入需求 → SmartAgent理解意图 → 调用写作Agent → 生成计划 → 人工确认 → 开始写作 → 协作发布） | 多Agent协作、Plan-and-Execute 工作流、SSE 流式输出 |
 | ![AI 润色和发布](docs/演示素材/ai润色和发布文章.gif) | 用户创作+AI润色（自己撰写内容，使用AI进行润色、生成标题和摘要） | Spring AI 集成、SSE 流式输出、人工创作与AI辅助结合 |
@@ -142,7 +144,7 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 │                           用户浏览器                                  │
 │  ┌──────────────────────────────┐  ┌──────────────────────────┐     │
 │  │  用户端前端 (Vue3 + NaiveUI)  │  │  管理端前端 (Vue3+ElPlus)│     │
-│  │  :5173                       │  │  :5174                   │     │
+│  │  :3000                       │  │  :5174                   │     │
 │  └────────────┬─────────────────┘  └────────────┬─────────────┘     │
 └───────────────┼──────────────────────────────────┼────────────────────┘
                 │ HTTP / WebSocket / SSE           │
@@ -197,8 +199,8 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 │                                                                      │
 │  ┌──────────────────────────────────────────────────────────────┐    │
 │  │  共享基础设施层                                               │    │
-│  │  services/ → LLM/Embedding/Mem0/Blog/Task                     │    │
-│  │  tools/    → ES搜索/向量检索/作者搜索/代码执行/记忆工具       │    │
+│  │  services/ → LLM/Embedding/Mem0/Redis记忆/Blog/Task/Skill     │    │
+│  │  tools/    → ES搜索/向量检索/作者搜索/代码执行/记忆/搜索管理  │    │
 │  └──────────────────────────────────────────────────────────────┘    │
 └─────────────────────────────┬────────────────────────────────────────┘
                               │
@@ -213,7 +215,7 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 ## 后端模块全景
 
 ```
-project-backen/  —— Spring Boot 4 + Maven 多模块（16 个子模块）
+project-backen/  —— Spring Boot 4 + Maven 多模块（17 个子模块）
 │
 ├── blog-common/      # 公共基础设施
 │   ├── constant/              常量定义（DlqConstants、MqRoutingConstants）
@@ -278,7 +280,7 @@ project-backen/  —— Spring Boot 4 + Maven 多模块（16 个子模块）
 │   ├── LikeStrategy 策略模式（文章/评论统一点赞行为）
 │   ├── 关注/收藏/浏览历史（通知、私信已拆分到独立模块）
 │   ├── config/mqConfig/       InteractionMqConfig（MQ 配置已迁移）
-│   └── mqHandler/             BrowseHistoryMqHandler、CollectionMqHandler
+│   └── mqHandler/             BrowseHistoryMqHandler、CollectionMqHandler、FollowMqHandler、LikeMqHandler、UserLikeMqHandler
 │
 ├── blog-coupon/      # 优惠券模块
 │   ├── entity/                CouponTemplate、UserCoupon
@@ -312,16 +314,25 @@ project-backen/  —— Spring Boot 4 + Maven 多模块（16 个子模块）
 │   └── MQ 增量同步
 │
 ├── blog-ai/          # AI 能力集成
-│   ├── PythonAgentChatService（WebClient + Reactor Flux SSE 流式）
-│   ├── PythonWritingService（写作任务全生命周期管理）
-│   ├── AIMemoryService（记忆提取：Redis 扫描 → WebClient 调用 Python → 清理标记）
-│   ├── NacosPromptProperties（@RefreshScope 动态 Prompt）
-│   ├── config/mqConfig/       AiMqConfig（MQ 配置已迁移）
-│   └── mqHandler/             AiTitleMqHandler、AiModerateMqHandler
+│   ├── BizService/          PythonAiChatService（WebClient + Reactor Flux SSE 流式对话）
+│   │                        ArticlePolishService / ArticleTitleService / ArticleSummaryService（Spring AI 轻量任务）
+│   │                        ContentModerationService（Spring AI 内容审核）
+│   │                        AIMemoryService（记忆提取：Redis 扫描 → WebClient 调用 Python → 清理标记）
+│   │                        KnowledgeService（知识库管理）/ SkillService（Skills 管理）
+│   ├── controller/          对话、写作任务、知识库、Skills、内容审核等 Controller
+│   ├── config/              SpringAiConfig（Spring AI 配置）、NacosPromptProperties（@RefreshScope 动态 Prompt）
+│   │                        WebClientConfig（WebClient 配置）、PromptManger（Prompt 管理）
+│   ├── config/mqConfig/     AiMqConfig（MQ 配置）
+│   └── mqHandler/           AiTitleMqHandler（标题生成）、AiModerateMqHandler（内容审核）
 │
 ├── blog-job/         # XXL-Job 定时任务
-│   ├── AIMemoryJobHandler      # 记忆提取定时任务（每3分钟扫描过期对话，调用 Python 提取记忆）
-│   └── PointJobHandler         # 排行榜刷新
+│   ├── AIMemoryJobHandler       # 记忆提取（每3分钟扫描过期对话，调用 Python 提取记忆）
+│   ├── ArticleJobHandler        # 文章统计同步
+│   ├── ColumnJobHandler         # 专栏数据同步
+│   ├── InteractionJobHandler    # 社交互动数据同步（点赞数、浏览历史）
+│   ├── LocalMessageJobHandler   # 本地消息表补偿重试 + 过期清理
+│   ├── PointJobHandler          # 积分排行榜刷新
+│   └── TccCompensateJobHandler  # TCC 超时事务补偿
 │
 └── blog-application/ # 启动模块（聚合所有子模块）
 ```
@@ -340,7 +351,6 @@ project-ai-agent/
 ├── api/                   # 路由层
 │   ├── chat_router.py     # 智能对话 SSE 流式接口
 │   ├── writing_router.py  # 写作任务全生命周期接口
-│   ├── rag_router.py      # RAG 知识库问答
 │   ├── knowledge_router.py# 知识库文档上传/管理
 │   ├── skill_router.py    # Skills 技能查询
 │   └── memory_router.py   # 记忆提取 API（XXL-Job 调用）
@@ -365,23 +375,28 @@ project-ai-agent/
 ├── tools/                 # Agent 工具集
 │   ├── __init__.py          # 工具注册表（DIRECT_TOOLS / SUB_AGENT_TOOLS / WRITING_TOOLS）
 │   ├── article_tool.py      # ES 文章搜索 + Java API 文章内容获取
-│   ├── vector_tool.py       # pgvector 知识库（Parent-Child RAG）
+│   ├── vector_tool.py       # pgvector 知识库（Parent-Child RAG + category 过滤）
 │   ├── author_tool.py       # 作者搜索
 │   ├── blog_tool.py         # 分类/标签
-│   ├── skill_tool.py        # Skill 详情披露工具
+│   ├── skill_tool.py        # Skill 详情披露 + 向量化检索工具
 │   ├── user_tool.py         # 用户上下文（contextvars 协程安全）
 │   ├── writing_tool.py      # 写作任务工具（启动/查询/执行/发布）
 │   ├── common_tool.py       # 通用工具（时间/用户信息）
 │   ├── memory_tool.py       # 记忆工具（recall_memory / save_memory）
 │   ├── code_execution_tool.py # 代码执行工具（Judge0 CE）
-│   └── web_scraper_tool.py  # 网页爬取工具
+│   ├── smart_search_tool.py # 智能搜索管理器（内部+外部搜索协调）
+│   ├── web_scraper_tool.py  # 网页爬取工具（trafilatura）
+│   └── firecrawl_tool.py    # Firecrawl 网页爬取与搜索
 │
-├── services/              # 三层服务架构
-│   ├── core/                # 基础设施层（LLM/Embedding/Mem0/Nacos）
-│   ├── store/               # 数据存储层（ES/PostgreSQL/pgvector）
-│   └── business/            # 业务逻辑层（对话/记忆提取/写作内容/质量/标签/任务）
+├── services/              # 四层服务架构
+│   ├── core/                # 基础设施层（LLM/Embedding/Mem0/Nacos/Redis 对话记忆）
+│   ├── store/               # 数据存储层（ES/PostgreSQL/pgvector/Parent 文档存储）
+│   ├── skill/               # Skill 服务层（SKILL.md 加载器 / 文档分块器）
+│   └── business/            # 业务逻辑层（对话/记忆提取/写作内容/质量/标签/任务/Web 爬取）
 │
 ├── models/                # Pydantic 数据模型
+├── mcp_service/           # 外部 MCP 服务封装（Firecrawl / Judge0）
+├── common/                # 公共常量与基础设施（ES 基类、常量定义）
 ├── config/prompts/        # Prompt 模板集中管理（含 Sub-Agent 提示词）
 └── vectorstore/           # pgvector 向量存储封装
 ```
@@ -484,7 +499,7 @@ project-ai-agent/
 
 ### Smart Agent — Supervisor + Sub-Agent 架构
 
-基于 **LangGraph StateGraph** 的 **Supervisor (tool-calling)** 多 Agent 架构。SmartAgent 作为 Supervisor，通过 LLM tool-calling 自主决定调用哪个专业 Sub-Agent 或直接使用工具，Sub-Agent 基于 `create_agent` 预构建 ReAct 循环，无需手写图。入口为 `memory_recall_node`，首轮对话自动注入用户长期记忆（Mem0），后续轮次跳过召回进入 ReAct 推理循环。
+基于 **LangGraph StateGraph** 的 **Supervisor (tool-calling)** 多 Agent 架构。SmartAgent 作为 Supervisor，通过 LLM tool-calling 自主决定调用哪个专业 Sub-Agent 或直接使用工具，Sub-Agent 基于 `create_agent` 预构建 ReAct 循环，无需手写图。入口为 `memory_recall_node`，首轮对话自动注入用户长期记忆（Mem0），后续轮次跳过召回进入 ReAct 推理循环。内置三层记忆系统：短期（LangGraph Checkpointer）、中期（LangMem 增量压缩）、长期（Mem0）。
 
 **架构总览：**
 
@@ -544,7 +559,7 @@ project-ai-agent/
 
 **Supervisor 核心机制：**
 
-- **记忆召回节点**：`memory_recall_node` 作为图入口，首轮对话自动从 Mem0 召回用户记忆（语义/情节/程序三类），通过 SystemMessage 注入上下文；`recall_memory` / `save_memory` 工具支持 LLM 按需召回和主动存储
+- **记忆召回节点**：`memory_recall_node` 作为图入口，首轮对话自动从 Mem0 召回用户记忆（语义/情节/程序三类），通过 SystemMessage 注入上下文；内置三层记忆：短期（LangGraph Checkpointer 完整消息）、中期（LangMem 增量压缩超长对话）、长期（Mem0 语义/情节/程序记忆）；`recall_memory` / `save_memory` 工具支持 LLM 按需召回和主动存储
 - **LLM 思考模式**：`reasoning_content`（思维链）→ `thinking` 事件，`content`（最终回答）→ `chunk` 事件，天然分离无需额外解析
 - **LangGraph 原生 custom 流模式**：thinking 节点通过 `get_stream_writer()` 实时发射 thinking / chunk / tool_call 事件，零缓存回放
 - **Sub-Agent 事件转发**：Sub-Agent 的工具调用事件通过 `stream_writer` 转发到 Supervisor，显示在前端思考块中
@@ -600,7 +615,7 @@ project-ai-agent/
 
 | 工具 | 功能 | 来源 |
 |------|------|------|
-| `search_knowledge_base` | Parent-Child RAG 语义检索（支持 category 过滤） | pgvector |
+| `search_knowledge_base` | Parent-Child RAG 语义检索（支持 category 元数据过滤：project/interview/general） | pgvector |
 
 ![SmartAgent 智能对话与知识库问答](docs/演示素材/RAG知识库相关问答.gif)
 > *SmartAgent 智能对话能力展示，包括 RAG 知识库问答、文章搜索、工具调用等核心功能*
@@ -631,7 +646,8 @@ project-ai-agent/
         │
         ▼
 ┌──────────────────────────────────────┐
-│  用户提问 → 语义检索 Top-K Child     │
+│  用户提问 → category 意图识别          │
+│         → 语义检索 Top-K Child（按 category 过滤）│
 │         → 提取 doc_id（去重）        │
 │         → 批量获取完整 Parent Doc    │
 │         → LLM 综合回答              │
@@ -640,6 +656,14 @@ project-ai-agent/
 
 ![RAG 知识库问答界面](docs/演示素材/RAG知识库相关问答.gif)
 > *左侧知识库文档列表 + 右侧问答交互，展示上传文档后基于文档内容提问的效果*
+
+**知识库三层隔离架构：**
+
+| 隔离层 | 机制 | 目的 |
+|--------|------|------|
+| **Category 逻辑隔离** | 文档上传时指定 category（project/interview/general），检索时通过元数据过滤 | 不同场景知识互不干扰 |
+| **pgvector 物理分表** | blog_knowledge（知识库文档）、skill_chunks（Skill 文档）、user_memories（Mem0 用户记忆） | 数据类型隔离，独立维护 |
+| **Mem0 用户级隔离** | 以 user_id 为隔离键，每个用户的长期记忆独立存储与检索 | 多用户记忆安全 |
 
 ---
 
@@ -805,7 +829,7 @@ npm run dev
 |------|------|
 | Spring Boot 后端 | 8080 |
 | Python AI Agent | 8000 |
-| 前端用户端 | 5173 |
+| 前端用户端 | 3000 |
 | 前端管理端 | 5174 |
 | PostgreSQL | 5432 |
 | Redis | 6379 |
@@ -906,17 +930,18 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
 
 ```
 ByteBlog/
-├── project-backen/           # Spring Boot 后端（16 个 Maven 子模块）
+├── project-backen/           # Spring Boot 后端（17 个 Maven 子模块）
 ├── project-front/            # 前端用户端（Vue 3 + NaiveUI + Tailwind）
 ├── project-front-admin/      # 前端管理端（Vue 3 + Element Plus）
 ├── project-ai-agent/         # Python AI Agent（FastAPI + LangGraph）
 ├── sql/                      # 数据库 DDL 脚本
 ├── docker/                   # Docker 配置（Prometheus + Grafana 监控栈）
 ├── docs/                     # 项目文档
-│   ├── v1.0-release-notes.md # v1.0 发布说明与收尾文档
-│   ├── knowledge-base.md     # 项目知识库
-│   ├── gif/                  # 功能演示 GIF
-│   └── ...                   # 其他设计文档、方案文档
+│   ├── 演示素材/             # 功能演示 GIF
+│   ├── 模块文档/             # 模块设计文档
+│   ├── API文档/              # 接口文档
+│   ├── 代码评审/             # 代码评审报告
+│   └── 项目概览/             # 项目知识库
 ├── .gitignore                # Git 忽略规则
 ├── CLAUDE.md                 # AI 辅助开发规则
 └── README.md                 # 本文件
@@ -950,7 +975,6 @@ ByteBlog/
 |---------|------|
 | `/api/v1/chat` | 智能对话（SSE 流式 + 工具调用 + 深度思考 + 记忆召回） |
 | `/api/v1/writing` | AI 写作（4 阶段工作流 + SSE 流式进度） |
-| `/api/v1/rag` | RAG 知识库问答 |
-| `/api/v1/knowledge` | 知识库文档上传/管理 |
-| `/api/v1/skill` | Skills 技能查询（渐进式披露） |
+| `/api/v1/knowledge` | 知识库文档上传/管理（支持 category 分类） |
+| `/api/v1/skill` | Skills 技能查询（渐进式披露 + 向量化检索） |
 | `/api/v1/memory` | 记忆提取 API（XXL-Job 跨服务调用，批量提取对话记忆） |
