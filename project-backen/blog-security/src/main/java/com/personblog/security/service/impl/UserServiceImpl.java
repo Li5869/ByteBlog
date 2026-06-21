@@ -20,7 +20,6 @@ import com.personblog.security.service.IUserService;
 import com.personblog.security.vo.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,7 +40,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     private final FollowApi followService;
     private final UserMapper userMapper;
-    private final RedisTemplate<String, Object> redisTemplate;
     private final MultiLevelCacheUtil cacheUtil;
 
     @Override

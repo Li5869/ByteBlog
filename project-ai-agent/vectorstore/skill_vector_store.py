@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from services.skill.loader import SkillLoader
 
 from config.settings import get_settings
-from services.skill.models import SkillChunk
+from models.schemas import SkillChunk
 
 
 class SkillVectorStore:

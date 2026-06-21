@@ -2,7 +2,7 @@ package com.personblog.point.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.personblog.common.result.JsonData;
-import com.personblog.point.BizService.PointBizService;
+import com.personblog.point.bizService.PointBizService;
 import com.personblog.point.dto.PointLogQueryDTO;
 import com.personblog.point.vo.PointBalanceVO;
 import com.personblog.point.vo.PointLogVO;

@@ -3,6 +3,7 @@ package com.personblog.interaction.mqHandler;
 import com.personblog.api.articleAPI.ArticleMqAPI;
 import com.personblog.api.interactionAPI.CommentApi;
 import com.personblog.api.interactionAPI.NotificationApi;
+import com.personblog.api.pointAPI.PointMqApi;
 import com.personblog.api.usrAPI.UseApi;
 import com.personblog.common.dto.MqMessage.Interaction.LikeMessage;
 import com.personblog.common.dto.MqMessage.Interaction.LikeSaveDBMessage;
@@ -50,6 +51,7 @@ public class LikeMqHandler {
     private final RedissonClient redissonClient;
     private final NotificationApi notificationApi;
     private final UseApi useApi;
+    private final PointMqApi pointMqApi;
 
     private final Map<String, LikeStrategy> likeStrategyMap = new HashMap<>();
 
@@ -94,14 +96,23 @@ public class LikeMqHandler {
             log.info("开始存库点赞记录");
             likeService.save2DB(dto);
             channel.basicAck(deliveryTag, false);
-
-            // 存库成功后，异步发点赞通知
-            if (dto.getIsLike() && !dto.getAuthorId().equals(dto.getUserId())) {
-                sendLikeNotification(dto);
-            }
         } catch (Exception e) {
             log.error("点赞存储失败: {}", e.getMessage(), e);
             channel.basicNack(deliveryTag, false, false);
+            return;
+        }
+        // 存库成功后，异步操作独立处理，失败不影响已 ACK 的消息
+        if (dto.getIsLike()) {
+            // 自己点赞自己的内容不发通知
+            if (!dto.getAuthorId().equals(dto.getUserId())) {
+                sendLikeNotification(dto);
+            }
+            // 给被点赞的作者发放积分（防重复由积分模块保证）
+            try {
+                pointMqApi.sendLikePoint(dto.getUserId(), dto.getAuthorId(), dto.getTargetId(), dto.getTargetType());
+            } catch (Exception e) {
+                log.error("发送点赞积分消息失败: targetId={}, authorId={}", dto.getTargetId(), dto.getAuthorId(), e);
+            }
         }
     }
 
@@ -148,8 +159,9 @@ public class LikeMqHandler {
         try {
             boolean tryLock = lock.tryLock(5, 30, TimeUnit.SECONDS);
             if (!tryLock) {
-                log.warn("获取锁超时, targetType={}, 消息将重新入队", dto.getTargetType());
-                channel.basicNack(deliveryTag, false, true);
+                // 获取锁失败说明已有其他线程正在同步，当前数据已落库，等待下次点赞触发同步即可
+                log.info("获取锁超时, targetType={}, 已有其他线程同步，直接ACK等待下次同步", dto.getTargetType());
+                channel.basicAck(deliveryTag, false);
                 return;
             }
             log.info("开始同步点赞缓存, targetType={}", dto.getTargetType());

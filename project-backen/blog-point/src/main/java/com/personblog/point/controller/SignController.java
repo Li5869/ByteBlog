@@ -1,7 +1,7 @@
 package com.personblog.point.controller;
 
 import com.personblog.common.result.JsonData;
-import com.personblog.point.BizService.SignBizService;
+import com.personblog.point.bizService.SignBizService;
 import com.personblog.point.vo.SignResultVO;
 import com.personblog.point.vo.SignStatusVO;
 import io.swagger.v3.oas.annotations.Operation;

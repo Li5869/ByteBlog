@@ -58,27 +58,22 @@ public class LogoutSuccessHandlerImpl implements LogoutSuccessHandler {
         String token = request.getHeader("token");
         
         if (token != null && !token.isEmpty()) {
-            // 2. 从 Redis 删除 Access Token 登录信息
-            userDetailsService.removeLoginUser(token);
-            
-            // 3. 获取用户ID并清除 Refresh Token
-            // 优先从 Token 中解析 userId（更可靠），其次从 authentication 获取
+            // 2. 从 Token 中解析 userId
             Long userId = jwtUtil.getUserIdFromToken(token);
-            
+
             if (userId != null) {
+                // 3. 删除登录 Token（user:login:{userId}）和 Refresh Token
+                userDetailsService.removeLoginUser(userId);
                 userDetailsService.removeRefreshToken(userId);
-                // 清除用户当前登录 Token 映射（用于踢人机制）
-                userDetailsService.removeCurrentToken(userId);
                 log.info("用户登出成功，已清除 Access Token 和 Refresh Token: userId={}", userId);
             } else {
-                // Token 解析失败（可能已过期或格式错误），尝试从 authentication 获取
+                // Token 解析失败，尝试从 authentication 获取
                 if (authentication != null && authentication.getPrincipal() instanceof LoginUser loginUser) {
+                    userDetailsService.removeLoginUser(loginUser.getUserId());
                     userDetailsService.removeRefreshToken(loginUser.getUserId());
-                    // 清除用户当前登录 Token 映射（用于踢人机制）
-                    userDetailsService.removeCurrentToken(loginUser.getUserId());
                     log.info("用户登出成功，已清除 Access Token 和 Refresh Token: userId={}", loginUser.getUserId());
                 } else {
-                    log.warn("用户登出成功，但无法获取 userId，Refresh Token 可能未被清除");
+                    log.warn("用户登出成功，但无法获取 userId，Token 可能未被清除");
                 }
             }
         }

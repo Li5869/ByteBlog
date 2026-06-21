@@ -36,6 +36,13 @@ xxl:
       logretentiondays: ${XXL_JOB_LOG_RETENTION_DAYS:30}
       enabled: true
 
+# ===== XXL-Job 任务调度配置参考（在 XXL-Job Admin 控制台配置）=====
+# memoryExtractJobHandler:
+#   cron: 0 */3 * * * ?          # 每3分钟执行一次
+#   阻塞处理策略: 单机串行 (SERIAL_EXECUTION)  # 防止重复提取
+#   失败重试次数: 2
+#   任务超时时间: 120s
+
 springdoc:
   api-docs:
     enabled: false

@@ -12,11 +12,14 @@
 import asyncio
 import json
 import re
+from datetime import datetime
 from typing import Dict, Optional, AsyncGenerator
 
 from loguru import logger
 
 from agents.smart_agent import get_smart_agent, StreamEvent
+from common.constants import REDIS_KEY_CHAT_ACTIVE_PREFIX
+from config.settings import get_settings
 from services.core.memory_service import get_memory_service, ToolCall
 
 
@@ -139,6 +142,8 @@ class ChatService:
                         thinking=event.accumulated_thinking,
                         tool_calls=event.tool_calls_summary,
                     )
+                    # 写入 Redis 活跃标记，供 Java XXL-Job 扫描对话结束状态
+                    await self._write_activity_marker(conv_id, user_id)
 
                 elif event.event_type == "error":
                     await _save_partial(event)
@@ -168,6 +173,33 @@ class ChatService:
                 return f"data: {json.dumps(trigger_data, ensure_ascii=False)}\n\n"
 
         return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+    async def _write_activity_marker(self, conversation_id: str, user_id: Optional[str]):
+        """
+        写入对话活跃标记到 Redis
+
+        Key:   chat:active:{conversation_id}
+        Value: {"user_id": user_id, "last_active": 当前时间戳}
+        TTL:   300s（大于 XXL-Job 扫描间隔 180s，防止误删）
+
+        仅在 user_id 不为空时写入，未登录用户不触发记忆提取。
+        """
+        if not user_id:
+            return
+
+        try:
+            settings = get_settings()
+            key = f"{REDIS_KEY_CHAT_ACTIVE_PREFIX}{conversation_id}"
+            value = json.dumps({
+                "user_id": user_id,
+                "last_active": datetime.now().isoformat(),
+            })
+            redis_client = await self._memory_service._get_client()
+            await redis_client.set(key, value, ex=settings.memory_activity_marker_ttl)
+            logger.debug(f"[活跃标记] 已写入: {key}")
+        except Exception as e:
+            # 写入标记失败不影响主流程
+            logger.warning(f"[活跃标记] 写入失败: {e}")
 
 
 _chat_service: Optional[ChatService] = None

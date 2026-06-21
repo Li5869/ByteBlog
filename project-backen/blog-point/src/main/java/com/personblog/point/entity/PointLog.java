@@ -3,6 +3,7 @@ package com.personblog.point.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.personblog.common.constant.PointTypeConstants;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -26,7 +27,7 @@ public class PointLog {
     /** 积分变动值（正数增加，负数减少） */
     private Integer points;
 
-    /** 类型，取值参见 {@link com.personblog.point.constant.PointTypeConstants} */
+    /** 类型，取值参见 {@link PointTypeConstants} */
     private String type;
 
     /** 业务ID（可为null，如签到、管理员调整等场景） */

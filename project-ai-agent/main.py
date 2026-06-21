@@ -18,7 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from loguru import logger
 from config.settings import get_settings
-from api import chat_router, knowledge_router, skill_router
+from api import chat_router, knowledge_router, skill_router, memory_router
 from api.writing_router import router as writing_router
 from services.core.nacos_service import get_nacos_service
 
@@ -38,6 +38,16 @@ async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     settings = get_settings()
     setup_logging()
+
+    # LangSmith 可观测性配置
+    if settings.langchain_tracing_v2:
+        import os
+        os.environ["LANGCHAIN_TRACING_V2"] = "true"
+        os.environ["LANGCHAIN_API_KEY"] = settings.langchain_api_key
+        os.environ["LANGCHAIN_PROJECT"] = settings.langchain_project
+        if settings.langchain_endpoint:
+            os.environ["LANGCHAIN_ENDPOINT"] = settings.langchain_endpoint
+        logger.info(f"📊 LangSmith 追踪已开启: {settings.langchain_project}")
 
     logger.info(f"🚀 {settings.app_name} 启动中...")
     logger.info(f"🗄️ 数据库: {settings.database_url}")
@@ -109,6 +119,7 @@ def create_app() -> FastAPI:
     app.include_router(knowledge_router, prefix="/api/v1/knowledge", tags=["Knowledge"])
     app.include_router(writing_router, prefix="/api/v1/writing", tags=["Writing"])
     app.include_router(skill_router, prefix="/api/v1/skill", tags=["Skill"])
+    app.include_router(memory_router, prefix="/api/v1/memory", tags=["Memory"])
 
     @app.get("/health")
     async def health_check():
@@ -130,7 +141,6 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
     settings = get_settings()
-    # 全局 WindowsSelectorEventLoopPolicy 已在文件顶部设置，无需 loop_factory 特殊处理
     uvicorn.run(
         "main:app",
         host=settings.host,

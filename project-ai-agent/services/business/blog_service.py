@@ -114,6 +114,44 @@ class BlogApiService(NacosAwareClient):
             logger.error(f"[BlogService] 发布文章未知错误: {e}")
             return None
 
+    async def get_article_content(self, article_id: int) -> Optional[str]:
+        """
+        获取文章正文内容
+
+        调用 Java 后端 /ai/article/internal/content/{articleId} 接口。
+        ES 索引不存正文（太大），需要走后端 API。
+
+        Args:
+            article_id: 文章 ID
+
+        Returns:
+            文章内容，不存在返回 None
+        """
+        try:
+            response = await self.client.get(
+                f"{await self._get_base_url()}/ai/article/internal/content/{article_id}"
+            )
+            response.raise_for_status()
+            json_data = response.json()
+
+            # 复用统一响应格式 ApiResponse: {code: 0, msg: "success", data: "内容"}
+            code = json_data.get("code", -1)
+            if code != 0:
+                msg = json_data.get("msg", "未知错误")
+                logger.warning(f"[BlogService] 获取文章内容失败, code={code}, msg={msg}, articleId={article_id}")
+                return None
+
+            return json_data.get("data")
+        except httpx.HTTPStatusError as e:
+            logger.error(f"[BlogService] 获取文章内容HTTP错误, 状态码: {e.response.status_code}, articleId={article_id}")
+            return None
+        except httpx.RequestError as e:
+            logger.error(f"[BlogService] 获取文章内容请求异常: {e}, articleId={article_id}")
+            return None
+        except Exception as e:
+            logger.error(f"[BlogService] 获取文章内容未知错误: {e}, articleId={article_id}")
+            return None
+
     async def close(self):
         """关闭 HTTP 客户端"""
         await self.client.aclose()

@@ -8,9 +8,12 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
+import static com.personblog.common.constant.PointTypeConstants.*;
+import static com.personblog.common.constant.TargetTypeConstant.ARTICLE;
+import static com.personblog.common.constant.TargetTypeConstant.COMMENT;
 import static com.personblog.point.config.mqConfig.PointMqConfig.*;
-import static com.personblog.point.constant.PointTypeConstants.*;
 
 /**
  * 积分消息发送 API 实现
@@ -26,10 +29,16 @@ public class PointMqApiImpl implements PointMqApi {
 
     private final RabbitTemplate rabbitTemplate;
 
+    /** 互动目标类型 → 积分类型映射 */
+    private static final Map<String, String> TARGET_TO_POINT_TYPE = Map.of(
+            ARTICLE, ARTICLE_LIKED,
+            COMMENT, COMMENT_LIKED
+    );
+
     @Override
     public void sendArticlePoint(Long userId, Long articleId) {
         PointMessageDTO message = PointMessageDTO.builder()
-                .userId(userId)
+                .authorId(userId)
                 .points(20)
                 .type(ARTICLE_PUBLISHED)
                 .bizId(articleId)
@@ -40,35 +49,44 @@ public class PointMqApiImpl implements PointMqApi {
     }
 
     @Override
-    public void sendLikePoint(Long userId, Long bizId, String bizType) {
+    public void sendLikePoint(Long likerId, Long authorId, Long bizId, String targetType) {
+        // 将互动类型（article/comment）映射为积分类型（article_liked/comment_liked）
+        String pointType = TARGET_TO_POINT_TYPE.get(targetType.toLowerCase());
+        if (pointType == null) {
+            log.warn("未知的点赞目标类型，跳过积分发放: targetType={}", targetType);
+            return;
+        }
+        // userId = 积分接收者（作者），operatorId = 点赞者（用于防重复去重）
         PointMessageDTO message = PointMessageDTO.builder()
-                .userId(userId)
+                .authorId(authorId)
                 .points(2)
-                .type(bizType)
+                .type(pointType)
                 .bizId(bizId)
+                .operatorId(likerId)
                 .createTime(LocalDateTime.now())
                 .build();
         rabbitTemplate.convertAndSend(POINT_EXCHANGE, POINT_LIKE_KEY, message);
-        log.debug("发送点赞积分消息: userId={}, bizId={}, bizType={}", userId, bizId, bizType);
+        log.debug("发送点赞积分消息: likerId={}, authorId={}, bizId={}", likerId, authorId, bizId);
     }
 
     @Override
-    public void sendCollectionPoint(Long userId, Long articleId) {
+    public void sendCollectionPoint(Long operatorId,Long authorId, Long articleId) {
         PointMessageDTO message = PointMessageDTO.builder()
-                .userId(userId)
+                .authorId(authorId)
+                .operatorId(operatorId)
                 .points(3)
                 .type(ARTICLE_COLLECTED)
                 .bizId(articleId)
                 .createTime(LocalDateTime.now())
                 .build();
         rabbitTemplate.convertAndSend(POINT_EXCHANGE, POINT_COLLECTION_KEY, message);
-        log.debug("发送收藏积分消息: userId={}, articleId={}", userId, articleId);
+        log.debug("发送收藏积分消息: userId={}, articleId={}", authorId, articleId);
     }
 
     @Override
     public void sendAdminAdjustPoint(Long userId, Integer points, String description, Long operatorId) {
         PointMessageDTO message = PointMessageDTO.builder()
-                .userId(userId)
+                .authorId(userId)
                 .points(points)
                 .type(ADMIN_ADJUST)
                 .description(description)

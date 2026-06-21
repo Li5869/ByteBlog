@@ -1,7 +1,7 @@
 package com.personblog.admin.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.personblog.admin.entity.MqErrorLog;
+import com.personblog.common.entity.MqErrorLog;
 import org.apache.ibatis.annotations.Mapper;
 
 /**

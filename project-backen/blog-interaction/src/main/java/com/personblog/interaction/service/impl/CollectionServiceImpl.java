@@ -69,11 +69,11 @@ public class CollectionServiceImpl extends ServiceImpl<CollectionMapper, Collect
         CollectionMessage message = CollectionMessage.builder()
                 .articleId(dto.getArticleId())
                 .collectionTimes(score.longValue())
-                .userId(userId)
+                .operatorId(userId)
+                .authorId(dto.getArticleAuthorId())
                 .isCollection(isCollection)
                 .delta((int)s)
                 .build();
-
         rabbitTemplate.convertAndSend(INTERACTION_EXCHANGE, COLLECTION_KEY, message);
         
         // 收藏时异步发送通知（取消收藏不通知）

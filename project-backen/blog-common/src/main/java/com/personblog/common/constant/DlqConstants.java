@@ -12,4 +12,8 @@ public class DlqConstants {
     public static final String COMMENT_NOTIFICATION_DLQ = "comment_notification_dlq";
     public static final String AI_TITLE_DLQ = "ai_title_dlq";
     public static final String ARTICLE_ES_DLQ = "article_es_dlq";
+
+    // VIP 订单模块
+    public static final String VIP_ORDER_TIMEOUT_DLQ = "vip_order_timeout_dlq";
+    public static final String VIP_ORDER_CONFIRM_DLQ = "vip_order_confirm_dlq";
 }

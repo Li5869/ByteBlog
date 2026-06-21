@@ -1,9 +1,9 @@
 package com.personblog.admin.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.personblog.admin.entity.MqErrorLog;
 import com.personblog.admin.mapper.MqErrorLogMapper;
 import com.personblog.admin.service.IMqErrorLogService;
+import com.personblog.common.entity.MqErrorLog;
 import org.springframework.stereotype.Service;
 
 /**

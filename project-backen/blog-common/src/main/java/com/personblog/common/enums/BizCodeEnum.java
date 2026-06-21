@@ -205,7 +205,49 @@ public enum BizCodeEnum {
     /** 今日已签到 */
     POINT_ALREADY_SIGNED(4071, "今日已签到"),
     /** 积分不足 */
-    POINT_NOT_ENOUGH(4072, "积分不足");
+    POINT_NOT_ENOUGH(4072, "积分不足"),
+
+    // ==================== 优惠券系统 (4081-4090) ====================
+
+    /** 优惠券不存在 */
+    COUPON_NOT_EXIST(4081, "优惠券不存在"),
+    /** 优惠券已领完 */
+    COUPON_OUT_OF_STOCK(4082, "优惠券已领完"),
+    /** 已达到领取上限 */
+    COUPON_CLAIM_LIMIT(4083, "已达到领取上限"),
+    /** 积分不足 */
+    COUPON_POINT_NOT_ENOUGH(4084, "积分不足"),
+    /** 优惠券已过期 */
+    COUPON_EXPIRED(4085, "优惠券已过期"),
+    /** 已领取过该优惠券 */
+    COUPON_ALREADY_CLAIMED(4086, "已领取过该优惠券"),
+
+    /** 优惠券活动尚未开始 */
+    COUPON_NOT_STARTED(4087, "优惠券活动尚未开始"),
+
+    /** 优惠券已下架 */
+    COUPON_NOT_ON_SHELF(4088, "优惠券已下架"),
+    /** 优惠券状态异常 */
+    COUPON_STATUS_ERROR(4089, "优惠券状态异常"),
+
+    // ==================== VIP 会员系统 (4091-4098) ====================
+
+    /** 套餐不存在 */
+    VIP_PLAN_NOT_EXIST(4091, "套餐不存在"),
+    /** 套餐已下架 */
+    VIP_PLAN_OFF_SHELF(4092, "套餐已下架"),
+    /** 订单不存在 */
+    ORDER_NOT_EXIST(4093, "订单不存在"),
+    /** 订单状态异常 */
+    ORDER_STATUS_ERROR(4094, "订单状态异常"),
+    /** 订单已过期 */
+    ORDER_EXPIRED(4095, "订单已过期"),
+    /** 优惠券不可用 */
+    COUPON_NOT_AVAILABLE(4096, "优惠券不可用"),
+    /** 重复下单 */
+    ORDER_REPEAT(4097, "操作过于频繁，请稍后重试"),
+    /** 已是VIP会员 */
+    ALREADY_VIP(4098, "已是VIP会员");
 
     private final String message;
 

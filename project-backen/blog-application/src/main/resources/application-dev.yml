@@ -51,3 +51,13 @@ xxl:
       logpath: ${XXL_JOB_LOG_PATH:./data/applogs/xxl-job/jobhandler}
       logretentiondays: ${XXL_JOB_LOG_RETENTION_DAYS:30}
       enabled: true
+
+# ===== XXL-Job 任务调度配置参考（在 XXL-Job Admin 控制台配置）=====
+# memoryExtractJobHandler:
+#   cron: 0 */3 * * * ?          # 每3分钟执行一次
+#   路由策略: 第一个 / 轮询
+#   阻塞处理策略: 单机串行 (SERIAL_EXECUTION)  # 防止重复提取
+#   失败重试次数: 2
+#   任务超时时间: 120s
+#   负责人: LSH
+#   报警邮件: 按需配置

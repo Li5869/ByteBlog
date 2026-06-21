@@ -31,6 +31,10 @@ THINKING_TAGS: tuple[str, ...] = (
 DEFAULT_TTL_SECONDS: int = 3600 * 24 * 7  # 7 天
 WRITING_TASK_TTL_SECONDS: int = 7200      # 2 小时
 
-# ==================== 数据库连接 ====================
-PSYCOPG_SCHEME: str = "postgresql+psycopg://"
-POSTGRES_SCHEME: str = "postgresql://"
+# ==================== 长期记忆 ====================
+MEMORY_TYPE_SEMANTIC: str = "semantic"    # 语义记忆：用户的偏好、属性、知识背景
+MEMORY_TYPE_EPISODIC: str = "episodic"    # 情节记忆：关键对话的摘要
+MEMORY_TYPE_PROCEDURAL: str = "procedural"  # 程序记忆：用户的交互习惯
+
+# Redis 活跃标记 Key 前缀（用于 XXL-Job 调度记忆提取）
+REDIS_KEY_CHAT_ACTIVE_PREFIX: str = "chat:active:"

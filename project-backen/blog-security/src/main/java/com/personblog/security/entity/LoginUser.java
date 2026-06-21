@@ -1,6 +1,7 @@
 package com.personblog.security.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.personblog.common.utils.UserIdHolder;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -13,15 +14,15 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Data
-public class LoginUser implements Serializable, UserDetails {
+public class LoginUser implements Serializable, UserDetails,UserIdHolder{
     
     @Serial
     private static final long serialVersionUID = 1L;
     
-    private Long userId;
-    
     private String username;
-    
+
+    private Long userId;
+
     private Boolean isAdmin;
     
     private Set<String> permissions;

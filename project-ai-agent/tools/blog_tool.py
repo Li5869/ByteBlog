@@ -26,11 +26,3 @@ async def get_category_list() -> List[dict] | str:
         return categories
     except Exception as e:
         return f"获取分类列表失败：{str(e)}"
-def get_blog_tools() -> List:
-    """
-    获取博客工具列表
-
-    Returns:
-        博客工具列表
-    """
-    return [get_category_list]

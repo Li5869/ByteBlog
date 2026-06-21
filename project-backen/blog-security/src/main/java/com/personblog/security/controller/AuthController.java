@@ -108,12 +108,10 @@ public class AuthController {
             String token = jwtUtil.generateToken(loginUser.getUserId());
             String refreshToken = jwtUtil.generateRefreshToken(loginUser.getUserId());
             
-            // 7. 将登录用户信息存入 Redis（Access Token 30分钟过期）
+            // 7. 将登录 Token 存入 Redis（Key: userId → token，同时承担校验和踢人）
             userDetailsService.setLoginUser(token, loginUser);
             // 将 Refresh Token 存入 Redis（7天过期，支持服务端主动失效）
             userDetailsService.setRefreshToken(loginUser.getUserId(), refreshToken);
-            // 设置用户当前登录的 Token（用于踢人机制）
-            userDetailsService.setCurrentToken(loginUser.getUserId(), token);
             
             // 8. 从数据库查询完整用户信息用于返回
             User user = userMapper.selectById(loginUser.getUserId());
@@ -299,8 +297,6 @@ public class AuthController {
         // 7. 将新 Token 存入 Redis
         userDetailsService.setLoginUser(newAccessToken, loginUser);
         userDetailsService.setRefreshToken(userId, newRefreshToken);
-        // 更新用户当前登录的 Token（用于踢人机制）
-        userDetailsService.setCurrentToken(userId, newAccessToken);
 
         // 8. 返回新 Token
         RefreshTokenVO vo = new RefreshTokenVO();

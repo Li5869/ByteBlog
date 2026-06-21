@@ -48,6 +48,9 @@ public class ChatServiceImpl implements ChatService {
                 .eq(AiConversation::getMessageCount, 0)
                 .one();
         if (conversion != null) {
+            // 清除可能残留的 Redis 记忆，防止异步保存延迟导致记忆串到新对话
+            String redisKey = REDIS_MEMORY_PREFIX + conversion.getId();
+            redisTemplate.delete(redisKey);
             return conversion.getId();
         }
         AiConversation conversation = new AiConversation();

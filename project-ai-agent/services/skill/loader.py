@@ -116,32 +116,6 @@ class SkillLoader:
         except yaml.YAMLError:
             return None
 
-    def get_skill_descriptions(self) -> str:
-        """
-        获取所有 Skills 的描述列表（完整版）
-        
-        用于替代原有的 _build_strategy_guide()，
-        将 Skills 的 description 字段格式化输出。
-        
-        Returns:
-            格式化的 Skills 描述字符串
-        """
-        skills = self.load()
-        
-        if not skills:
-            return "**可用技能**：暂无"
-
-        lines = ["**可用技能（Skills）**：", ""]
-        lines.append("以下是你可以使用的技能，每个技能对应一类任务场景：")
-        lines.append("")
-
-        for name, skill in skills.items():
-            lines.append(f"**{name}**：")
-            lines.append(f"  {skill['description']}")
-            lines.append("")
-
-        return "\n".join(lines)
-
     def get_skill_brief(self) -> str:
         """
         获取所有 Skills 的简要描述（用于渐进式披露）

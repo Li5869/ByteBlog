@@ -4,29 +4,12 @@
 
 from typing import List, Optional
 from loguru import logger
-import psycopg
 from langchain_core.tools import tool
 from langchain_tavily import TavilySearch
 
 from config.settings import get_settings
 from services.store.es_article_service import get_article_es_service
-
-
-# ==================== 数据库直查：文章内容 ====================
-
-def _get_article_content_from_db(article_id: int) -> Optional[str]:
-    """
-    从 PostgreSQL 直接查询文章 content 字段
-
-    ES 索引不存正文（太大），需要走数据库。
-    类似 Java 的 ArticleMapper.selectContentById()。
-    """
-    sql_url = get_settings().database_url
-    with psycopg.connect(sql_url) as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT content FROM tb_article WHERE id = %s", (article_id,))
-            content = cur.fetchone()[0] if cur.rowcount else None
-    return content
+from services.business.blog_service import get_blog_service
 
 
 # ==================== 外部搜索：Tavily ====================
@@ -114,7 +97,8 @@ async def get_article_content_by_id(article_id: int) -> Optional[str]:
     """
     获取文章正文内容
 
-    根据文章ID从数据库获取文章的完整 Markdown 正文。
+    根据文章ID通过 Java 后端 API 获取文章的完整 Markdown 正文。
+    复用 BlogApiService，通过 Nacos 服务发现调用后端。
 
     Args:
         article_id: 文章ID
@@ -122,7 +106,8 @@ async def get_article_content_by_id(article_id: int) -> Optional[str]:
     Returns:
         文章内容，不存在返回 None
     """
-    return _get_article_content_from_db(article_id)
+    blog_service = get_blog_service()
+    return await blog_service.get_article_content(article_id)
 
 
 @tool

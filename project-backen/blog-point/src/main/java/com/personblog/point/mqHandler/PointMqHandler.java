@@ -1,7 +1,8 @@
 package com.personblog.point.mqHandler;
 
 import com.personblog.common.dto.MqMessage.Point.PointMessageDTO;
-import com.personblog.point.BizService.PointBizService;
+import com.personblog.point.bizService.CommonBizService;
+import com.personblog.point.bizService.PointBizService;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +28,7 @@ import static com.personblog.point.config.mqConfig.PointMqConfig.*;
 public class PointMqHandler {
 
     private final PointBizService pointBizService;
-
+    private final CommonBizService commonBizService;
     /**
      * 处理签到积分发放消息
      */
@@ -35,9 +36,9 @@ public class PointMqHandler {
     public void handleSignPoint(PointMessageDTO message, Channel channel,
                                 @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
-            log.info("收到签到积分消息: userId={}, points={}", message.getUserId(), message.getPoints());
+            log.info("收到签到积分消息: userId={}, points={}", message.getAuthorId(), message.getPoints());
             pointBizService.changePoints(
-                    message.getUserId(),
+                    message.getAuthorId(),
                     message.getPoints(),
                     message.getType(),
                     null,
@@ -58,14 +59,22 @@ public class PointMqHandler {
     public void handleArticlePoint(PointMessageDTO message, Channel channel,
                                    @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
-            log.info("收到文章积分消息: userId={}, points={}, type={}", message.getUserId(), message.getPoints(), message.getType());
-            pointBizService.changePoints(
-                    message.getUserId(),
-                    message.getPoints(),
-                    message.getType(),
-                    message.getBizId(),
-                    null
-            );
+            log.info("收到文章积分消息: userId={}, points={}, type={}", message.getAuthorId(), message.getPoints(), message.getType());
+            //判断是否处理过
+            boolean judge = commonBizService.isAlreadyDoIt(message.getBizId(),message.getOperatorId(),message.getType());
+            if(!judge){
+                pointBizService.changePoints(
+                        message.getAuthorId(),
+                        message.getPoints(),
+                        message.getType(),
+                        message.getBizId(),
+                        null
+                );
+                // 标记积分已发放（写入 Redis 缓存）
+                if (message.getBizId() != null && message.getPoints() > 0) {
+                    commonBizService.markPointAwarded(message.getOperatorId(), message.getType(), message.getBizId());
+                }
+            }
             channel.basicAck(deliveryTag, false);
         } catch (Exception e) {
             log.error("文章积分处理失败: {}", e.getMessage(), e);
@@ -80,9 +89,9 @@ public class PointMqHandler {
     public void handleAdminAdjustPoint(PointMessageDTO message, Channel channel,
                                        @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
-            log.info("收到管理员调整积分消息: userId={}, points={}, operatorId={}", message.getUserId(), message.getPoints(), message.getOperatorId());
+            log.info("收到管理员调整积分消息: userId={}, points={}, operatorId={}", message.getAuthorId(), message.getPoints(), message.getOperatorId());
             pointBizService.changePoints(
-                    message.getUserId(),
+                    message.getAuthorId(),
                     message.getPoints(),
                     message.getType(),
                     null,

@@ -31,8 +31,14 @@ dependencies = [
     "tiktoken>=0.9.0",
     # 搜索引擎
     "elasticsearch>=8.16.0",
+    # 网页爬取（Firecrawl 云服务）
+    "firecrawl-py>=1.0.0",
     # 网页爬取与解析
     "trafilatura>=1.12.0",
+    # 长期记忆引擎
+    "mem0ai>=2.0.0",
+    # 中期记忆（LangMem 短期摘要：基于 token 阈值压缩对话）
+    "langmem>=0.0.30",
     # HTTP 客户端
     "httpx>=0.28.0",
     # 数据验证与配置

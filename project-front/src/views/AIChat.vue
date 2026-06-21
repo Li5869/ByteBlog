@@ -181,28 +181,26 @@ const createNewConversation = async (initialMessage) => {
     return
   }
 
-  let targetConv = conversations.value.find(c => c.messageCount === 0)
-  
-  if (!targetConv) {
-    try {
-      const conversationId = await aiApi.createConversation()
-      const existing = conversations.value.find(c => String(c.id) === String(conversationId))
-      if (existing) {
-        targetConv = existing
-      } else {
-        targetConv = {
-          id: String(conversationId),
-          title: '新对话',
-          messageCount: 0,
-          createdAt: new Date().toISOString()
-        }
-        conversations.value.unshift(targetConv)
+  // 始终通过后端创建/获取对话，确保后端能清除残留的 Redis 记忆，防止记忆串对话
+  let targetConv = null
+  try {
+    const conversationId = await aiApi.createConversation()
+    const existing = conversations.value.find(c => String(c.id) === String(conversationId))
+    if (existing) {
+      targetConv = existing
+    } else {
+      targetConv = {
+        id: String(conversationId),
+        title: '新对话',
+        messageCount: 0,
+        createdAt: new Date().toISOString()
       }
-    } catch (error) {
-      console.error('创建会话失败:', error)
-      toast.error('创建会话失败')
-      return
+      conversations.value.unshift(targetConv)
     }
+  } catch (error) {
+    console.error('创建会话失败:', error)
+    toast.error('创建会话失败')
+    return
   }
 
   currentConversation.value = targetConv

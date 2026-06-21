@@ -42,6 +42,24 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/vip/order',
+    name: 'VipOrder',
+    component: () => import('./views/VipOrder.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/mine/orders',
+    name: 'MyOrders',
+    component: () => import('./views/MyOrders.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/mine/orders/:id',
+    name: 'OrderDetail',
+    component: () => import('./views/OrderDetail.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/profile/edit',
     name: 'EditProfile',
     component: () => import('./views/EditProfile.vue'),
@@ -127,6 +145,17 @@ const routes = [
     name: 'PointsLogs',
     component: () => import('./views/PointsLogs.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/my-coupons',
+    name: 'MyCoupons',
+    component: () => import('./views/MyCoupons.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/coupon-zone',
+    name: 'CouponZone',
+    component: () => import('./views/CouponZone.vue')
   }
 ]
 

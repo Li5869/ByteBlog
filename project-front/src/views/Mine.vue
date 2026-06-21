@@ -1,8 +1,8 @@
 <script setup>
 import {onMounted, ref, watch} from 'vue'
 import {RouterLink, useRouter} from 'vue-router'
-import {NPagination, NSelect} from 'naive-ui'
-import {articleApi, columnApi, interactionApi, isLoggedIn, userApi} from '@/utils/request'
+import {NModal, NPagination, NSelect} from 'naive-ui'
+import {articleApi, columnApi, interactionApi, isLoggedIn, pointsApi, userApi, vipApi} from '@/utils/request'
 import {toast} from '@/utils/toast'
 import {modal} from '@/utils/modal'
 import OnlineIndicator from '@/components/OnlineIndicator.vue'
@@ -313,6 +313,78 @@ const handleEditArticle = (articleId) => {
   router.push(`/create-article?articleId=${articleId}`)
 }
 
+// VIP 套餐数据
+const showVipModal = ref(false)
+const selectedPlan = ref(null)
+const vipPlans = ref([]) // 从 API 获取的套餐列表
+const plansLoading = ref(false) // 套餐加载状态
+
+// VIP 会员信息（独立 ref，从 vipApi.getMembership 获取）
+const vipInfo = ref({ isVip: false, endTime: '', vipLevel: 0 })
+
+// 积分余额（从 pointsApi.getBalance 获取）
+const pointsBalance = ref(0)
+
+// 获取 VIP 会员信息和积分余额
+const fetchVipData = async () => {
+  if (!isLoggedIn()) return
+  try {
+    const [membership, balance] = await Promise.all([
+      vipApi.getMembership(),
+      pointsApi.getBalance()
+    ])
+    if (membership) {
+      vipInfo.value = membership
+    }
+    // 获取可用积分余额（API返回 { totalPoints, availablePoints, todayEarned, rank }）
+    pointsBalance.value = balance?.availablePoints ?? 0
+  } catch (error) {
+    console.error('获取VIP/积分信息失败:', error)
+  }
+}
+
+// 获取 VIP 套餐列表
+const fetchVipPlans = async () => {
+  plansLoading.value = true
+  try {
+    const plans = await vipApi.getPlans()
+    vipPlans.value = (plans || []).map(plan => ({
+      id: plan.id,
+      name: plan.planName,
+      duration: `${plan.durationMonths}个月`,
+      price: plan.pointsPrice,
+      tag: plan.durationMonths >= 12 ? '最划算' : (plan.durationMonths >= 3 ? '' : '')
+    }))
+    // 默认选中第一个套餐
+    if (vipPlans.value.length > 0 && !selectedPlan.value) {
+      selectedPlan.value = vipPlans.value[0].id
+    }
+  } catch (error) {
+    console.error('获取VIP套餐失败:', error)
+  } finally {
+    plansLoading.value = false
+  }
+}
+
+const handleOpenVip = () => {
+  showVipModal.value = true
+  // 打开弹窗时异步加载套餐列表
+  fetchVipPlans()
+}
+
+const handleConfirmVipPlan = async () => {
+  if (!selectedPlan.value) return
+  try {
+    // 调用后端创建预订单（自动匹配最优优惠券）
+    const order = await vipApi.createOrder({ planId: selectedPlan.value })
+    showVipModal.value = false
+    // 跳转订单确认页，携带 orderId 和积分余额
+    router.push({ name: 'VipOrder', query: { orderId: order.orderId, points: pointsBalance.value } })
+  } catch (error) {
+    console.error('创建预订单失败:', error)
+  }
+}
+
 const handleDeleteArticle = async (articleId) => {
   const confirmed = await modal.confirm('确认删除这篇文章吗？删除后不可恢复。', {
     title: '删除文章',
@@ -350,6 +422,7 @@ watch(activeTab, (newTab) => {
 onMounted(() => {
   fetchUserProfile()
   fetchMyArticles()
+  fetchVipData() // 获取VIP会员信息和积分余额
 })
 </script>
 
@@ -375,7 +448,31 @@ onMounted(() => {
           </div>
           
           <div class="flex-1 text-center md:text-left">
-            <h1 class="text-2xl sm:text-3xl font-bold text-white mb-2">{{ userInfo.name }}</h1>
+            <div class="flex items-center gap-2 mb-2 justify-center md:justify-start">
+              <h1 class="text-2xl sm:text-3xl font-bold text-white">{{ userInfo.name }}</h1>
+              <!-- VIP图标 - 已开通 -->
+              <div v-if="vipInfo?.isVip" class="relative group/vip">
+                <div class="flex items-center gap-1 px-2.5 py-1 bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full shadow-lg shadow-amber-500/30 cursor-pointer hover:scale-105 transition-transform">
+                  <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                  </svg>
+                  <span class="text-xs font-bold text-white">VIP</span>
+                </div>
+                <!-- Hover提示 -->
+                <div class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900/95 backdrop-blur-sm text-white text-xs rounded-lg shadow-xl opacity-0 group-hover/vip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                  <div class="font-medium text-amber-300">尊贵VIP会员</div>
+                  <div class="text-gray-400 mt-0.5">有效期至 {{ vipInfo?.endTime?.split(' ')[0] || '未知' }}</div>
+                  <div class="absolute bottom-full left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900/95 rotate-45 -mb-1"></div>
+                </div>
+              </div>
+              <!-- 开通会员按钮 - 未开通 -->
+              <button v-else @click="handleOpenVip" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full text-xs font-medium text-white hover:bg-white/30 transition-all hover:scale-105">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                </svg>
+                开通会员
+              </button>
+            </div>
             <p v-if="userInfo.bio" class="text-white/80 mb-4 text-sm sm:text-base max-w-md">{{ userInfo.bio }}</p>
             
             <div class="flex flex-wrap justify-center md:justify-start gap-x-5 gap-y-2 text-sm text-white/70 mb-5">
@@ -463,6 +560,12 @@ onMounted(() => {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
                   数据概览
+                </RouterLink>
+                <RouterLink to="/mine/orders" class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-sm font-medium">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  我的订单
                 </RouterLink>
                 <RouterLink to="/profile/edit" class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-sm font-medium">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1056,6 +1159,124 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- VIP 套餐选择弹窗 -->
+    <n-modal v-model:show="showVipModal" :mask-closable="true">
+      <div class="w-[720px] max-w-[90vw] bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+        <!-- 弹窗头部 -->
+        <div class="bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-400 px-8 py-6 relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+          <div class="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2"></div>
+          <div class="relative flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                </svg>
+              </div>
+              <div>
+                <h3 class="text-xl font-bold text-white">开通 VIP 会员</h3>
+                <p class="text-white/80 text-sm mt-0.5">尊享专属特权，提升创作体验</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="text-right">
+                <p class="text-white/70 text-xs">当前积分</p>
+                <p class="text-white text-lg font-bold">{{ pointsBalance }}</p>
+              </div>
+              <button @click="showVipModal = false" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 套餐卡片列表：加载中显示骨架屏，加载完成显示真实数据 -->
+        <div class="p-6 grid grid-cols-3 gap-4">
+          <!-- 骨架屏加载动画 -->
+          <template v-if="plansLoading">
+            <div v-for="i in 3" :key="i"
+              class="relative flex flex-col items-center p-5 rounded-2xl border-2 border-gray-200 dark:border-gray-600 animate-pulse">
+              <div class="w-14 h-14 rounded-2xl bg-gray-200 dark:bg-gray-600 mb-3"></div>
+              <div class="h-4 w-16 bg-gray-200 dark:bg-gray-600 rounded mb-1"></div>
+              <div class="h-3 w-12 bg-gray-200 dark:bg-gray-600 rounded mb-4"></div>
+              <div class="h-7 w-20 bg-gray-200 dark:bg-gray-600 rounded"></div>
+            </div>
+          </template>
+          <!-- 真实套餐数据 -->
+          <template v-else>
+          <div
+            v-for="plan in vipPlans"
+            :key="plan.id"
+            @click="selectedPlan = plan.id"
+            class="relative flex flex-col items-center p-5 rounded-2xl border-2 cursor-pointer transition-all duration-200 group"
+            :class="selectedPlan === plan.id
+              ? 'border-amber-400 bg-gradient-to-b from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/20 shadow-lg shadow-amber-500/15 scale-[1.02]'
+              : 'border-gray-200 dark:border-gray-600 hover:border-amber-300 dark:hover:border-amber-600 hover:shadow-md'"
+          >
+            <!-- 标签 -->
+            <div v-if="plan.tag" class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 text-xs font-bold text-white bg-gradient-to-r from-red-500 to-orange-500 rounded-full shadow-md whitespace-nowrap">
+              {{ plan.tag }}
+            </div>
+
+            <!-- 图标 -->
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-all"
+              :class="selectedPlan === plan.id
+                ? 'bg-gradient-to-br from-amber-400 to-yellow-500 shadow-lg shadow-amber-500/30'
+                : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-amber-100 dark:group-hover:bg-amber-900/30'"
+            >
+              <svg class="w-7 h-7 transition-colors"
+                :class="selectedPlan === plan.id ? 'text-white' : 'text-gray-400 dark:text-gray-500 group-hover:text-amber-500'"
+                viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+              </svg>
+            </div>
+
+            <!-- 套餐名 -->
+            <span class="text-base font-bold text-gray-900 dark:text-white mb-1">{{ plan.name }}</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400 mb-4">{{ plan.duration }}</span>
+
+            <!-- 价格 -->
+            <div class="text-center">
+              <div class="flex items-baseline justify-center gap-0.5">
+                <span class="text-2xl font-bold transition-colors"
+                  :class="selectedPlan === plan.id ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'">
+                  {{ plan.price }}
+                </span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">积分</span>
+              </div>
+            </div>
+
+            <!-- 选中指示器 -->
+            <div v-if="selectedPlan === plan.id" class="absolute top-3 right-3 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center">
+              <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+          </div>
+          </template>
+        </div>
+
+        <!-- 底部操作 -->
+        <div class="px-6 pb-6 flex gap-3">
+          <button
+            @click="showVipModal = false"
+            class="flex-1 py-3 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            取消
+          </button>
+          <button
+            @click="handleConfirmVipPlan"
+            :disabled="plansLoading || !selectedPlan"
+            class="flex-1 py-3 text-sm font-bold text-white bg-gradient-to-r from-amber-500 to-yellow-500 rounded-xl hover:from-amber-600 hover:to-yellow-600 transition-all shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ plansLoading ? '加载中...' : '确认选择' }}
+          </button>
+        </div>
+      </div>
+    </n-modal>
   </div>
 </template>
 
