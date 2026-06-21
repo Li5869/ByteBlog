@@ -13,8 +13,14 @@
 架构说明：
   - memory_recall 节点：首轮对话时召回用户记忆，注入上下文
   - thinking 节点：负责 LLM 推理，输出 reasoning_content 和 content
+    内部集成中期记忆：LLM 调用前基于 token 阈值压缩对话历史（LangMem）
   - tool_executor 节点：负责执行工具，发射工具事件
   - judge 路由：根据是否有 tool_calls 决定进入 tool_executor 还是结束
+
+三层记忆体系：
+  - 短期记忆：MemorySaver checkpointer，保持完整消息历史（会话内）
+  - 中期记忆：LangMem summarize_messages，基于 token 阈值压缩旧消息（会话内）
+  - 长期记忆：Mem0 LongTermMemoryService，跨会话用户画像/偏好/经历
 
 使用 DeepSeek 官方思考模式：
   - reasoning_content：思维链（内部推理过程）→ 发射 thinking 事件
@@ -34,6 +40,8 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.config import get_stream_writer
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
+# 中期记忆：LangMem 基于 token 阈值压缩对话历史
+from langmem.short_term import summarize_messages, RunningSummary
 from langsmith import traceable
 from loguru import logger
 
@@ -84,6 +92,8 @@ class AgentState(TypedDict):
     iteration: int
     final_answer: str
     user_id: Optional[str]
+    # 中期记忆：跨轮次的摘要状态，记录已摘要的消息 ID，避免重复摘要
+    running_summary: Optional[RunningSummary]
 
 
 class SmartAgent:
@@ -127,6 +137,28 @@ class SmartAgent:
         self.graph = self._build_graph()
         # 工具调用记录（跨节点共享：_tool_executor_node 写入，astream_chat_with_result 读取）
         self._tool_calls_list: List[dict] = []
+
+        # 中期记忆：摘要专用 LLM（DeepSeek v4 flash 非思考模式，快速低成本）
+        # 独立于主 LLM，不开启 thinking，不绑定 tools，仅用于生成对话摘要
+        if settings.mid_term_memory_enabled:
+            self.summarization_model = ChatDeepSeek(
+                model=settings.model_name_deepseek,
+                api_key=settings.openai_api_key_deepseek,
+                streaming=False,  # 摘要不需要流式
+            ).bind(max_tokens=settings.mid_term_memory_max_summary_tokens)
+            self._mid_term_memory_enabled = True
+            self._max_tokens = settings.mid_term_memory_max_tokens
+            self._max_tokens_before_summary = settings.mid_term_memory_max_tokens_before_summary
+            self._max_summary_tokens = settings.mid_term_memory_max_summary_tokens
+            logger.info(
+                f"[MidTermMemory] 已启用, "
+                f"max_tokens={self._max_tokens}, "
+                f"threshold={self._max_tokens_before_summary}, "
+                f"summary_budget={self._max_summary_tokens}"
+            )
+        else:
+            self._mid_term_memory_enabled = False
+            logger.info("[MidTermMemory] 已禁用")
 
     # ==================== 图构建 ====================
 
@@ -270,16 +302,31 @@ class SmartAgent:
         - reasoning_content → thinking 事件（通过 custom 模式发射）
         - content → 由 messages 流模式自动处理（无需手动发射）
 
+        中期记忆集成：在 LLM 调用前，基于 token 阈值压缩对话历史。
+        - 旧消息自动摘要，近期消息保持原样
+        - RunningSummary 跨轮次追踪已摘要消息，避免重复摘要
+        - 完整消息历史仍保存在 state["messages"]（checkpoint 用），LLM 只看压缩后的
+
         使用 add_messages reducer，只需返回新消息，LangGraph 自动追加。
         """
         writer = get_stream_writer()
 
         messages = state["messages"]
+        # 状态更新字典：累积 running_summary、messages、iteration 等更新
+        state_update: dict = {}
+
+        # ===== 中期记忆：基于 token 阈值压缩对话历史 =====
+        if self._mid_term_memory_enabled:
+            llm_messages = await self._compress_messages(messages, state, state_update)
+        else:
+            llm_messages = messages
+
         full_response = None
         reasoning_chunks = []
         content_chunks = []
 
-        async for chunk in self.llm_with_tools.astream(messages):
+        # 使用（可能压缩后的）消息调用 LLM
+        async for chunk in self.llm_with_tools.astream(llm_messages):
             full_response = chunk if full_response is None else full_response + chunk
 
             # reasoning_content：思维链 → 实时发射 thinking 事件
@@ -306,17 +353,62 @@ class SmartAgent:
                 additional_kwargs={"reasoning_content": reasoning_content}
             )
             # add_messages reducer 会自动追加新消息
-            return {
-                "messages": [ai_message],
-                "iteration": state.get("iteration", 0) + 1,
-            }
+            state_update["messages"] = [ai_message]
+            state_update["iteration"] = state.get("iteration", 0) + 1
+            return state_update
 
         # 无工具调用：返回最终回答（不追加消息）
-        return {
-            "messages": [],
-            "iteration": state.get("iteration", 0) + 1,
-            "final_answer": content,
-        }
+        state_update["messages"] = []
+        state_update["iteration"] = state.get("iteration", 0) + 1
+        state_update["final_answer"] = content
+        return state_update
+
+    async def _compress_messages(
+        self,
+        messages: Sequence[BaseMessage],
+        state: AgentState,
+        state_update: dict
+    ) -> Sequence[BaseMessage]:
+        """
+        中期记忆压缩：基于 token 阈值自动摘要旧消息。
+
+        使用 LangMem 的 summarize_messages 函数：
+        - 消息从旧到新处理，累计 token 达到阈值时触发摘要
+        - 旧消息被压缩成一条摘要消息，近期消息保持原样
+        - RunningSummary 记录已摘要的消息 ID，避免重复摘要（增量压缩）
+        - SystemMessage 自动排除在摘要范围外
+
+        Args:
+            messages: 完整消息历史
+            state: 当前图状态（读取 running_summary）
+            state_update: 状态更新字典（写入新的 running_summary）
+
+        Returns:
+            压缩后的消息列表（供 LLM 调用使用），压缩失败时返回原始消息
+        """
+        try:
+            # summarize_messages 是同步函数（内部调用 model.invoke），
+            # 用 asyncio.to_thread 包装避免阻塞事件循环
+            summarization_result = await asyncio.to_thread(
+                summarize_messages,
+                list(messages),
+                running_summary=state.get("running_summary"),
+                model=self.summarization_model,
+                max_tokens=self._max_tokens,
+                max_tokens_before_summary=self._max_tokens_before_summary,
+                max_summary_tokens=self._max_summary_tokens,
+            )
+            # 只有当产生了新的摘要时才更新状态（避免覆盖已有摘要）
+            if summarization_result.running_summary is not None:
+                state_update["running_summary"] = summarization_result.running_summary
+                logger.debug(
+                    f"[MidTermMemory] 摘要已更新, "
+                    f"summary_length={len(summarization_result.running_summary.summary)}"
+                )
+            return summarization_result.messages
+        except Exception as e:
+            logger.error(f"[MidTermMemory] 消息压缩失败，降级使用原始消息: {e}")
+            return messages
 
     async def _tool_executor_node(self, state: AgentState) -> dict:
         """

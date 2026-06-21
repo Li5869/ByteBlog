@@ -77,6 +77,14 @@ class Settings(BaseSettings):
     memory_recall_top_k: int = 5  # 记忆召回数量
     memory_activity_marker_ttl: int = 300  # Redis 活跃标记 TTL（秒），需大于 XXL-Job 扫描间隔
 
+    # ===== 中期记忆配置（LangMem 短期摘要）=====
+    # 基于 token 阈值压缩对话历史：旧消息自动摘要，近期消息保持原样
+    # DeepSeek 上下文窗口 1M，阈值设为 200K 触发摘要，留足空间给工具结果和响应
+    mid_term_memory_enabled: bool = True  # 中期记忆功能总开关
+    mid_term_memory_max_tokens: int = 150000  # 压缩后最终输出的 token 上限
+    mid_term_memory_max_tokens_before_summary: int = 200000  # 触发摘要的 token 阈值
+    mid_term_memory_max_summary_tokens: int = 2000  # 摘要本身的 token 预算
+
     @property
     def memory_config(self) -> dict:
         """Mem0 配置（自托管 pgvector）"""
