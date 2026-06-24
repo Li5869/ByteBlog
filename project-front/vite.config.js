@@ -11,8 +11,12 @@ export default defineConfig({
       name: 'sse-proxy-middleware',
       configureServer(server) {
         server.middlewares.use((req, res, next) => {
-          // 只拦截 AI 聊天流式接口
-          if (!req.url?.startsWith('/api/ai/chat/messages')) {
+          // 拦截 AI 聊天流式接口和深度研究接口
+          const isSSEPath = req.url?.startsWith('/api/ai/chat/messages') 
+            || req.url?.startsWith('/api/ai/research/start')
+            || req.url?.startsWith('/api/ai/research/resume')
+          
+          if (!isSSEPath) {
             return next()
           }
 

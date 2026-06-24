@@ -216,7 +216,9 @@ public class OrderBizService {
         return vo;
     }
     /**
-     * 确认下单（TCC 模式：Try 冻结资源 → Confirm 提交 → 失败 Cancel 回滚）
+     * 确认下单（TCC + Saga 混合模式）
+     * - 积分/优惠券：TCC 模式，Try 冻结 → Confirm 提交/Cancel 释放
+     * - VIP激活：Saga 模式，Confirm 阶段直接执行，失败时逆序补偿
      */
     public ConfirmOrderVO confirmOrder(Long orderId) {
         Long userId = UserContextHolder.getUserId();
@@ -225,16 +227,17 @@ public class OrderBizService {
         boolean locked = false;
         String tccXid = xid(orderId);
         try {
+            Order order = orderService.getById(orderId);
+            // 幂等校验 + 积分快速过滤
+            valid(order, userId);
             locked = lock.tryLock(5, 30, TimeUnit.SECONDS);
             if (!locked) {
                 throw new BizException(BizCodeEnum.ORDER_REPEAT);
             }
 
-            Order order = orderService.getById(orderId);
-            // 幂等校验 + 积分快速过滤
-            valid(order, userId);
 
-            // ========== Try 阶段：冻结积分 ==========
+
+            // ========== [TCC Try] 冻结积分 ==========
             tccManager.tryBranch(tccXid, POINT_FREEZE,
                 () -> {
                     if (!pointAPI.freezePoints(userId, order.getActualPoints())) {
@@ -244,7 +247,7 @@ public class OrderBizService {
                 () -> pointAPI.cancelDeductPoints(userId, order.getActualPoints())
             );
 
-            // ========== Try 阶段：冻结优惠券 ==========
+            // ========== [TCC Try] 冻结优惠券 ==========
             if (order.getCouponId() != null) {
                 tccManager.tryBranch(tccXid, COUPON_FREEZE,
                     () -> {
@@ -260,11 +263,11 @@ public class OrderBizService {
                 );
             }
 
-            // Try 全部成功，订单状态 -> FROZEN
+            // Try 全部成功，订单状态 -> FROZEN（表示资源已冻结，等待 Confirm）
             order.setStatus(FROZEN);
             orderService.updateById(order);
 
-            // ========== Confirm 阶段：同步提交 ==========
+            // ========== Confirm 阶段：Saga执行VIP激活 + TCC提交积分/优惠券 ==========
             executeConfirm(order, userId, tccXid);
 
             // Confirm 成功，返回已完成
@@ -287,33 +290,35 @@ public class OrderBizService {
     }
 
     /**
-     * Confirm 阶段：激活VIP、实扣积分、核销优惠券
-     * 任意一步失败则补偿已成功的操作 + Cancel 回滚冻结资源
+     * Confirm 阶段：Saga 执行 VIP 激活 + TCC 提交积分/优惠券
+     * - VIP激活为 Saga 风格：直接执行，失败时补偿回退
+     * - 积分/优惠券为 TCC 风格：提交冻结资源（冻结→已扣减/已核销）
+     * 任意一步失败则逆序补偿已成功操作 + Cancel 释放冻结资源
      */
     private void executeConfirm(Order order, Long userId, String tccXid) {
         boolean isVip = false;
         boolean deductPoint = false;
         boolean useCoupon = false;
         try {
-            // 1. 激活VIP会员
+            // 1. [Saga] 激活VIP会员（非预留资源，直接执行，失败需补偿）
             VipPlan plan = planService.getById(order.getBizId());
             if (plan != null) {
                 membershipBizService.activateVip(userId, plan.getDurationMonths(), order.getId());
             }
             isVip = true;
 
-            // 2. 确认扣减积分（冻结 → 实扣）
+            // 2. [TCC Confirm] 确认扣减积分（冻结 → 实扣）
             pointAPI.confirmDeductPoints(userId, order.getActualPoints(),
                     "VIP_PURCHASE", order.getId(), "VIP会员购买");
             deductPoint = true;
 
-            // 3. 核销优惠券
+            // 3. [TCC Confirm] 核销优惠券（冻结 → 已核销）
             if (order.getCouponId() != null) {
                 couponAPI.useCoupon(userId, order.getCouponId(), order.getId());
                 useCoupon = true;
             }
 
-            // 4. 全部成功，统一确认 TCC 分支
+            // 4. [TCC] 更新事务分支状态为已确认
             tccManager.confirmBranch(tccXid, POINT_FREEZE, () -> {});
             if (order.getCouponId() != null) {
                 tccManager.confirmBranch(tccXid, COUPON_FREEZE, () -> {});
@@ -324,11 +329,11 @@ public class OrderBizService {
             orderService.updateById(order);
             log.info("订单确认完成: orderId={}, userId={}", order.getId(), userId);
         } catch (Exception e) {
-            // 补偿已成功的操作
-            compensationService.compensateConfirmFailure(userId, order, tccXid, isVip, useCoupon, deductPoint);
+            // [Saga 补偿] 逆序回滚已成功的业务操作（VIP反激活、积分退回、优惠券退回）
+            compensationService.compensateConfirmFailure(userId, order, isVip, useCoupon, deductPoint);
             log.error("Confirm失败，执行补偿回滚, orderId={}", order.getId(), e);
 
-            // Cancel TCC 分支状态（释放冻结）
+            // [TCC Cancel] 释放冻结的积分和优惠券
             cancelFrozenResources(order, tccXid);
             order.setStatus(OrderStatus.CLOSED);
             orderService.updateById(order);

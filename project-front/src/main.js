@@ -84,6 +84,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/ai-research',
+    name: 'AIResearch',
+    component: () => import('./views/ResearchPanel.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/ai-writing',
     name: 'AIWriting',
     component: () => import('./views/AIWriting.vue'),

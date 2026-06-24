@@ -20,6 +20,7 @@ from loguru import logger
 from config.settings import get_settings
 from api import chat_router, knowledge_router, skill_router, memory_router
 from api.writing_router import router as writing_router
+from api.research_router import router as research_router
 from services.core.nacos_service import get_nacos_service
 
 
@@ -118,6 +119,7 @@ def create_app() -> FastAPI:
     app.include_router(chat_router, prefix="/api/v1/chat", tags=["Chat"])
     app.include_router(knowledge_router, prefix="/api/v1/knowledge", tags=["Knowledge"])
     app.include_router(writing_router, prefix="/api/v1/writing", tags=["Writing"])
+    app.include_router(research_router, prefix="/api/v1/research", tags=["Research"])
     app.include_router(skill_router, prefix="/api/v1/skill", tags=["Skill"])
     app.include_router(memory_router, prefix="/api/v1/memory", tags=["Memory"])
 

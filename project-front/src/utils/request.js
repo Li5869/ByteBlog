@@ -811,7 +811,63 @@ export const aiApi = {
   streamWriting: (taskId) => {
     const url = `${BASE_URL}/ai/writing/${taskId}/stream`
     return sseRequest(url, { method: 'GET' })
-  }
+  },
+
+  // ========== AI 深度研究相关 ==========
+  /**
+   * 启动深度研究任务（SSE 流式响应）
+   * @param {string} taskId - 任务ID（前端生成的 UUID）
+   * @param {string} message - 研究需求
+   * @returns {Promise<{body: ReadableStream, controller: AbortController}>}
+   */
+  startResearch: (taskId, message) => {
+    const url = `${BASE_URL}/ai/research/start`
+    return sseRequest(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskId, message })
+    })
+  },
+
+  /**
+   * 恢复被中断的研究任务
+   * @param {string} taskId - 任务ID
+   * @param {string} response - 用户响应（回答澄清问题 / 确认计划 / 修改意见）
+   * @returns {Promise<{body: ReadableStream, controller: AbortController}>}
+   */
+  resumeResearch: (taskId, response) => {
+    const url = `${BASE_URL}/ai/research/resume`
+    return sseRequest(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskId, response })
+    })
+  },
+
+  /**
+   * 停止研究任务
+   * @param {string} taskId - 任务ID
+   * @returns {Promise<void>}
+   */
+  stopResearch: (taskId) =>
+    post(`/ai/research/stop`, { taskId }),
+
+  /**
+   * 获取研究历史列表
+   * @param {number} current - 当前页码
+   * @param {number} size - 每页大小
+   * @returns {Promise<Object>} 分页列表
+   */
+  getResearchHistory: (current = 1, size = 10) =>
+    get('/ai/research/history', { current, size }),
+
+  /**
+   * 获取研究报告详情
+   * @param {string} taskId - 任务ID
+   * @returns {Promise<Object>} 报告详情
+   */
+  getResearchReport: (taskId) =>
+    get(`/ai/research/report/${taskId}`),
 }
 
 /**
