@@ -64,8 +64,8 @@ public class ResearchBizService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void markTaskFailed(String taskId, String errorMsg) {
-        researchTaskService.updateStatus(taskId, "failed");
-        researchTaskService.updateErrorMsg(taskId, errorMsg);
+        // 使用单次数据库操作同时更新状态和错误信息
+        researchTaskService.markTaskFailed(taskId, errorMsg);
     }
 
     /**
@@ -226,16 +226,4 @@ public class ResearchBizService {
         log.info("[Research] 更新任务成功, taskId={}, status={}", taskId, status);
     }
 
-    /**
-     * 记录任务错误（内部回调用）
-     *
-     * @param taskId   任务UUID
-     * @param errorMsg 错误信息
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public void recordError(String taskId, String errorMsg) {
-        researchTaskService.updateStatus(taskId, "failed");
-        researchTaskService.updateErrorMsg(taskId, errorMsg);
-        log.info("[Research] 记录错误, taskId={}, error={}", taskId, errorMsg);
-    }
 }

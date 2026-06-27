@@ -1,5 +1,6 @@
 package com.personblog.common.utils;
 
+import com.personblog.common.service.UserIdHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 

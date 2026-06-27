@@ -23,6 +23,8 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
+import static reactor.core.scheduler.Schedulers.boundedElastic;
+
 /**
  * 深度研究智能体控制器
  *
@@ -46,7 +48,7 @@ public class ResearchAgentController {
 
         // 创建任务记录
         return Mono.fromCallable(() -> researchBizService.createTask(taskId, userId, dto.getMessage()))
-                .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
+                .subscribeOn(boundedElastic())
                 .thenMany(pythonResearchService.streamResearch(taskId, dto.getMessage()))
                 .onErrorResume(e -> {
                     log.error("[Research] 启动任务失败, taskId={}", taskId, e);

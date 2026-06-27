@@ -109,6 +109,19 @@ public class ResearchTaskServiceImpl implements IResearchTaskService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void markTaskFailed(String taskId, String errorMsg) {
+        // 单次数据库操作同时更新状态和错误信息
+        LambdaUpdateWrapper<ResearchTask> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(ResearchTask::getTaskId, taskId)
+                .set(ResearchTask::getStatus, "failed")
+                .set(ResearchTask::getErrorMsg, errorMsg)
+                .set(ResearchTask::getUpdatedAt, LocalDateTime.now());
+        researchTaskMapper.update(null, updateWrapper);
+        log.info("[ResearchTask] 标记任务失败, taskId={}, error={}", taskId, errorMsg);
+    }
+
+    @Override
     public List<ResearchHistoryVO> getUserHistory(Long userId, int page, int size) {
         // 分页查询用户的研究任务
         Page<ResearchTask> pageParam = new Page<>(page, size);

@@ -82,7 +82,7 @@ public class VipOrderController {
      * @return 确认
      */
     @PostMapping("/{orderId}/confirm")
-    @Operation(summary = "下单优惠券",description = "用户确认下单")
+    @Operation(summary = "下单购买",description = "用户确认下单")
     public JsonData<ConfirmOrderVO> confirmOrder(@PathVariable Long orderId){
        ConfirmOrderVO vo = orderBizService.confirmOrder(orderId);
        return JsonData.buildSuccess(vo);

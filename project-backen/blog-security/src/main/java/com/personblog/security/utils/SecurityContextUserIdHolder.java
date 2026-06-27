@@ -1,6 +1,6 @@
 package com.personblog.security.utils;
 
-import com.personblog.common.utils.UserIdHolder;
+import com.personblog.common.service.UserIdHolder;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;

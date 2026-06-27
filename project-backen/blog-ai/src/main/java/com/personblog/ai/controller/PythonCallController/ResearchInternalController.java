@@ -66,7 +66,7 @@ public class ResearchInternalController {
         String taskId = request.get("taskId");
         String errorMsg = request.get("errorMsg");
 
-        researchBizService.recordError(taskId, errorMsg);
+        researchBizService.markTaskFailed(taskId, errorMsg);
         return JsonData.buildSuccess();
     }
 }

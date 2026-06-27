@@ -168,7 +168,7 @@ public class OrderBizService {
         } catch (Exception e) {
             log.warn("发送订单超时延迟消息失败，等待定时补偿: orderId={}", order.getId());
         }
-        //缓存用户的积分
+        //缓存用户的积分，用于快速积分校验
         String pointKey = getOrderPointsSnapshotKey(order.getId());
         Long points = pointAPI.getPointInfo(userId).getAvailablePoints();
         redisTemplate.opsForValue().set(pointKey, points.toString());
@@ -234,9 +234,6 @@ public class OrderBizService {
             if (!locked) {
                 throw new BizException(BizCodeEnum.ORDER_REPEAT);
             }
-
-
-
             // ========== [TCC Try] 冻结积分 ==========
             tccManager.tryBranch(tccXid, POINT_FREEZE,
                 () -> {

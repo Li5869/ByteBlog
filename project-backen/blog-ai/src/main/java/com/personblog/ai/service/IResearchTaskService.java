@@ -71,6 +71,14 @@ public interface IResearchTaskService {
     void updateErrorMsg(String taskId, String errorMsg);
 
     /**
+     * 标记任务失败并记录错误信息（单次数据库操作）
+     *
+     * @param taskId   任务UUID
+     * @param errorMsg 错误信息
+     */
+    void markTaskFailed(String taskId, String errorMsg);
+
+    /**
      * 获取用户研究历史（分页）
      *
      * @param userId 用户ID
