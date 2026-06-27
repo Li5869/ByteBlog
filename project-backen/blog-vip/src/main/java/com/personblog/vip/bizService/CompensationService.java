@@ -17,7 +17,6 @@ public class CompensationService {
     //confirm失败补偿
     public void compensateConfirmFailure(Long userId,
                                           Order order,
-                                          String tccXid,
                                           boolean isVip,
                                           boolean useCoupon,
                                           boolean deductPoint) {

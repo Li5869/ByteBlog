@@ -61,6 +61,18 @@ class Settings(BaseSettings):
     writing_critic_temperature: float = 0.1
     writing_classifier_temperature: float = 0.2
 
+    # ===== Research Agent 专属 LLM Temperature 配置 =====
+    # Planner（0.1）：任务拆解精确；Replanner（0.1）：评估判断一致
+    # Reporter（0.4）：报告生成兼顾创意
+    research_planner_temperature: float = 0.1
+    research_replanner_temperature: float = 0.1
+    research_reporter_temperature: float = 0.4
+
+    # ===== Research Agent 行为控制 =====
+    research_max_tasks: int = 8       # 任务总数上限
+    research_max_rounds: int = 3      # Replanner 迭代轮次上限
+    research_max_duration: int = 900  # 全局执行时间上限（秒，15 分钟）
+
     # ===== 外部 API =====
     tavily_api_key: str = ""
 

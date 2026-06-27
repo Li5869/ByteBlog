@@ -56,6 +56,18 @@ public final class PythonAiApiConstants {
         private Memory() {}
     }
 
+    /** 深度研究相关API路径 */
+    public static final class Research {
+        /** 启动研究任务接口 */
+        public static final String START = "/api/v1/research/start";
+        /** 恢复研究任务接口 */
+        public static final String RESUME = "/api/v1/research/resume";
+        /** 停止研究任务接口 */
+        public static final String STOP = "/api/v1/research/stop";
+
+        private Research() {}
+    }
+
     /** Python 服务统一响应中的 JSON 字段名 */
     public static final class Fields {
         /** 响应码字段 */

@@ -80,6 +80,12 @@ public class AliOssUtil {
             case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             case "xls" -> "application/vnd.ms-excel";
             case "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case "md" -> "text/markdown";
+            case "txt" -> "text/plain";
+            case "json" -> "application/json";
+            case "html", "htm" -> "text/html";
+            case "css" -> "text/css";
+            case "js" -> "application/javascript";
             default -> null;
         };
     }

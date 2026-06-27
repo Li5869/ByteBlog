@@ -1,4 +1,4 @@
-package com.personblog.common.utils;
+package com.personblog.common.service;
 
 /**
  * 用户 ID 持有者接口

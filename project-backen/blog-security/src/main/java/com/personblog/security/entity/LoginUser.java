@@ -1,7 +1,7 @@
 package com.personblog.security.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.personblog.common.utils.UserIdHolder;
+import com.personblog.common.service.UserIdHolder;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
