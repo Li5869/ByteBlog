@@ -7,11 +7,28 @@
 - save_memory：主动保存重要信息
 """
 
+import re
+
 from langchain_core.tools import tool
 from loguru import logger
 
 from services.core.long_term_memory_service import get_long_term_memory_service
 from tools.user_tool import current_user_id
+
+
+def _sanitize_memory_content(content: str) -> str:
+    """
+    清洗记忆内容，移除会导致 Mem0 内部 LLM extraction JSON 解析失败的字符。
+
+    Mem0 的 extraction 流程会让 LLM 生成 JSON，中文双引号等特殊字符
+    容易导致 LLM 输出畸形 JSON（如未转义的 ASCII 引号），从而使解析失败。
+    将中文双引号替换为更安全的「」括号，语义不变但不会破坏 JSON 结构。
+    """
+    # 中文双引号 → 日式括号「」（不会干扰 JSON 解析）
+    content = content.replace("\u201c", "\u300c").replace("\u201d", "\u300d")
+    # 中文单引号 → 同理替换
+    content = content.replace("\u2018", "\u300e").replace("\u2019", "\u300f")
+    return content
 
 
 @tool
@@ -138,9 +155,12 @@ async def save_memory(content: str, memory_type: str = "auto") -> str:
     try:
         memory_service = get_long_term_memory_service()
 
+        # 清洗内容：移除会导致 Mem0 内部 LLM extraction JSON 解析失败的字符
+        sanitized_content = _sanitize_memory_content(content)
+
         # 构造消息格式（模拟对话，让 Mem0 自动提取）
         messages = [
-            {"role": "user", "content": content}
+            {"role": "user", "content": sanitized_content}
         ]
 
         # 构造元数据
@@ -159,12 +179,13 @@ async def save_memory(content: str, memory_type: str = "auto") -> str:
             # 提取保存的记忆内容
             memories = result.get("results", []) if isinstance(result, dict) else []
             if memories:
-                saved_content = memories[0].get("memory", content) if isinstance(memories[0], dict) else content
+                saved_content = memories[0].get("memory", sanitized_content) if isinstance(memories[0], dict) else sanitized_content
                 logger.info(f"[save_memory] 保存记忆成功: user_id={user_id}, content={saved_content}")
                 return f"已成功记住：{saved_content}"
             else:
-                logger.info(f"[save_memory] 保存记忆成功（无返回内容）: user_id={user_id}")
-                return f"已成功记住：{content}"
+                # Mem0 返回空 results 说明 extraction 解析失败，记忆未实际存储
+                logger.warning(f"[save_memory] Mem0 extraction 返回空结果，记忆未存储: user_id={user_id}, content={sanitized_content}")
+                return "记忆保存失败，请稍后再试"
         else:
             logger.warning(f"[save_memory] 保存记忆返回空结果: user_id={user_id}")
             return "记忆保存失败，请稍后再试"

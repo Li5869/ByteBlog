@@ -407,7 +407,7 @@ watch(() => route.query.login, (newVal) => {
           <div class="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-500 rounded-md flex items-center justify-center">
             <span class="text-white font-bold text-sm">B</span>
           </div>
-          <span class="text-lg font-bold tracking-tight text-gray-900 dark:text-white">博客</span>
+          <span class="text-lg font-bold tracking-tight text-gray-900 dark:text-white">ByteBlog</span>
         </RouterLink>
 
         <div class="flex flex-1 items-center gap-3 mx-8">
@@ -878,7 +878,7 @@ watch(() => route.query.login, (newVal) => {
                 <div class="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center">
                   <span class="text-white font-bold text-lg">B</span>
                 </div>
-                <span class="text-xl font-bold text-gray-900 dark:text-white">博客</span>
+                <span class="text-xl font-bold text-gray-900 dark:text-white">ByteBlog</span>
               </div>
               
               <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">登录账号</h2>
@@ -1071,7 +1071,7 @@ watch(() => route.query.login, (newVal) => {
                 <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-pink-500 rounded-xl flex items-center justify-center">
                   <span class="text-white font-bold text-lg">B</span>
                 </div>
-                <span class="text-xl font-bold text-gray-900 dark:text-white">博客</span>
+                <span class="text-xl font-bold text-gray-900 dark:text-white">ByteBlog</span>
               </div>
               
               <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">创建账号</h2>

@@ -25,7 +25,7 @@ const links = [
         </div>
         
         <div class="text-sm text-gray-500 dark:text-gray-400">
-          © {{ currentYear }} 个人博客 All Rights Reserved
+          © {{ currentYear }} ByteBlog All Rights Reserved
         </div>
       </div>
     </div>

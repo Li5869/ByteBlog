@@ -553,7 +553,7 @@ const newResearch = () => {
 // ==================== 生命周期 ====================
 
 onMounted(() => {
-  document.title = '深度研究 - 个人博客'
+  document.title = '深度研究 - ByteBlog'
   fetchHistory()
 })
 
