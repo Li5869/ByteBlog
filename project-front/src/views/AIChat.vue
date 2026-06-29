@@ -512,7 +512,7 @@ const viewWritingResult = (taskId) => {
 // ==================== 生命周期 ====================
 
 onMounted(async () => {
-  document.title = 'AI智能助手 - 个人博客'
+  document.title = 'AI智能助手 - ByteBlog'
   fetchAiAssistantInfo()
   if (isLoggedIn()) {
     await fetchConversations()

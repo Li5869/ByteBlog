@@ -61,7 +61,7 @@ public class CommonBizService {
         List<Integer> calender = new ArrayList<>(30);
         List<Object> results = redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
             StringRedisConnection src = new DefaultStringRedisConnection(connection);
-            for (int i = offset; i >= 0; i--) {
+            for (int i = 0; i <=offset; i++) {
                 src.getBit(key, i);
             }
             return null;

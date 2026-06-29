@@ -6,6 +6,7 @@ import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 /**
@@ -16,6 +17,7 @@ import java.util.concurrent.ThreadPoolExecutor;
  *   <li>普通任务（文章计数/评论/消息）：中等并发</li>
  *   <li>IO密集任务（AI调用）：较高并发，大队列</li>
  *   <li>特殊任务（死信队列重试）：低并发，小队列</li>
+ *   <li>缓存重建任务：虚拟线程（JDK 21+）</li>
  * </ul>
  *
  * @author LSH
@@ -106,5 +108,22 @@ public class ThreadPoolConfig {
     @Bean(name = "CouponCalcExecutor")
     public Executor couponCalcExecutor() {
         return createExecutor("coupon-calc-", 2, 4, 64);
+    }
+
+    // ==================== 缓存重建虚拟线程执行器 ====================
+
+    /**
+     * 缓存重建虚拟线程执行器（JDK 21+）
+     * <p>
+     * 用于多级缓存逻辑过期方案的异步重建任务：
+     * <ul>
+     *   <li>每个重建任务独立虚拟线程，轻量无阻塞</li>
+     *   <li>适合 I/O 密集型任务（回源 DB + Redis）</li>
+     *   <li>无线程数限制，可并发处理大量热点 key</li>
+     * </ul>
+     */
+    @Bean(name = "CacheRebuildExecutor")
+    public Executor cacheRebuildExecutor() {
+        return Executors.newVirtualThreadPerTaskExecutor();
     }
 }

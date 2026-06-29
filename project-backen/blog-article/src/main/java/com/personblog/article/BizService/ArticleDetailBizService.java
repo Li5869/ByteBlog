@@ -66,7 +66,6 @@ public class ArticleDetailBizService {
                 cacheKey,
                 key -> loadArticleMetadataFromDB(id),
                 600,
-                120,
                 ArticleMetadataVO.class
         );
     }

@@ -14,6 +14,7 @@ from config.settings import get_settings
 from models.schemas import MemoryExtractItem
 from services.core.memory_service import get_memory_service
 from services.core.long_term_memory_service import get_long_term_memory_service
+from tools.memory_tool import _sanitize_memory_content
 
 
 class MemoryExtractService:
@@ -126,7 +127,7 @@ class MemoryExtractService:
             # 如果有思考过程，拼接到 content 中供 Mem0 提取
             if hasattr(msg, "thinking") and msg.thinking:
                 content = f"[思考]\n{msg.thinking}\n\n[回答]\n{content}"
-            mem0_messages.append({"role": role, "content": content})
+            mem0_messages.append({"role": role, "content": _sanitize_memory_content(content)})
         return mem0_messages
 
     @staticmethod

@@ -35,6 +35,7 @@ from dataclasses import dataclass, field
 from typing import TypedDict, List, Optional, Literal, Annotated, Sequence
 
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage, SystemMessage
+from langchain_core.runnables import RunnableConfig
 from langchain_deepseek import ChatDeepSeek
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.config import get_stream_writer
@@ -49,7 +50,9 @@ from config.prompts import get_prompt_manager
 from config.settings import get_settings
 from services.core.long_term_memory_service import get_long_term_memory_service
 from tools import DIRECT_TOOLS, SUB_AGENT_TOOLS, WRITING_TOOLS
-from tools.user_tool import set_current_user_id
+from services.business.user_service import get_user_service
+from common.user_context import set_current_user_id
+from common.time_context import get_formatted_time
 
 
 @dataclass
@@ -87,11 +90,12 @@ class StreamEvent:
 
 
 class AgentState(TypedDict):
-    """LangGraph Agent 状态（使用 add_messages reducer 自动管理消息追加）"""
+    """LangGraph Agent 状态（使用 add_messages reducer 自动管理消息追加）
+    user_id 不属于对话流转状态，通过 config.configurable 传递（运行时上下文）
+    """
     messages: Annotated[Sequence[BaseMessage], add_messages]
     iteration: int
     final_answer: str
-    user_id: Optional[str]
     # 中期记忆：跨轮次的摘要状态，记录已摘要的消息 ID，避免重复摘要
     running_summary: Optional[RunningSummary]
 
@@ -195,7 +199,7 @@ class SmartAgent:
 
     # ==================== 节点函数 ====================
 
-    async def _memory_recall_node(self, state: AgentState) -> dict:
+    async def _memory_recall_node(self, state: AgentState, config: RunnableConfig) -> dict:
         """
         记忆召回节点：仅在对话首轮召回用户记忆。
 
@@ -203,9 +207,11 @@ class SmartAgent:
         非首轮跳过：消息历史自然延续上下文，无需重复召回
 
         记忆上下文作为 SystemMessage 注入，供 LLM 参考。
+
+        user_id 从 config.configurable 获取（运行时上下文，非对话状态）
         """
         messages = state.get("messages", [])
-        user_id = state.get("user_id")
+        user_id = config.get("configurable", {}).get("user_id")
 
         # 统计 HumanMessage 数量（排除 SystemMessage）
         human_messages = [m for m in messages if isinstance(m, HumanMessage)]
@@ -219,6 +225,24 @@ class SmartAgent:
         user_message = human_messages[0].content if human_messages else ""
 
         try:
+            # 注入用户身份上下文（取代 get_current_user_info 工具调用，代码层面预取避免 LLM 工具调用开销）
+            user_service = get_user_service()
+            user_info = await user_service.get_user_info(user_id)
+
+            if user_info:
+                identity_text = (
+                    f"[用户身份] 当前用户ID: {user_id}\n"
+                    f"用户名: {user_info.username or '未设置'}\n"
+                    f"昵称: {user_info.nickname or '未设置'}\n"
+                    f"邮箱: {user_info.email or '未设置'}\n"
+                    f"手机: {user_info.phone or '未设置'}\n"
+                    f"简介: {user_info.bio or '未设置'}"
+                )
+            else:
+                identity_text = f"[用户身份] 当前用户ID: {user_id}"
+
+            context_messages = [SystemMessage(content=identity_text)]
+
             # 调用 LongTermMemoryService 召回记忆
             memory_service = get_long_term_memory_service()
             memories = await memory_service.recall_memories(
@@ -229,14 +253,11 @@ class SmartAgent:
 
             # 格式化记忆上下文
             memory_context = self._format_memory_context(memories)
+            if memory_context:
+                context_messages.append(SystemMessage(content=memory_context))
 
-            if not memory_context:
-                logger.debug("[MemoryRecall] 无记忆上下文，跳过注入")
-                return {"messages": []}
-
-            # 将记忆上下文作为 SystemMessage 注入
-            logger.info(f"[MemoryRecall] 注入记忆上下文: user_id={user_id}")
-            return {"messages": [SystemMessage(content=memory_context)]}
+            logger.info(f"[MemoryRecall] 注入用户上下文: user_id={user_id}, has_memory={bool(memory_context)}")
+            return {"messages": context_messages}
 
         except Exception as e:
             logger.error(f"[MemoryRecall] 记忆召回失败: {e}")
@@ -320,6 +341,9 @@ class SmartAgent:
             llm_messages = await self._compress_messages(messages, state, state_update)
         else:
             llm_messages = messages
+
+        # 注入最新时间上下文（每轮对话都需最新时间，不持久化到 state）
+        llm_messages = [SystemMessage(content=f"[时间] {get_formatted_time()}")] + llm_messages
 
         full_response = None
         reasoning_chunks = []
@@ -541,17 +565,17 @@ class SmartAgent:
             ],
             "iteration": 0,
             "final_answer": "",
-            "user_id": user_id,
         }
 
-        # LangSmith 追踪配置：通过 metadata 关联业务维度
+        # LangGraph config：
+        #   configurable → 节点函数可通过 config 访问（_memory_recall_node 读取 user_id）
+        #   metadata → LangSmith 追踪标签，不重复 configurable 中已有的字段
         config = {
             "configurable": {
                 "thread_id": conversation_id,
+                "user_id": user_id,
             },
             "metadata": {
-                "user_id": user_id or "anonymous",
-                "conversation_id": conversation_id,
                 "agent_type": "smart_agent",
             }
         }

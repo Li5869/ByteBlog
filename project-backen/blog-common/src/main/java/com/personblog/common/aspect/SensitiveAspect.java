@@ -13,23 +13,26 @@ import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
 import java.util.Collection;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 方法级别脱敏切面：对Controller返回值中的敏感信息进行脱敏处理
  * 在Controller方法上标注 @SensitiveResponse 即可生效
- * 新增脱敏类型只需实现 SensitiveStrategy 并添加到 STRATEGIES 列表
+ * 新增脱敏类型只需实现 SensitiveStrategy 并在 STRATEGY_MAP 中注册关键词映射
  */
 @Slf4j
 @Aspect
 @Component
 public class SensitiveAspect {
 
-    // 策略列表，新增脱敏类型在此注册即可
-    private static final List<SensitiveStrategy> STRATEGIES = List.of(
-            new PhoneSensitiveStrategy(),
-            new EmailSensitiveStrategy()
-    );
+    // 关键词→策略映射，字段名含关键词即命中对应策略，新增类型在此注册
+    private static final Map<String, SensitiveStrategy> STRATEGY_MAP = new HashMap<>();
+
+    static {
+        STRATEGY_MAP.put("phone", new PhoneSensitiveStrategy());
+        STRATEGY_MAP.put("email", new EmailSensitiveStrategy());
+    }
 
     @Around("@annotation(response)")
     public Object sensitiveResponse(ProceedingJoinPoint joinPoint, SensitiveResponse response) throws Throwable {
@@ -66,36 +69,35 @@ public class SensitiveAspect {
                     continue;
                 }
                 try {
-                    // 反射访问字段值
                     field.setAccessible(true);
                     String value = (String) field.get(obj);
                     if (value == null || value.isEmpty()) {
                         continue;
                     }
-                    // 通过字段名匹配策略，首个命中即脱敏
-                    String desensitized = applyStrategies(field.getName(), value);
-                    if (!desensitized.equals(value)) {
-                        field.set(obj, desensitized);
+                    // 通过字段名从策略工厂查找策略
+                    SensitiveStrategy strategy = matchStrategy(field.getName());
+                    if (strategy != null) {
+                        field.set(obj, strategy.desensitize(value));
                     }
                 } catch (Exception e) {
                     // 反射访问失败不影响主流程
                     log.warn("脱敏处理字段失败: {}.{}", clazz.getSimpleName(), field.getName());
                 }
             }
-            // 继续处理父类字段
             clazz = clazz.getSuperclass();
         }
     }
 
     /**
-     * 通过字段名匹配策略，首个命中即脱敏返回；无匹配则原值返回
+     * 字段名含某关键词则返回对应策略，否则返回null
      */
-    private String applyStrategies(String fieldName, String value) {
-        for (SensitiveStrategy strategy : STRATEGIES) {
-            if (strategy.matchesField(fieldName)) {
-                return strategy.desensitize(value);
+    private SensitiveStrategy matchStrategy(String fieldName) {
+        String lower = fieldName.toLowerCase();
+        for (Map.Entry<String, SensitiveStrategy> entry : STRATEGY_MAP.entrySet()) {
+            if (lower.contains(entry.getKey())) {
+                return entry.getValue();
             }
         }
-        return value;
+        return null;
     }
 }

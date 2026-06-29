@@ -2,13 +2,13 @@ package com.personblog.common.constant;
 
 /**
  * Redis Key 常量类
- * 
+ *
  * 统一管理 Redis 中使用的 Key 前缀
  * 避免硬编码，方便维护和修改
- * 
+ *
  * Key 命名规范：业务:功能:标识
  * 例如：user:token:xxx 表示用户模块的 token 功能
- * 
+ *
  * @author LSH
  */
 public class RedisKeys {
@@ -65,5 +65,28 @@ public class RedisKeys {
      */
     public static final String BROWSE_COUNT_KEY = "browse:count";
 
+    // =============================================
+    // 七、缓存 Pub/Sub 频道
+    // =============================================
+
+    /**
+     * 缓存删除通知频道
+     * 用于多级缓存（L1 Caffeine）的跨节点一致性
+     * 发布者：MultiLevelCacheUtil.evict()
+     * 订阅者：CacheEvictListener
+     */
+    public static final String CACHE_EVICT_CHANNEL = "cache:evict";
+
+    // =============================================
+    // 八、缓存分布式锁
+    // =============================================
+
+    /**
+     * 缓存重建分布式锁前缀
+     * 完整 Key 格式：lock:cache:{cacheKey}
+     * 用途：逻辑过期方案异步重建时，防止多节点重复回源 DB
+     * 实现：Redisson RLock（tryLock 不等待）
+     */
+    public static final String CACHE_LOCK_PREFIX = "lock:cache:";
 
 }

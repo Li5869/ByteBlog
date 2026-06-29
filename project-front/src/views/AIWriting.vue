@@ -687,7 +687,7 @@ const resumeFromTask = async (rawTaskId) => {
 // ==================== 生命周期 ====================
 
 onMounted(async () => {
-  document.title = 'AI智能写作 - 个人博客'
+  document.title = 'AI智能写作 - ByteBlog'
   loadCategoriesAndTags()
 
   // 检查是否有 taskId 查询参数（从任务列表页跳转过来）
