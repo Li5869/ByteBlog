@@ -89,9 +89,6 @@ SmartAgent 作为 Supervisor，负责：
 
 | 工具 | 用途 |
 |------|------|
-| `get_the_time` | 获取当前时间 |
-| `get_current_user_id` | 获取当前用户 ID |
-| `get_current_user_info` | 获取当前用户信息 |
 | `get_skill_details` | 获取指定 Skill 的完整详情 |
 | `list_available_skills` | 列出所有可用的 Skills |
 | `search_skill_guide` | 语义搜索 Skill 指南 |

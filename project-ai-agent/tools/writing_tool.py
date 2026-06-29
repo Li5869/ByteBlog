@@ -24,7 +24,7 @@ from services.business.writing.writing_execution_service import (
     start_revise_phase,
 )
 from services.business.blog_service import get_blog_service
-from tools.user_tool import current_user_id
+from common.user_context import current_user_id
 
 
 def _generate_result_url(task_id: str) -> str:

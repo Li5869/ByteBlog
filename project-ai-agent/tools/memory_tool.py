@@ -13,7 +13,7 @@ from langchain_core.tools import tool
 from loguru import logger
 
 from services.core.long_term_memory_service import get_long_term_memory_service
-from tools.user_tool import current_user_id
+from common.user_context import current_user_id
 
 
 def _sanitize_memory_content(content: str) -> str:
