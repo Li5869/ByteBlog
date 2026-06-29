@@ -150,7 +150,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public AuthorInfoVO getAuthorInfo(Long userId) {
         String cacheKey = USER_AUTHOR + userId;
-        return cacheUtil.get(cacheKey, key->loadAuthorInfoFromDB(userId), 200, 500, AuthorInfoVO.class);
+        return cacheUtil.get(cacheKey, key->loadAuthorInfoFromDB(userId), 600,  AuthorInfoVO.class);
     }
 
     private AuthorInfoVO loadAuthorInfoFromDB(Long userId) {
@@ -191,7 +191,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         // 查缓存
         for (Long userId : userIds) {
             String key =USER_INFO+userId;
-            UserDTO userDTO = cacheUtil.get(key, s -> getUserInfo(userId), 600, 200, UserDTO.class);
+            UserDTO userDTO = cacheUtil.get(key, s -> getUserInfo(userId), 300,UserDTO.class);
             result.add(userDTO);
         }
         return result;
