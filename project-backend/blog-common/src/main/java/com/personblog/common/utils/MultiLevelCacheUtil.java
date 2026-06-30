@@ -7,6 +7,7 @@ import com.personblog.common.constant.RedisKeys;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
+import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -245,7 +246,7 @@ public class MultiLevelCacheUtil {
 
     /**
      * 删除缓存（同时清除 L1 本地和 L2 Redis）
-     * 并通过 Redis Pub/Sub 通知其他节点清除本地缓存
+     * 并通过 Redisson RTopic 通知其他节点清除本地缓存
      *
      * @param key 缓存键
      */
@@ -260,9 +261,10 @@ public class MultiLevelCacheUtil {
             log.warn("Redis删除失败: {}", key, e);
         }
 
-        // 广播通知其他节点清除本地缓存
+        // 通过 Redisson RTopic 广播通知其他节点清除本地缓存
         try {
-            redisTemplate.convertAndSend(RedisKeys.CACHE_EVICT_CHANNEL, key);
+            RTopic topic = redissonClient.getTopic(RedisKeys.CACHE_EVICT_CHANNEL);
+            topic.publish(key);
         } catch (Exception e) {
             log.warn("缓存删除广播失败: {}", key, e);
         }
