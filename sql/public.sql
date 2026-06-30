@@ -12,7 +12,7 @@
  Target Server Version : 180003 (180003)
  File Encoding         : 65001
 
- Date: 12/06/2026 13:13:45
+ Date: 30/06/2026 15:54:36
 */
 
 
@@ -1107,6 +1107,68 @@ COMMENT ON COLUMN "public"."tb_point_rank_log"."created_at" IS '创建时间';
 COMMENT ON TABLE "public"."tb_point_rank_log" IS '积分排行榜月度记录表';
 
 -- ----------------------------
+-- Table structure for tb_research_report
+-- ----------------------------
+DROP TABLE IF EXISTS "public"."tb_research_report";
+CREATE TABLE "public"."tb_research_report" (
+  "id" int8 NOT NULL,
+  "task_id" varchar(64) COLLATE "pg_catalog"."default" NOT NULL,
+  "user_id" int8 NOT NULL,
+  "topic" varchar(255) COLLATE "pg_catalog"."default" NOT NULL,
+  "report_url" varchar(512) COLLATE "pg_catalog"."default" NOT NULL,
+  "summary" text COLLATE "pg_catalog"."default",
+  "key_findings" text COLLATE "pg_catalog"."default",
+  "sources" text COLLATE "pg_catalog"."default",
+  "is_deleted" bool DEFAULT false,
+  "created_at" timestamp(6) DEFAULT CURRENT_TIMESTAMP
+)
+;
+COMMENT ON COLUMN "public"."tb_research_report"."id" IS '主键ID（雪花算法）';
+COMMENT ON COLUMN "public"."tb_research_report"."task_id" IS '关联的研究任务UUID';
+COMMENT ON COLUMN "public"."tb_research_report"."user_id" IS '用户ID，冗余字段便于查询';
+COMMENT ON COLUMN "public"."tb_research_report"."topic" IS '研究主题';
+COMMENT ON COLUMN "public"."tb_research_report"."report_url" IS 'OSS报告文件地址（Markdown格式）';
+COMMENT ON COLUMN "public"."tb_research_report"."summary" IS '报告摘要，用于列表页预览';
+COMMENT ON COLUMN "public"."tb_research_report"."key_findings" IS '关键发现列表JSON数组';
+COMMENT ON COLUMN "public"."tb_research_report"."sources" IS '引用来源JSON数组，包含title和url';
+COMMENT ON COLUMN "public"."tb_research_report"."is_deleted" IS '逻辑删除标记：false-正常/true-已删除';
+COMMENT ON COLUMN "public"."tb_research_report"."created_at" IS '创建时间';
+COMMENT ON TABLE "public"."tb_research_report" IS '深度研究报告表';
+
+-- ----------------------------
+-- Table structure for tb_research_task
+-- ----------------------------
+DROP TABLE IF EXISTS "public"."tb_research_task";
+CREATE TABLE "public"."tb_research_task" (
+  "id" int8 NOT NULL,
+  "task_id" varchar(64) COLLATE "pg_catalog"."default" NOT NULL,
+  "user_id" int8 NOT NULL,
+  "topic" varchar(255) COLLATE "pg_catalog"."default" NOT NULL,
+  "status" varchar(32) COLLATE "pg_catalog"."default" NOT NULL DEFAULT 'pending'::character varying,
+  "plan" text COLLATE "pg_catalog"."default",
+  "clarified_requirements" text COLLATE "pg_catalog"."default",
+  "user_feedback" text COLLATE "pg_catalog"."default",
+  "error_msg" text COLLATE "pg_catalog"."default",
+  "is_deleted" bool DEFAULT false,
+  "created_at" timestamp(6) DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" timestamp(6) DEFAULT CURRENT_TIMESTAMP
+)
+;
+COMMENT ON COLUMN "public"."tb_research_task"."id" IS '主键ID（雪花算法）';
+COMMENT ON COLUMN "public"."tb_research_task"."task_id" IS '任务UUID，前端生成，用于SSE连接标识';
+COMMENT ON COLUMN "public"."tb_research_task"."user_id" IS '用户ID，逻辑外键关联tb_user';
+COMMENT ON COLUMN "public"."tb_research_task"."topic" IS '研究主题';
+COMMENT ON COLUMN "public"."tb_research_task"."status" IS '任务状态：pending-待处理/clarifying-澄清中/planning-规划中/executing-执行中/reporting-生成报告/completed-已完成/failed-失败/stopped-已停止';
+COMMENT ON COLUMN "public"."tb_research_task"."plan" IS '研究计划JSON，含tasks数组和estimated_duration';
+COMMENT ON COLUMN "public"."tb_research_task"."clarified_requirements" IS '用户澄清后的需求描述';
+COMMENT ON COLUMN "public"."tb_research_task"."user_feedback" IS '用户对计划的反馈意见';
+COMMENT ON COLUMN "public"."tb_research_task"."error_msg" IS '错误信息（失败时记录）';
+COMMENT ON COLUMN "public"."tb_research_task"."is_deleted" IS '逻辑删除标记：false-正常/true-已删除';
+COMMENT ON COLUMN "public"."tb_research_task"."created_at" IS '创建时间';
+COMMENT ON COLUMN "public"."tb_research_task"."updated_at" IS '更新时间';
+COMMENT ON TABLE "public"."tb_research_task" IS '深度研究任务表';
+
+-- ----------------------------
 -- Table structure for tb_sensitive_word
 -- ----------------------------
 DROP TABLE IF EXISTS "public"."tb_sensitive_word";
@@ -1540,6 +1602,17 @@ COMMENT ON COLUMN "public"."tb_writing_task"."updated_at" IS '更新时间';
 COMMENT ON COLUMN "public"."tb_writing_task"."completed_at" IS '完成时间';
 COMMENT ON COLUMN "public"."tb_writing_task"."revision_count" IS '微调次数';
 COMMENT ON TABLE "public"."tb_writing_task" IS 'AI写作任务表';
+
+-- ----------------------------
+-- Table structure for user_memories
+-- ----------------------------
+DROP TABLE IF EXISTS "public"."user_memories";
+CREATE TABLE "public"."user_memories" (
+  "id" uuid NOT NULL,
+  "vector" "public"."vector",
+  "payload" jsonb
+)
+;
 
 -- ----------------------------
 -- Table structure for tb_point_log
@@ -4096,6 +4169,39 @@ ALTER TABLE "public"."tb_point_rank_log" ADD CONSTRAINT "uk_rank_log_month_user"
 ALTER TABLE "public"."tb_point_rank_log" ADD CONSTRAINT "pk_point_rank_log" PRIMARY KEY ("id");
 
 -- ----------------------------
+-- Indexes structure for table tb_research_report
+-- ----------------------------
+CREATE INDEX "idx_research_report_created" ON "public"."tb_research_report" USING btree (
+  "created_at" "pg_catalog"."timestamp_ops" DESC NULLS FIRST
+);
+CREATE INDEX "idx_research_report_user" ON "public"."tb_research_report" USING btree (
+  "user_id" "pg_catalog"."int8_ops" ASC NULLS LAST
+);
+CREATE UNIQUE INDEX "uk_research_report_task" ON "public"."tb_research_report" USING btree (
+  "task_id" COLLATE "pg_catalog"."default" "pg_catalog"."text_ops" ASC NULLS LAST
+);
+
+-- ----------------------------
+-- Indexes structure for table tb_research_task
+-- ----------------------------
+CREATE INDEX "idx_research_task_created" ON "public"."tb_research_task" USING btree (
+  "created_at" "pg_catalog"."timestamp_ops" DESC NULLS FIRST
+);
+CREATE INDEX "idx_research_task_status" ON "public"."tb_research_task" USING btree (
+  "status" COLLATE "pg_catalog"."default" "pg_catalog"."text_ops" ASC NULLS LAST
+);
+CREATE INDEX "idx_research_task_user" ON "public"."tb_research_task" USING btree (
+  "user_id" "pg_catalog"."int8_ops" ASC NULLS LAST
+);
+CREATE INDEX "idx_research_task_user_status" ON "public"."tb_research_task" USING btree (
+  "user_id" "pg_catalog"."int8_ops" ASC NULLS LAST,
+  "status" COLLATE "pg_catalog"."default" "pg_catalog"."text_ops" ASC NULLS LAST
+);
+CREATE UNIQUE INDEX "uk_research_task_id" ON "public"."tb_research_task" USING btree (
+  "task_id" COLLATE "pg_catalog"."default" "pg_catalog"."text_ops" ASC NULLS LAST
+);
+
+-- ----------------------------
 -- Indexes structure for table tb_sensitive_word
 -- ----------------------------
 CREATE INDEX "idx_sensitive_word_created_at" ON "public"."tb_sensitive_word" USING btree (
@@ -4387,6 +4493,21 @@ CREATE INDEX "idx_writing_task_user_id" ON "public"."tb_writing_task" USING btre
 -- Primary Key structure for table tb_writing_task
 -- ----------------------------
 ALTER TABLE "public"."tb_writing_task" ADD CONSTRAINT "tb_writing_task_pkey" PRIMARY KEY ("id");
+
+-- ----------------------------
+-- Indexes structure for table user_memories
+-- ----------------------------
+CREATE INDEX "user_memories_hnsw_idx" ON "public"."user_memories" (
+  "vector" "public"."vector_cosine_ops" ASC NULLS LAST
+);
+CREATE INDEX "user_memories_text_lemmatized_idx" ON "public"."user_memories" USING gin (
+  to_tsvector('simple'::regconfig, payload ->> 'text_lemmatized'::text) "pg_catalog"."tsvector_ops"
+);
+
+-- ----------------------------
+-- Primary Key structure for table user_memories
+-- ----------------------------
+ALTER TABLE "public"."user_memories" ADD CONSTRAINT "user_memories_pkey" PRIMARY KEY ("id");
 
 -- ----------------------------
 -- Indexes structure for table tb_point_log

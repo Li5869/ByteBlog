@@ -18,7 +18,7 @@ import java.nio.file.Path;
 @EnableCaching
 public class PersonBlogApplication {
     public static void main(String[] args) {
-        loadEnvFile(Path.of("project-backen/.env"));
+        loadEnvFile(Path.of("project-backend/.env"));
         SpringApplication.run(PersonBlogApplication.class, args);
     }
     /**
