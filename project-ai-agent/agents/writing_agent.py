@@ -495,16 +495,14 @@ class WritingAgent:
 
     async def _search_references(self, keywords: list, topic: str = "") -> list:
         """
-        智能搜索参考资料
+        搜索参考资料
 
-        搜索策略：
-        1. 先搜索站内文章（使用ES）
-        2. 如果站内结果不足（<3条），再搜索外部技术博客
-        3. 合并结果并返回
+        调用 smart_search_references 并行搜索站内+站外，
+        站内结果优先排列，由下游 LLM 自行决定参考哪些资料。
 
         Args:
             keywords: 搜索关键词列表
-            topic: 文章主题（用于外部搜索补充）
+            topic: 文章主题（备用兜底）
 
         Returns:
             参考资料列表
@@ -512,52 +510,18 @@ class WritingAgent:
         try:
             from tools.smart_search_tool import smart_search_references
 
-            logger.info(f"[Search] 启动智能搜索，关键词: {keywords[:3]}")
+            logger.info(f"[Search] 启动搜索，关键词: {keywords[:3]}")
             results = await smart_search_references.ainvoke({
                 "keywords": keywords,
                 "topic": topic
             })
 
-            if isinstance(results, list):
-                references = results
-                logger.info(f"[Search] 智能搜索完成，获取 {len(references)} 条参考资料")
-            else:
-                logger.warning(f"[Search] 智能搜索返回格式异常，回退到基础搜索")
-                references = await self._fallback_search(keywords)
+            references = results if isinstance(results, list) else []
+            logger.info(f"[Search] 搜索完成，获取 {len(references)} 条参考资料")
 
         except Exception as e:
-            logger.warning(f"[Search] 智能搜索失败，回退到基础搜索: {e}")
-            references = await self._fallback_search(keywords)
-
-        return references
-
-    async def _fallback_search(self, keywords: list) -> list:
-        """
-        基础搜索（回退方案）
-
-        Args:
-            keywords: 搜索关键词列表
-
-        Returns:
-            参考资料列表
-        """
-        references = []
-
-        try:
-            from tools.article_tool import search_articles_by_keyword
-
-            for keyword in keywords[:3]:
-                try:
-                    results = await search_articles_by_keyword.ainvoke({"keyword": keyword})
-                    if isinstance(results, list) and len(results) > 0:
-                        references.extend(results[:2])
-                except Exception as e:
-                    logger.warning(f"[Search] 基础搜索失败 '{keyword}': {e}")
-
-            logger.info(f"[Search] 基础搜索完成，获取 {len(references)} 条结果")
-
-        except Exception as e:
-            logger.error(f"[Search] 基础搜索完全失败: {e}")
+            logger.warning(f"[Search] 搜索失败: {e}")
+            references = []
 
         return references
 

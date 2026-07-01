@@ -40,7 +40,11 @@
       "Bash(gh pr view *)",
       "Bash(gh issue list *)",
       "Bash(gh issue view *)",
-      "Bash(python -m pytest tests/test_skill_chunker.py -v)"
+      "Bash(python -m pytest tests/test_skill_chunker.py -v)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:docs.mem0.ai)",
+      "WebFetch(domain:pypi.org)"
     ]
   }
 }

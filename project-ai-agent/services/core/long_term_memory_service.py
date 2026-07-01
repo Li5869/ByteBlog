@@ -57,7 +57,8 @@ class LongTermMemoryService:
         self,
         messages: List[Dict[str, str]],
         user_id: str,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
+        infer: bool = True
     ) -> Optional[Dict[str, Any]]:
         """
         添加记忆
@@ -68,6 +69,8 @@ class LongTermMemoryService:
             messages: 消息列表，格式 [{"role": "user", "content": "..."}, ...]
             user_id: 用户 ID
             metadata: 额外元数据
+            infer: 是否启用 LLM fact extraction。默认 True（从对话中提取 facts）。
+                   设为 False 则直接存储原文，跳过 LLM extraction，适用于内容已经是提炼好的记忆事实的场景。
 
         Returns:
             添加的记忆信息，如果功能禁用则返回 None
@@ -80,7 +83,8 @@ class LongTermMemoryService:
             result = await self._memory.add(
                 messages=messages,
                 user_id=user_id,
-                metadata=metadata or {}
+                metadata=metadata or {},
+                infer=infer
             )
             logger.info(f"成功添加记忆: user_id={user_id}, result={result}")
             return result

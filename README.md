@@ -135,7 +135,7 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 | ![文章评论和审核](docs/演示素材/文章评论和ai审核通知.gif) | 评论发布 + AI 审核通知 | AI 内容审核、SSE 实时通知推送 |
 | ![私信和通知](docs/演示素材/私信功能和通知.gif) | 私信聊天 + 实时通知 | WebSocket 双向通信、SSE 通知推送 |
 | ![AI 写作规划](docs/演示素材/ai写作规划.gif) | AI 写作计划生成与审批 | 人工审批、计划结构化展示 |
-| ![RAG 知识库问答](docs/演示素材/RAG知识库相关问答.gif) | RAG 知识库问答界面（左侧文档列表 + 右侧问答交互） | Parent-Child RAG 技术、pgvector 语义检索、文档上传与管理 |
+| ![RAG 知识库问答](docs/演示素材/RAG知识库相关问答.gif) | RAG 知识库问答界面（通过SmartAgent调用知识库子agent实现） | Parent-Child RAG 技术、pgvector 语义检索、文档上传与管理 |
 | ![ES 搜索提示和高亮](docs/演示素材/es搜索提示和高亮展示.gif) | ES 全文搜索（搜索提示 + 结果高亮展示） | BoolQuery + MultiMatch 多字段加权检索、Completion Suggester 搜索建议、关键词高亮 |
 | ![AI 智能对话](docs/演示素材/ai智能对话.gif) | AI 智能对话界面（多轮对话 + 工具调用 + 思维链展示） | Supervisor + Sub-Agent 多Agent协作、LLM 思考模式、记忆召回 |
 | ![深度研究](docs/演示素材/深度研究.gif) | AI 深度研究功能（输入研究主题 → 生成计划 → 并行执行 → 生成报告） | Orchestrator-Worker 架构、Send API 动态并行、SSE 流式进度 |

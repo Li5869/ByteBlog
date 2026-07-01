@@ -10,6 +10,7 @@ from langchain_tavily import TavilySearch
 from config.settings import get_settings
 from services.store.es_article_service import get_article_es_service
 from services.business.blog_service import get_blog_service
+from models.schemas import ArticleSearchItem, ArticleDetail
 
 
 # ==================== 外部搜索：Tavily ====================
@@ -43,7 +44,7 @@ def _create_tavily_tool() -> Optional[TavilySearch]:
 # ==================== LangChain Tool 定义 ====================
 
 @tool
-async def search_articles_by_keyword(keyword: str, limit: int = 5) -> List[dict]:
+async def search_articles_by_keyword(keyword: str, limit: int = 5) -> List[ArticleSearchItem]:
     """
     搜索博客文章
 
@@ -61,7 +62,7 @@ async def search_articles_by_keyword(keyword: str, limit: int = 5) -> List[dict]
 
 
 @tool
-async def get_hot_articles(limit: int = 10) -> List[dict]:
+async def get_hot_articles(limit: int = 10) -> List[ArticleSearchItem]:
     """
     获取热门文章
 
@@ -78,7 +79,7 @@ async def get_hot_articles(limit: int = 10) -> List[dict]:
 
 
 @tool
-async def get_article_by_id(article_id: int) -> Optional[dict]:
+async def get_article_by_id(article_id: int) -> Optional[ArticleDetail]:
     """
     获取文章基本信息
 
