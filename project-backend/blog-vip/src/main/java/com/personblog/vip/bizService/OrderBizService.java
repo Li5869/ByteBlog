@@ -41,6 +41,7 @@ import java.util.concurrent.TimeUnit;
 import static com.personblog.common.constant.OrderStatus.FROZEN;
 import static com.personblog.common.constant.TccBizType.COUPON_FREEZE;
 import static com.personblog.common.constant.TccBizType.POINT_FREEZE;
+import static com.personblog.common.enums.BizCodeEnum.VIP_ERROR;
 import static com.personblog.vip.config.mqConfig.VipOrderMqConfig.*;
 import static com.personblog.vip.constant.RedisKeys.*;
 import static com.personblog.vip.constant.TccXid.xid;
@@ -66,6 +67,7 @@ public class OrderBizService {
     private final TccTransactionManager tccManager;
     private final CompensationService compensationService;
     private final VipMembershipBizService membershipBizService;
+
     /**
      * 查询订单详情（含时间线、操作权限）
      */
@@ -214,19 +216,21 @@ public class OrderBizService {
         vo.setCouponName(couponName);
         return vo;
     }
+
     /**
      * 确认下单（TCC + Saga 混合模式）
      * - 积分/优惠券：TCC 模式，Try 冻结 → Confirm 提交/Cancel 释放
-     * - VIP激活：Saga 模式，Confirm 阶段直接执行，失败时逆序补偿
+     * - VIP激活：Saga 模式，Try成功后直接执行，失败时Cancel释放冻结资源
      */
     public ConfirmOrderVO confirmOrder(Long orderId) {
         Long userId = UserContextHolder.getUserId();
         String key = getConfirmOrderLockKey(orderId);
         RLock lock = redissonClient.getLock(key);
         boolean locked = false;
+        boolean isVip = false;
         String tccXid = xid(orderId);
+        Order order = orderService.getById(orderId);
         try {
-            Order order = orderService.getById(orderId);
             // 幂等校验 + 积分快速过滤
             valid(order, userId);
             locked = lock.tryLock(5, 30, TimeUnit.SECONDS);
@@ -235,35 +239,40 @@ public class OrderBizService {
             }
             // ========== [TCC Try] 冻结积分 ==========
             tccManager.tryBranch(tccXid, POINT_FREEZE,
-                () -> {
-                    if (!pointAPI.freezePoints(userId, order.getActualPoints())) {
-                        throw new BizException(BizCodeEnum.POINT_NOT_ENOUGH);
-                    }
-                },
-                () -> pointAPI.cancelDeductPoints(userId, order.getActualPoints())
+                    () -> {
+                        if (!pointAPI.freezePoints(userId, order.getActualPoints())) {
+                            throw new BizException(BizCodeEnum.POINT_NOT_ENOUGH);
+                        }
+                    },
+                    () -> pointAPI.cancelDeductPoints(userId, order.getActualPoints())
             );
 
             // ========== [TCC Try] 冻结优惠券 ==========
             if (order.getCouponId() != null) {
                 tccManager.tryBranch(tccXid, COUPON_FREEZE,
-                    () -> {
-                        if (!couponAPI.freezeCoupon(order.getCouponId(), userId)) {
-                            throw new BizException(BizCodeEnum.COUPON_STATUS_ERROR);
+                        () -> {
+                            if (!couponAPI.freezeCoupon(order.getCouponId(), userId)) {
+                                throw new BizException(BizCodeEnum.COUPON_STATUS_ERROR);
+                            }
+                        },
+                        () -> {
+                            // 优惠券冻结失败，回滚积分
+                            tccManager.cancelBranch(tccXid, POINT_FREEZE,
+                                    () -> pointAPI.cancelDeductPoints(userId, order.getActualPoints()));
                         }
-                    },
-                    () -> {
-                        // 优惠券冻结失败，回滚积分
-                        tccManager.cancelBranch(tccXid, POINT_FREEZE,
-                            () -> pointAPI.cancelDeductPoints(userId, order.getActualPoints()));
-                    }
                 );
             }
 
             // Try 全部成功，订单状态 -> FROZEN（表示资源已冻结，等待 Confirm）
             order.setStatus(FROZEN);
             orderService.updateById(order);
-
-            // ========== Confirm 阶段：Saga执行VIP激活 + TCC提交积分/优惠券 ==========
+            // [Saga] 激活VIP会员（非预留资源，直接执行，失败直接cancel）
+            VipPlan plan = planService.getById(order.getBizId());
+            if (plan != null) {
+                membershipBizService.activateVip(userId, plan.getDurationMonths(), order.getId());
+            }
+            isVip = true;
+            // ========== Confirm 阶段：TCC提交积分/优惠券（VIP已在上方Saga执行） ==========
             executeConfirm(order, userId, tccXid);
 
             // 返回当前订单实际状态：
@@ -280,7 +289,14 @@ public class OrderBizService {
             throw e;
         } catch (Exception e) {
             log.error("确认订单异常: orderId={}", orderId, e);
-            throw new BizException(BizCodeEnum.ORDER_STATUS_ERROR);
+            // VIP开通失败 → Saga补偿VIP + TCC Cancel释放冻结的积分/优惠券
+            if(!isVip){
+                cancelFrozenResources(order, tccXid);
+                order.setStatus(OrderStatus.CLOSED);
+                orderService.updateById(order);
+                throw new BizException(BizCodeEnum.ORDER_STATUS_ERROR);
+            }
+            throw new BizException(VIP_ERROR);
         } finally {
             if (locked) {
                 lock.unlock();
@@ -289,59 +305,40 @@ public class OrderBizService {
     }
 
     /**
-     * Confirm 阶段：Saga 执行 VIP 激活 + TCC 提交积分/优惠券
-     * - VIP激活为 Saga 风格：直接执行，失败时补偿回退
-     * - 积分/优惠券为 TCC 风格：提交冻结资源（冻结→已扣减/已核销），失败重试（资源已冻结，不应Cancel）
+     * Confirm 阶段：TCC 提交积分/优惠券（VIP 激活已在主流程中完成）
+     * - 积分/优惠券为 TCC 风格：提交冻结资源（冻结→已扣减/已核销），失败走MQ重试（资源已冻结，不应Cancel）
      */
     private void executeConfirm(Order order, Long userId, String tccXid) {
-        boolean isVip = false;
         boolean deductPoint = false;
         boolean useCoupon = false;
         try {
-            // 1. [Saga] 激活VIP会员（非预留资源，直接执行，失败需补偿）
-            VipPlan plan = planService.getById(order.getBizId());
-            if (plan != null) {
-                membershipBizService.activateVip(userId, plan.getDurationMonths(), order.getId());
-            }
-            isVip = true;
-
-            // 2. [TCC Confirm] 确认扣减积分（冻结 → 实扣）
+            // 1. [TCC Confirm] 确认扣减积分（冻结 → 实扣）
             pointAPI.confirmDeductPoints(userId, order.getActualPoints(),
                     "VIP_PURCHASE", order.getId(), "VIP会员购买");
             deductPoint = true;
 
-            // 3. [TCC Confirm] 核销优惠券（冻结 → 已核销）
+            // 2. [TCC Confirm] 核销优惠券（冻结 → 已核销）
             if (order.getCouponId() != null) {
                 couponAPI.useCoupon(userId, order.getCouponId(), order.getId());
                 useCoupon = true;
             }
 
-            // 4. [TCC] 更新事务分支状态为已确认
-            tccManager.confirmBranch(tccXid, POINT_FREEZE, () -> {});
+            // 3. [TCC] 更新事务分支状态为已确认
+            tccManager.confirmBranch(tccXid, POINT_FREEZE, () -> {
+            });
             if (order.getCouponId() != null) {
-                tccManager.confirmBranch(tccXid, COUPON_FREEZE, () -> {});
+                tccManager.confirmBranch(tccXid, COUPON_FREEZE, () -> {
+                });
             }
 
-            // 5. 更新订单状态为已完成
+            // 4. 更新订单状态为已完成
             order.setStatus(OrderStatus.COMPLETED);
             orderService.updateById(order);
             log.info("订单确认完成: orderId={}, userId={}", order.getId(), userId);
         } catch (Exception e) {
-            log.error("Confirm失败, orderId={}, isVip={}, deductPoint={}, useCoupon={}",
-                    order.getId(), isVip, deductPoint, useCoupon, e);
-
-            if (isVip && (!deductPoint || !useCoupon)) {
-                // VIP已开通成功，但TCC Confirm（积分/优惠券）失败
-                // 资源已在Try阶段冻结，不抛异常，通过MQ异步重试（指数退避 + 死信兜底）
-                // 前端正常返回，订单保持FROZEN状态，用户已可享受VIP权益
-                sendTccConfirmRetryMsg(order.getId());
-            } else if (!isVip) {
-                // VIP开通失败 → Saga补偿VIP + TCC Cancel释放冻结的积分/优惠券
-                cancelFrozenResources(order, tccXid);
-                order.setStatus(OrderStatus.CLOSED);
-                orderService.updateById(order);
-                throw new BizException(BizCodeEnum.ORDER_STATUS_ERROR);
-            }
+            sendTccConfirmRetryMsg(order.getId());
+            log.error("Confirm失败, orderId={}, deductPoint={}, useCoupon={}",
+                    order.getId(), deductPoint, useCoupon, e);
         }
     }
 
@@ -371,13 +368,13 @@ public class OrderBizService {
         try {
             // 1. 确认扣减积分（幂等：FROZEN → DEDUCTED）
             tccManager.confirmBranch(tccXid, POINT_FREEZE,
-                () -> pointAPI.confirmDeductPoints(userId, order.getActualPoints(),
-                        "VIP_PURCHASE", orderId, "VIP会员购买"));
+                    () -> pointAPI.confirmDeductPoints(userId, order.getActualPoints(),
+                            "VIP_PURCHASE", orderId, "VIP会员购买"));
 
             // 2. 核销优惠券（幂等：FROZEN → USED）
             if (order.getCouponId() != null) {
                 tccManager.confirmBranch(tccXid, COUPON_FREEZE,
-                    () -> couponAPI.useCoupon(userId, order.getCouponId(), orderId));
+                        () -> couponAPI.useCoupon(userId, order.getCouponId(), orderId));
             }
 
             // 3. 全部确认成功，订单完成
@@ -412,12 +409,12 @@ public class OrderBizService {
 
         // 释放冻结的积分
         tccManager.cancelBranch(tccXid, POINT_FREEZE,
-            () -> pointAPI.cancelDeductPoints(userId, order.getActualPoints()));
+                () -> pointAPI.cancelDeductPoints(userId, order.getActualPoints()));
 
         // 释放冻结的优惠券
         if (order.getCouponId() != null) {
             tccManager.cancelBranch(tccXid, COUPON_FREEZE,
-                () -> couponAPI.releaseCoupon(order.getCouponId(), userId));
+                    () -> couponAPI.releaseCoupon(order.getCouponId(), userId));
         }
     }
 
