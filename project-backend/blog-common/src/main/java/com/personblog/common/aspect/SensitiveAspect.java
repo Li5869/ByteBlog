@@ -56,8 +56,8 @@ public class SensitiveAspect {
             collection.forEach(this::processObject);
             return;
         }
-        // 跳过JDK类、基本类型、枚举等，只处理自定义业务对象
-        if (obj.getClass().getName().startsWith("java.") || obj instanceof Enum) {
+        // 跳过枚举，JDK/框架类由 while 循环的 com. 前缀过滤
+        if (obj instanceof Enum) {
             return;
         }
 

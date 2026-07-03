@@ -41,8 +41,7 @@ import java.util.concurrent.TimeUnit;
 import static com.personblog.common.constant.OrderStatus.FROZEN;
 import static com.personblog.common.constant.TccBizType.COUPON_FREEZE;
 import static com.personblog.common.constant.TccBizType.POINT_FREEZE;
-import static com.personblog.vip.config.mqConfig.VipOrderMqConfig.ORDER_DELAY_KEY;
-import static com.personblog.vip.config.mqConfig.VipOrderMqConfig.VIP_ORDER_EXCHANGE;
+import static com.personblog.vip.config.mqConfig.VipOrderMqConfig.*;
 import static com.personblog.vip.constant.RedisKeys.*;
 import static com.personblog.vip.constant.TccXid.xid;
 
@@ -267,11 +266,14 @@ public class OrderBizService {
             // ========== Confirm 阶段：Saga执行VIP激活 + TCC提交积分/优惠券 ==========
             executeConfirm(order, userId, tccXid);
 
-            // Confirm 成功，返回已完成
+            // 返回当前订单实际状态：
+            // - COMPLETED：VIP激活成功 + 积分/优惠券全部确认完毕
+            // - FROZEN：VIP已激活，积分/优惠券通过MQ异步重试中（用户已可享受VIP权益）
+            Order latest = orderService.getById(orderId);
             ConfirmOrderVO vo = new ConfirmOrderVO();
             vo.setOrderId(orderId);
-            vo.setStatus(OrderStatus.COMPLETED);
-            vo.setActualPoints(order.getActualPoints());
+            vo.setStatus(latest.getStatus());
+            vo.setActualPoints(latest.getActualPoints());
             vo.setUpdatedAt(LocalDateTime.now());
             return vo;
         } catch (BizException e) {
@@ -289,8 +291,7 @@ public class OrderBizService {
     /**
      * Confirm 阶段：Saga 执行 VIP 激活 + TCC 提交积分/优惠券
      * - VIP激活为 Saga 风格：直接执行，失败时补偿回退
-     * - 积分/优惠券为 TCC 风格：提交冻结资源（冻结→已扣减/已核销）
-     * 任意一步失败则逆序补偿已成功操作 + Cancel 释放冻结资源
+     * - 积分/优惠券为 TCC 风格：提交冻结资源（冻结→已扣减/已核销），失败重试（资源已冻结，不应Cancel）
      */
     private void executeConfirm(Order order, Long userId, String tccXid) {
         boolean isVip = false;
@@ -326,16 +327,80 @@ public class OrderBizService {
             orderService.updateById(order);
             log.info("订单确认完成: orderId={}, userId={}", order.getId(), userId);
         } catch (Exception e) {
-            // [Saga 补偿] 逆序回滚已成功的业务操作（VIP反激活、积分退回、优惠券退回）
-            compensationService.compensateConfirmFailure(userId, order, isVip, useCoupon, deductPoint);
-            log.error("Confirm失败，执行补偿回滚, orderId={}", order.getId(), e);
+            log.error("Confirm失败, orderId={}, isVip={}, deductPoint={}, useCoupon={}",
+                    order.getId(), isVip, deductPoint, useCoupon, e);
 
-            // [TCC Cancel] 释放冻结的积分和优惠券
-            cancelFrozenResources(order, tccXid);
-            order.setStatus(OrderStatus.CLOSED);
-            orderService.updateById(order);
-            throw new BizException(BizCodeEnum.ORDER_STATUS_ERROR);
+            if (isVip && (!deductPoint || !useCoupon)) {
+                // VIP已开通成功，但TCC Confirm（积分/优惠券）失败
+                // 资源已在Try阶段冻结，不抛异常，通过MQ异步重试（指数退避 + 死信兜底）
+                // 前端正常返回，订单保持FROZEN状态，用户已可享受VIP权益
+                sendTccConfirmRetryMsg(order.getId());
+            } else if (!isVip) {
+                // VIP开通失败 → Saga补偿VIP + TCC Cancel释放冻结的积分/优惠券
+                cancelFrozenResources(order, tccXid);
+                order.setStatus(OrderStatus.CLOSED);
+                orderService.updateById(order);
+                throw new BizException(BizCodeEnum.ORDER_STATUS_ERROR);
+            }
         }
+    }
+
+    /**
+     * TCC Confirm 重试（MQ消费者调用）：仅重试积分扣减和优惠券核销，不涉及 VIP 激活
+     * 前提：VIP已开通成功，积分/优惠券已在 Try 阶段冻结
+     *
+     * @return true=全部确认成功，false=有确认失败需继续重试
+     */
+    public boolean handleTccConfirmRetry(Long orderId) {
+        Order order = orderService.getById(orderId);
+        if (order == null) {
+            log.warn("TCC Confirm重试：订单不存在, orderId={}", orderId);
+            return true; // 订单不存在，消息可直接ACK
+        }
+        if (order.getStatus() == OrderStatus.COMPLETED) {
+            log.info("TCC Confirm重试：订单已完成，跳过, orderId={}", orderId);
+            return true;
+        }
+        if (order.getStatus() != OrderStatus.FROZEN) {
+            log.warn("TCC Confirm重试：订单状态非FROZEN，跳过, orderId={}, status={}", orderId, order.getStatus());
+            return true;
+        }
+
+        Long userId = order.getUserId();
+        String tccXid = xid(orderId);
+        try {
+            // 1. 确认扣减积分（幂等：FROZEN → DEDUCTED）
+            tccManager.confirmBranch(tccXid, POINT_FREEZE,
+                () -> pointAPI.confirmDeductPoints(userId, order.getActualPoints(),
+                        "VIP_PURCHASE", orderId, "VIP会员购买"));
+
+            // 2. 核销优惠券（幂等：FROZEN → USED）
+            if (order.getCouponId() != null) {
+                tccManager.confirmBranch(tccXid, COUPON_FREEZE,
+                    () -> couponAPI.useCoupon(userId, order.getCouponId(), orderId));
+            }
+
+            // 3. 全部确认成功，订单完成
+            order.setStatus(OrderStatus.COMPLETED);
+            orderService.updateById(order);
+            log.info("TCC Confirm重试成功: orderId={}", orderId);
+            return true;
+        } catch (Exception e) {
+            log.warn("TCC Confirm重试失败: orderId={}", orderId, e);
+            return false;
+        }
+    }
+
+    /**
+     * 发送 TCC Confirm 重试消息到 MQ（Confirm 失败时调用）
+     */
+    private void sendTccConfirmRetryMsg(Long orderId) {
+        rabbitTemplate.convertAndSend(
+                VIP_ORDER_EXCHANGE,
+                TCC_CONFIRM_RETRY_KEY,
+                orderId.toString()
+        );
+        log.info("已发送TCC Confirm重试消息: orderId={}", orderId);
     }
 
     /**
