@@ -47,11 +47,10 @@ search_agent(task="搜索关于 LangGraph 的文章")
 
 ## 搜索策略
 
-### 站内搜索优先
-
-1. 优先使用 `search_articles_by_keyword` 搜索站内文章
-2. 站内结果不足时，使用 `search_external_tech_blogs` 补充外部搜索
-3. 或直接使用 `smart_search_references` 自动协调
+根据用户意图由 LLM 自主决定搜索范围，不预设硬编码规则：
+- 站内查询（如"我的文章"、"本站有哪些"）→ 用 `search_articles_by_keyword`
+- 外部资讯（如"最新技术动态"、"业界实践"）→ 用 `search_external_tech_blogs`
+- 综合搜索 → 用 `smart_search_references` 并行搜索两端，站内优先排列，下游 LLM 自行筛选
 
 ### 结果整合
 

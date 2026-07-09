@@ -101,3 +101,35 @@ class MemoryExtractItem(BaseModel):
 class MemoryExtractRequest(BaseModel):
     """记忆提取请求（由 Java XXL-Job 调用）"""
     conversations: List[MemoryExtractItem] = Field(..., description="待提取的对话列表")
+
+
+# ==================== ES 文章检索相关 ====================
+
+class ArticleSearchItem(BaseModel):
+    """ES 文章搜索结果（_map_hit 返回，字段精简）"""
+    id: Optional[int] = Field(None, description="文章ID")
+    title: str = Field("", description="标题")
+    summary: str = Field("", description="摘要")
+    author_name: str = Field("", description="作者名")
+    category_name: str = Field("", description="分类名")
+    views: int = Field(0, description="浏览量")
+    likes: int = Field(0, description="点赞数")
+    score: float = Field(0, description="ES 相关性评分")
+
+
+class ArticleDetail(BaseModel):
+    """ES 文章详情（_map_source 返回，字段更完整）"""
+    id: Optional[int] = Field(None, description="文章ID")
+    title: str = Field("", description="标题")
+    summary: str = Field("", description="摘要")
+    author_name: str = Field("", description="作者名")
+    author_avatar: str = Field("", description="作者头像")
+    category_id: Optional[int] = Field(None, description="分类ID")
+    category_name: str = Field("", description="分类名")
+    tags: list = Field(default_factory=list, description="标签列表")
+    views: int = Field(0, description="浏览量")
+    likes: int = Field(0, description="点赞数")
+    comments: int = Field(0, description="评论数")
+    collections: int = Field(0, description="收藏数")
+    cover: str = Field("", description="封面")
+    created_at: str = Field("", description="创建时间")

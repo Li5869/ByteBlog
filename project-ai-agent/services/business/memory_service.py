@@ -14,7 +14,20 @@ from config.settings import get_settings
 from models.schemas import MemoryExtractItem
 from services.core.memory_service import get_memory_service
 from services.core.long_term_memory_service import get_long_term_memory_service
-from tools.memory_tool import _sanitize_memory_content
+def _sanitize_memory_content(content: str) -> str:
+    """
+    清洗记忆内容，移除会导致 Mem0 内部 LLM extraction JSON 解析失败的字符。
+
+    Mem0 的 extraction 流程会让 LLM 生成 JSON，中文双引号等特殊字符
+    容易导致 LLM 输出畸形 JSON（如未转义的 ASCII 引号），从而使解析失败。
+    将中文双引号替换为更安全的「」括号，语义不变但不会破坏 JSON 结构。
+
+    注意：此函数仅用于 extraction 场景（infer=True）。对于已经是提炼好事实的内容，
+    应使用 infer=False 跳过 extraction，完全避免此问题。
+    """
+    content = content.replace("\u201c", "\u300c").replace("\u201d", "\u300d")
+    content = content.replace("\u2018", "\u300e").replace("\u2019", "\u300f")
+    return content
 
 
 class MemoryExtractService:

@@ -230,14 +230,7 @@ class SmartAgent:
             user_info = await user_service.get_user_info(user_id)
 
             if user_info:
-                identity_text = (
-                    f"[用户身份] 当前用户ID: {user_id}\n"
-                    f"用户名: {user_info.username or '未设置'}\n"
-                    f"昵称: {user_info.nickname or '未设置'}\n"
-                    f"邮箱: {user_info.email or '未设置'}\n"
-                    f"手机: {user_info.phone or '未设置'}\n"
-                    f"简介: {user_info.bio or '未设置'}"
-                )
+                identity_text = f"[用户身份]\n{user_info.to_formatted_string()}"
             else:
                 identity_text = f"[用户身份] 当前用户ID: {user_id}"
 

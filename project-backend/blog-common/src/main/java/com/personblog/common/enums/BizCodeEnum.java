@@ -247,8 +247,9 @@ public enum BizCodeEnum {
     /** 重复下单 */
     ORDER_REPEAT(4097, "操作过于频繁，请稍后重试"),
     /** 已是VIP会员 */
-    ALREADY_VIP(4098, "已是VIP会员");
+    ALREADY_VIP(4098, "已是VIP会员"),
 
+    VIP_ERROR(4099,"开通会员失败");
     private final String message;
 
     private final Integer code;

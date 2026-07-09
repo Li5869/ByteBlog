@@ -7,28 +7,11 @@
 - save_memory：主动保存重要信息
 """
 
-import re
-
 from langchain_core.tools import tool
 from loguru import logger
 
 from services.core.long_term_memory_service import get_long_term_memory_service
 from common.user_context import current_user_id
-
-
-def _sanitize_memory_content(content: str) -> str:
-    """
-    清洗记忆内容，移除会导致 Mem0 内部 LLM extraction JSON 解析失败的字符。
-
-    Mem0 的 extraction 流程会让 LLM 生成 JSON，中文双引号等特殊字符
-    容易导致 LLM 输出畸形 JSON（如未转义的 ASCII 引号），从而使解析失败。
-    将中文双引号替换为更安全的「」括号，语义不变但不会破坏 JSON 结构。
-    """
-    # 中文双引号 → 日式括号「」（不会干扰 JSON 解析）
-    content = content.replace("\u201c", "\u300c").replace("\u201d", "\u300d")
-    # 中文单引号 → 同理替换
-    content = content.replace("\u2018", "\u300e").replace("\u2019", "\u300f")
-    return content
 
 
 @tool
@@ -155,12 +138,12 @@ async def save_memory(content: str, memory_type: str = "auto") -> str:
     try:
         memory_service = get_long_term_memory_service()
 
-        # 清洗内容：移除会导致 Mem0 内部 LLM extraction JSON 解析失败的字符
-        sanitized_content = _sanitize_memory_content(content)
-
-        # 构造消息格式（模拟对话，让 Mem0 自动提取）
+        # 构造消息格式
+        # 注意：save_memory 传入的 content 已经是提炼好的记忆事实（如"用户偏好 Java 技术栈"），
+        # 不需要 Mem0 再做 fact extraction，因此使用 infer=False 直接存储原文。
+        # 这同时避免了 Mem0 extraction 流程中 LLM 生成 JSON 时因中文标点导致的解析失败。
         messages = [
-            {"role": "user", "content": sanitized_content}
+            {"role": "user", "content": content}
         ]
 
         # 构造元数据
@@ -168,23 +151,23 @@ async def save_memory(content: str, memory_type: str = "auto") -> str:
         if memory_type and memory_type != "auto":
             metadata["memory_type"] = memory_type
 
-        # 调用 LongTermMemoryService 保存记忆
+        # 调用 LongTermMemoryService 保存记忆（infer=False：直接存储原文，跳过 LLM extraction）
         result = await memory_service.add_memory(
             messages=messages,
             user_id=user_id,
-            metadata=metadata
+            metadata=metadata,
+            infer=False
         )
 
         if result:
             # 提取保存的记忆内容
             memories = result.get("results", []) if isinstance(result, dict) else []
             if memories:
-                saved_content = memories[0].get("memory", sanitized_content) if isinstance(memories[0], dict) else sanitized_content
+                saved_content = memories[0].get("memory", content) if isinstance(memories[0], dict) else content
                 logger.info(f"[save_memory] 保存记忆成功: user_id={user_id}, content={saved_content}")
                 return f"已成功记住：{saved_content}"
             else:
-                # Mem0 返回空 results 说明 extraction 解析失败，记忆未实际存储
-                logger.warning(f"[save_memory] Mem0 extraction 返回空结果，记忆未存储: user_id={user_id}, content={sanitized_content}")
+                logger.warning(f"[save_memory] 记忆保存返回空结果: user_id={user_id}, content={content}")
                 return "记忆保存失败，请稍后再试"
         else:
             logger.warning(f"[save_memory] 保存记忆返回空结果: user_id={user_id}")

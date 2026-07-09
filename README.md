@@ -2,21 +2,20 @@
 
 # ByteBlog
 
-**面向开发者的 AI 增强全栈博客平台**
+**面向开发者的 AI 增强技术交流社区平台**
 
 <p align="center">
   <img src="https://img.shields.io/badge/Spring%20Boot-4.0.4-6DB33F?style=flat-square&logo=springboot&logoColor=white" alt="Spring Boot">
   <img src="https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white" alt="Java">
-  <img src="https://img.shields.io/badge/Spring%20AI-2.0.0--M4-6DB33F?style=flat-square&logo=spring&logoColor=white" alt="Spring AI">
   <img src="https://img.shields.io/badge/Vue_3-3.5.13-4FC08D?style=flat-square&logo=vuedotjs&logoColor=white" alt="Vue 3">
   <img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/LangGraph-1.1+-1C3C3C?style=flat-square&logo=langchain&logoColor=white" alt="LangGraph">
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/PostgreSQL-18-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL">
-  <img src="https://img.shields.io/badge/pgvector-0.82-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="pgvector">
+  <img src="https://img.shields.io/badge/Redis-7.2+-DC382D?style=flat-square&logo=redis&logoColor=white" alt="Redis">
+  <img src="https://img.shields.io/badge/RabbitMQ-3.x-FF6600?style=flat-square&logo=rabbitmq&logoColor=white" alt="RabbitMQ">
   <img src="https://img.shields.io/badge/Elasticsearch-8.x-005571?style=flat-square&logo=elasticsearch&logoColor=white" alt="Elasticsearch">
-  <img src="https://img.shields.io/badge/Nacos-2.x-00BFFF?style=flat-square&logo=nacos&logoColor=white" alt="Nacos">
 </p>
 
 </div>
@@ -25,7 +24,7 @@
 
 ## 项目简介
 
-ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆盖 **文章发布、积分系统、AI 智能写作与对话、全文检索、实时互动** 等核心场景。项目采用 **模块化单体架构**，后端 17 个 Maven 模块严格分层，通过 `blog-api` 契约接口层解决跨模块循环依赖；AI 侧采用 **Spring AI + Python Agent 双引擎架构**，Spring AI 处理轻量同步任务（对话标题生成、文章标题润色、摘要提取、内容审核），Python LangChain/LangGraph 处理复杂异步工作流（对话、写作、RAG）。
+ByteBlog 是一个面向开发者的 **AI 增强技术交流社区平台**，覆盖 **文章发布、积分系统、VIP会员、优惠券、AI 智能写作与对话、三层记忆系统、深度研究Agent、RAG知识库、全文检索、实时互动** 等核心场景。项目采用 **模块化单体架构**，后端 17 个 Maven 模块严格分层，通过 `blog-api` 契约接口层解决跨模块循环依赖；AI 侧采用 **Spring AI + Python Agent 双引擎架构**，Spring AI 处理轻量同步任务（对话标题生成、文章标题润色、摘要提取、内容审核），Python LangChain/LangGraph 处理复杂异步工作流（对话、写作、RAG、深度研究）。
 
 技术选型对标工业级应用：JDK 21 虚拟线程压榨并发性能、Caffeine + Redis + DB 三级缓存对抗热点、Elasticsearch 毫秒级全文搜索、RabbitMQ 异步解耦削峰、WebSocket + SSE 双通道实时推送、LangGraph 智能 Agent 驱动 AI 写作与对话、Nacos 服务发现与配置中心实现动态配置管理。
 
@@ -37,7 +36,8 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 |------|------|----------|
 | 🤖 **AI 写作 Agent** | 固定工作流四阶段（规划→执行→反思→定稿），四角色 LLM 差异化 temperature 配置，5 维质量评估自动微调，SSE 实时推送子步骤进度，Redis 任务状态管理支持断点恢复 | LangGraph StateGraph |
 | 🔬 **AI 深度研究 Agent** | Orchestrator-Worker 模式（规划→并行执行→评估→报告），Send API 动态创建并行 Worker，Replanner 智能评估决定继续或生成报告，interrupt 人工审批计划，硬性终止条件防止无限循环 | LangGraph Orchestrator-Worker |
-| 💬 **AI 智能对话** | Supervisor + Sub-Agent 多 Agent 架构（SmartAgent 调度 SearchAgent / KnowledgeAgent / WritingAgent / CodeExecutionAgent），记忆召回节点（memory_recall_node）首轮自动注入用户记忆，ReAct 范式循环推理，LLM 思考模式实时输出思维链，Parent-Child RAG 技术（pgvector 检索 Child Chunks → 聚合还原 Parent Documents），Sub-Agent 基于 create_agent 预构建 ReAct 循环，SSE 流式输出，Skill 渐进式披露 + 向量化检索节省 Token + 三级降级策略 | LangGraph ReAct + create_agent + pgvector |
+| 💬 **AI 智能对话** | Supervisor + Sub-Agent 多 Agent 架构（SmartAgent 调度 SearchAgent / KnowledgeAgent / WritingAgent / CodeExecutionAgent），记忆召回节点（memory_recall_node）首轮自动注入用户记忆，ReAct 范式循环推理，LLM 思考模式实时输出思维链，Parent-Child RAG 技术（pgvector 检索 Child Chunks → 聚合还原 Parent Documents），Sub-Agent 基于 create_agent 预构建 ReAct 循环，SSE 流式输出 | LangGraph ReAct + create_agent + pgvector |
+| 🔧 **Skill 系统** | 渐进式披露设计（list_skills → get_skill_details → search_skill_guide 三级引导），pgvector 向量化检索节省 Token，三级降级策略（向量检索失败 → 关键词匹配 → 全量扫描），Skills 文件热加载支持动态扩展 | pgvector + LangChain |
 | 🧠 **三层记忆系统** | 短期记忆——LangGraph MemorySaver 检查点持久化完整消息历史；中期记忆——LangMem summarize_messages 增量压缩（200K token 阈值触发，RunningSummary 避免重复压缩，独立 DeepSeek v4 flash 模型），超长对话自动摘要注入上下文；长期记忆——Mem0 记忆引擎（自托管 pgvector），CoALA 三类记忆模型（语义/情节/程序），双重召回策略（首轮自动召回 + recall_memory 工具按需召回），双重存储策略（save_memory 工具主动存储 + XXL-Job 后台定时提取），Redis 活跃标记 + Java XXL-Job 跨服务调度，Mem0 自动去重 + 时序推理 | LangGraph Checkpointer + LangMem + Mem0 + XXL-Job |
 | 🖥️ **代码执行** | CodeExecutionAgent（Judge0 CE 沙箱），支持 60+ 编程语言，Supervisor 按需调度，沙箱隔离安全执行 | Judge0 CE + httpx |
 | 📚 **RAG 知识库** | Parent-Child 文档切片策略（Child 450 字符 / Parent 1500 字符），OpenAI Embedding 向量化，pgvector 余弦相似度检索，category 分类隔离（project/interview/general 元数据过滤），管理端支持文档上传与管理 | OpenAI Embedding + pgvector |
@@ -135,7 +135,7 @@ ByteBlog 是一个面向开发者的 **AI 增强全栈技术博客平台**，覆
 | ![文章评论和审核](docs/演示素材/文章评论和ai审核通知.gif) | 评论发布 + AI 审核通知 | AI 内容审核、SSE 实时通知推送 |
 | ![私信和通知](docs/演示素材/私信功能和通知.gif) | 私信聊天 + 实时通知 | WebSocket 双向通信、SSE 通知推送 |
 | ![AI 写作规划](docs/演示素材/ai写作规划.gif) | AI 写作计划生成与审批 | 人工审批、计划结构化展示 |
-| ![RAG 知识库问答](docs/演示素材/RAG知识库相关问答.gif) | RAG 知识库问答界面（左侧文档列表 + 右侧问答交互） | Parent-Child RAG 技术、pgvector 语义检索、文档上传与管理 |
+| ![RAG 知识库问答](docs/演示素材/RAG知识库相关问答.gif) | RAG 知识库问答界面（通过SmartAgent调用知识库子agent实现） | Parent-Child RAG 技术、pgvector 语义检索、文档上传与管理 |
 | ![ES 搜索提示和高亮](docs/演示素材/es搜索提示和高亮展示.gif) | ES 全文搜索（搜索提示 + 结果高亮展示） | BoolQuery + MultiMatch 多字段加权检索、Completion Suggester 搜索建议、关键词高亮 |
 | ![AI 智能对话](docs/演示素材/ai智能对话.gif) | AI 智能对话界面（多轮对话 + 工具调用 + 思维链展示） | Supervisor + Sub-Agent 多Agent协作、LLM 思考模式、记忆召回 |
 | ![深度研究](docs/演示素材/深度研究.gif) | AI 深度研究功能（输入研究主题 → 生成计划 → 并行执行 → 生成报告） | Orchestrator-Worker 架构、Send API 动态并行、SSE 流式进度 |
@@ -468,45 +468,48 @@ project-ai-agent/
 │  ┌──────────────────────────────────────────────────────────────┐  │
 │  │  EXECUTE 执行阶段（LangGraph 原生并行）                        │  │
 │  │                                                              │  │
-│  │  ┌─────────────┐    ┌─────────────┐                         │  │
-│  │  │ Title Agent │    │ Tags Agent  │  ← 并行执行              │  │
-│  │  │ 生成标题     │    │ 分类标签     │    asyncio.gather       │  │
-│  │  └──────┬──────┘    └──────┬──────┘                         │  │
-│  │         │                  │                                 │  │
-│  │         └──────────┬───────┘                                 │  │
+│  │  ┌──────────────┐    ┌──────────────┐                       │  │
+│  │  │ generate_title│   │ generate_tags│  ← 并行执行              │  │
+│  │  │ 生成标题       │   │ 分类标签       │    LangGraph 原生并行    │  │
+│  │  │ (ContentSvc)  │   │ (TagSvc)      │                       │  │
+│  │  └──────┬───────┘    └──────┬───────┘                       │  │
+│  │         │                   │                                │  │
+│  │         └──────────┬────────┘                                │  │
 │  │                    │  Annotated[list, add] reducer          │  │
 │  │                    │  自动合并并行输出到 parallel_outputs     │  │
 │  │                    ▼                                         │  │
-│  │             ┌─────────────┐                                  │  │
-│  │             │ Merge Agent │  ← 合并标题+标签                  │  │
-│  │             │   汇合点     │    allTagNames 包含所有标签      │  │
-│  │             └──────┬──────┘                                  │  │
-│  │                    │                                         │  │
-│  │             ┌──────▼───────┐                                 │  │
-│  │             │ Summary Agent│  ← 生成摘要                      │  │
-│  │             └──────┬───────┘                                 │  │
-│  │                    │                                         │  │
-│  │             ┌──────▼───────┐                                 │  │
-│  │             │ Content Agent│  ← 生成正文                      │  │
-│  │             └──────┬───────┘                                 │  │
+│  │             ┌────────────────┐                               │  │
+│  │             │ merge_title_tags│ ← 合并标题+标签                │  │
+│  │             │    汇合点       │   纯逻辑，无外部调用             │  │
+│  │             └───────┬────────┘                               │  │
+│  │                     │                                        │  │
+│  │             ┌───────▼────────┐                               │  │
+│  │             │ generate_summary│ ← 生成摘要                    │  │
+│  │             │  (ContentSvc)   │                              │  │
+│  │             └───────┬────────┘                               │  │
+│  │                     │                                        │  │
+│  │             ┌───────▼────────┐                               │  │
+│  │             │ generate_content│ ← 生成正文                    │  │
+│  │             │  (ContentSvc)   │                              │  │
+│  │             └───────┬────────┘                               │  │
 │  └───────────────────┼──────────────────────────────────────────┘  │
 │                      │                                             │
 │                      ▼          LLM temperature = 0.6（技术博客）  │
 │  ┌──────────────────────────────────────────────────────────────┐  │
 │  │  REFLECT 反思阶段（Evaluator-Optimizer 循环）                 │  │
 │  │                                                              │  │
-│  │  ┌─────────────┐                                             │  │
-│  │  │ Evaluate    │  ← 5 维评分：完整性(30%) + 结构性(20%)      │  │
-│  │  │   Agent     │              + 表达(25%) + 实用性(15%)      │  │
-│  │  └──────┬──────┘              + 格式(10%)                    │  │
+│  │  ┌──────────────┐                                            │  │
+│  │  │  evaluate    │  ← 5 维评分：完整性(30%) + 结构性(20%)      │  │
+│  │  │ (QualitySvc) │              + 表达(25%) + 实用性(15%)      │  │
+│  │  └──────┬───────┘              + 格式(10%)                    │  │
 │  │         │                                                     │  │
 │  │         │  评分 < 7.0 且修订次数 < 3                          │  │
 │  │         │                                                     │  │
 │  │         ▼                                                     │  │
-│  │  ┌─────────────┐                                             │  │
-│  │  │ Revise      │  ← 精细化修订（针对性修改）                  │  │
-│  │  │   Agent     │                                             │  │
-│  │  └──────┬──────┘                                             │  │
+│  │  ┌──────────────┐                                            │  │
+│  │  │   revise     │  ← 精细化修订（针对性修改）                  │  │
+│  │  │ (QualitySvc) │                                            │  │
+│  │  └──────┬───────┘                                            │  │
 │  │         │                                                     │  │
 │  │         └──→ 循环回 Evaluate（最多 3 次）                     │  │
 │  │                                                              │  │
@@ -672,8 +675,8 @@ project-ai-agent/
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐    │
 │  │  DIRECT_TOOLS（Supervisor 直接调用）                         │    │
-│  │  get_the_time / get_current_user_id / get_current_user_info │    │
 │  │  get_skill_details / list_available_skills / search_skill_guide│  │
+│  │  recall_memory / save_memory                                │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐    │
@@ -699,11 +702,6 @@ project-ai-agent/
 │  │  │ · 60+ 语言执行    │                                      │    │
 │  │  │ · 沙箱隔离        │                                      │    │
 │  │  └──────────────────┘                                      │    │
-│  └─────────────────────────────────────────────────────────────┘    │
-│                                                                     │
-│  ┌─────────────────────────────────────────────────────────────┐    │
-│  │  MEMORY_TOOLS（用户长期记忆工具）                             │    │
-│  │  recall_memory / save_memory                                │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐    │
@@ -738,17 +736,14 @@ project-ai-agent/
 
 | 分类 | 工具 | 功能 | 来源 |
 |------|------|------|------|
-| **DIRECT_TOOLS** | `get_the_time` | 获取当前日期时间 | 系统时钟 |
-| | `get_current_user_id` | 获取当前登录用户 ID | 用户上下文 |
-| | `get_current_user_info` | 获取当前登录用户详细信息 | 用户上下文 |
-| | `get_skill_details` | 获取 Skill 详细使用指南 | Skills 文件 |
+| **DIRECT_TOOLS** | `get_skill_details` | 获取 Skill 详细使用指南 | Skills 文件 |
 | | `list_available_skills` | 列出所有可用 Skills | Skills 文件 |
 | | `search_skill_guide` | 语义搜索 Skill 指南片段 | pgvector |
+| | `recall_memory` | 按需召回用户历史记忆（语义/情节/程序） | Mem0 LongTermMemoryService |
+| | `save_memory` | 主动保存重要信息到用户记忆 | Mem0 LongTermMemoryService |
 | **SUB_AGENT_TOOLS** | `search_agent` | 搜索专家（文章/博主/分类/外部搜索/爬取） | SearchAgent |
 | | `knowledge_agent` | 知识库专家（RAG 语义检索） | KnowledgeAgent |
 | | `code_execution_agent` | 代码执行专家（60+ 语言，Judge0 沙箱） | CodeExecutionAgent |
-| **MEMORY_TOOLS** | `recall_memory` | 按需召回用户历史记忆（语义/情节/程序） | Mem0 LongTermMemoryService |
-| | `save_memory` | 主动保存重要信息到用户记忆 | Mem0 LongTermMemoryService |
 | **WRITING_TOOLS** | `writing_start` | 启动写作任务，异步生成计划 | WritingAgent |
 | | `writing_status` | 查询写作任务状态及计划内容 | WritingAgent |
 | | `writing_action` | 执行写作动作（确认/修订/取消） | WritingAgent |

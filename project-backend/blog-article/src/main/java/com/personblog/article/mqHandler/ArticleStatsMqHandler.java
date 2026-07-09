@@ -7,7 +7,6 @@ import com.personblog.common.dto.MqMessage.article.ArticleStatsMessage;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
@@ -44,8 +43,8 @@ public class ArticleStatsMqHandler {
     private final UseApi useApi;
 
     @RabbitHandler
-    public void handleStatsUpdate(ArticleStatsMessage message, Message amqpMessage, Channel channel,
-                                   @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {
+    public void handleStatsUpdate(ArticleStatsMessage message, Channel channel,
+                                  @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {
         try {
             Long userId = message.getUserId();
             Set<Long> tagIds = message.getTagIds();

@@ -8,6 +8,7 @@ from typing import List, Optional
 
 from common.constants import ES_INDEX_ARTICLE, ES_DEFAULT_SEARCH_SIZE
 from common.elasticsearch_base import ElasticsearchBaseService
+from models.schemas import ArticleSearchItem, ArticleDetail
 
 
 class ArticleESService(ElasticsearchBaseService):
@@ -17,42 +18,42 @@ class ArticleESService(ElasticsearchBaseService):
 
     # ==================== 字段映射（类似 Java 的 ResultMapper） ====================
 
-    def _map_hit(self, hit: dict) -> dict:
-        """将 ES hit 映射为文章业务 dict"""
+    def _map_hit(self, hit: dict) -> ArticleSearchItem:
+        """将 ES hit 映射为 ArticleSearchItem"""
         source = hit["_source"]
-        return {
-            "id": source.get("id"),
-            "title": source.get("title", ""),
-            "summary": source.get("summary", ""),
-            "author_name": source.get("authorName", ""),
-            "category_name": source.get("categoryName", ""),
-            "views": source.get("views", 0),
-            "likes": source.get("likes", 0),
-            "score": hit.get("_score", 0),
-        }
+        return ArticleSearchItem(
+            id=source.get("id"),
+            title=source.get("title", ""),
+            summary=source.get("summary", ""),
+            author_name=source.get("authorName", ""),
+            category_name=source.get("categoryName", ""),
+            views=source.get("views", 0),
+            likes=source.get("likes", 0),
+            score=hit.get("_score", 0),
+        )
 
-    def _map_source(self, source: dict) -> dict:
+    def _map_source(self, source: dict) -> ArticleDetail:
         """文章详情映射（比搜索结果更完整）"""
-        return {
-            "id": source.get("id"),
-            "title": source.get("title", ""),
-            "summary": source.get("summary", ""),
-            "author_name": source.get("authorName", ""),
-            "author_avatar": source.get("authorAvatar", ""),
-            "category_id": source.get("categoryId"),
-            "category_name": source.get("categoryName", ""),
-            "tags": source.get("tags", []),
-            "views": source.get("views", 0),
-            "likes": source.get("likes", 0),
-            "comments": source.get("comments", 0),
-            "collections": source.get("collections", 0),
-            "cover": source.get("cover", ""),
-            "created_at": source.get("createdAt", ""),
-        }
+        return ArticleDetail(
+            id=source.get("id"),
+            title=source.get("title", ""),
+            summary=source.get("summary", ""),
+            author_name=source.get("authorName", ""),
+            author_avatar=source.get("authorAvatar", ""),
+            category_id=source.get("categoryId"),
+            category_name=source.get("categoryName", ""),
+            tags=source.get("tags", []),
+            views=source.get("views", 0),
+            likes=source.get("likes", 0),
+            comments=source.get("comments", 0),
+            collections=source.get("collections", 0),
+            cover=source.get("cover", ""),
+            created_at=source.get("createdAt", ""),
+        )
 
     # ==================== 业务查询方法 ====================
 
-    async def search_articles(self, keyword: str, size: int = ES_DEFAULT_SEARCH_SIZE) -> List[dict]:
+    async def search_articles(self, keyword: str, size: int = ES_DEFAULT_SEARCH_SIZE) -> List[ArticleSearchItem]:
         """搜索文章（标题 + 摘要匹配，仅已发布）"""
         return await self.search(
             query={
@@ -69,7 +70,7 @@ class ArticleESService(ElasticsearchBaseService):
             size=size,
         )
 
-    async def get_hot_articles(self, size: int = 10) -> List[dict]:
+    async def get_hot_articles(self, size: int = 10) -> List[ArticleSearchItem]:
         """获取热门文章（浏览量排序，仅已发布+热门）"""
         return await self.search(
             query={
@@ -86,7 +87,7 @@ class ArticleESService(ElasticsearchBaseService):
             size=size,
         )
 
-    async def get_article_by_id(self, article_id: int) -> Optional[dict]:
+    async def get_article_by_id(self, article_id: int) -> Optional[ArticleDetail]:
         """根据 ID 获取文章详情"""
         return await self.get_by_id(str(article_id))
 
