@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.personblog</groupId>
-    <artifactId>person-blog-backend</artifactId>
+    <artifactId>project-backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>person-blog-backend</name>
