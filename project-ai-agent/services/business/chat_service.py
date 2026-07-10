@@ -35,23 +35,20 @@ class ChatService:
         self, conversation_id: str, message: str
     ) -> tuple[str, str]:
         """
-        准备对话：拼接历史、保存用户消息
+        准备对话：保存用户消息到 Redis（供 UI 展示和长期记忆提取使用）。
+
+        注意：对话上下文不再手动拼接，由 LangGraph 持久化 checkpointer 
+        (AsyncRedisSaver) 通过 thread_id 自动恢复完整消息历史。
 
         Args:
             conversation_id: 会话 ID
             message: 用户消息
 
         Returns:
-            (enhanced_message, conversation_id)
+            (message, conversation_id) — message 为原始用户消息，不再拼接历史
         """
-        history = await self._memory_service.get_context_string(conversation_id, limit=10)
-        enhanced_message = (
-            f"[对话历史]\n{history}\n\n[当前问题]\n{message}"
-            if history else message
-        )
-
         await self._memory_service.add_message(conversation_id, "user", message)
-        return enhanced_message, conversation_id
+        return message, conversation_id
 
     def register_task(self, conversation_id: str, task: asyncio.Task):
         """注册活跃任务"""

@@ -90,7 +90,7 @@ public class MessageController {
             @RequestBody @Valid SendMessageDTO dto) {
         Long senderId = UserContextHolder.getUserId();
 
-        if (senderId.equals(dto.getReceiverId())) {
+        if (senderId!=null&&senderId.equals(dto.getReceiverId())) {
             throw new BizException(BizCodeEnum.CANT_SENT_TO_ME);
         }
 

@@ -25,4 +25,15 @@ public class RedisKeys {
      * TTL: 300s (Python 端设置，大于 XXL-Job 扫描间隔，防止误删)
      */
     public static final String REDIS_CHAT_ACTIVE_PREFIX = "chat:active:";
+
+    // ===== LangGraph Checkpointer Key 前缀（Redis db 0，RediSearch 索引）=====
+
+    /** Checkpoint 主文档 Key 前缀 */
+    public static final String CHECKPOINT_PREFIX = "checkpoint:";
+    /** 最新 Checkpoint 指针 Key 前缀 */
+    public static final String CHECKPOINT_LATEST_PREFIX = "checkpoint_latest:";
+    /** Checkpoint Write 文档 Key 前缀 */
+    public static final String CHECKPOINT_WRITE_PREFIX = "checkpoint_write:";
+    /** Write Keys 注册表（Sorted Set）Key 前缀 */
+    public static final String WRITE_KEYS_ZSET_PREFIX = "write_keys_zset:";
 }

@@ -89,6 +89,12 @@ class Settings(BaseSettings):
     memory_recall_top_k: int = 5  # 记忆召回数量
     memory_activity_marker_ttl: int = 300  # Redis 活跃标记 TTL（秒），需大于 XXL-Job 扫描间隔
 
+    # ===== 短期记忆：LangGraph 持久化 Checkpointer（替代 MemorySaver）=====
+    # 使用 Redis 作为 checkpointer 后端，进程重启不丢失对话状态
+    # 官方文档：https://docs.langchain.com/oss/python/langgraph/persistence
+    checkpointer_backend: str = "redis"  # "redis" | "postgres"
+    checkpointer_redis_url: str = ""  # 空字符串表示复用 redis_url（默认 db 2）
+
     # ===== 中期记忆配置（LangMem 短期摘要）=====
     # 基于 token 阈值压缩对话历史：旧消息自动摘要，近期消息保持原样
     # DeepSeek 上下文窗口 1M，阈值设为 200K 触发摘要，留足空间给工具结果和响应

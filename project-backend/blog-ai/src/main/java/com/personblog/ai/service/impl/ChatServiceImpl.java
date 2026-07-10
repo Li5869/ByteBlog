@@ -18,6 +18,7 @@ import com.personblog.common.exception.BizException;
 import com.personblog.common.utils.UserContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,8 +28,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
-import static com.personblog.ai.constants.RedisKeys.REDIS_MEMORY_PREFIX;
+import static com.personblog.ai.constants.RedisKeys.*;
 
 @Slf4j
 @Service
@@ -193,12 +195,47 @@ public class ChatServiceImpl implements ChatService {
         }
         String key = REDIS_MEMORY_PREFIX+conversationId;
         redisTemplate.delete(key);
+        // 删除 LangGraph Checkpointer 持久化数据（RediSearch 索引在 db 0）
+        deleteCheckpointKeys(conversationId);
         LambdaUpdateWrapper<AiConversation> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(AiConversation::getId, conversationId)
                 .set(AiConversation::getIsDeleted, true);
         conversationService.update(wrapper);
         messageService.remove(new LambdaQueryWrapper<AiMessage>()
                 .eq(AiMessage::getConversationId,conversationId));
+    }
+
+    /**
+     * 删除 LangGraph Checkpointer 持久化的检查点数据。
+     */
+    private void deleteCheckpointKeys(Long conversationId) {
+        try {
+            String threadId = String.valueOf(conversationId);
+            redisTemplate.execute((RedisCallback<Void>) connection -> {
+                connection.select(0);
+                try {
+                    byte[][] patterns = {
+                        (CHECKPOINT_PREFIX + threadId + ":*").getBytes(),
+                        (CHECKPOINT_LATEST_PREFIX + threadId + ":*").getBytes(),
+                        (CHECKPOINT_WRITE_PREFIX + threadId + ":*").getBytes(),
+                        (WRITE_KEYS_ZSET_PREFIX + threadId + ":*").getBytes(),
+                    };
+                    for (byte[] pattern : patterns) {
+                        Set<byte[]> keys = connection.keys(pattern);
+                        if (keys != null && !keys.isEmpty()) {
+                            connection.del(keys.toArray(new byte[0][]));
+                        }
+                    }
+                } finally {
+                    connection.select(2);
+                }
+                return null;
+            });
+            log.info("已删除对话检查点: conversationId={}", conversationId);
+        } catch (Exception e) {
+            log.warn("删除检查点数据失败（非关键）: conversationId={}, error={}",
+                     conversationId, e.getMessage());
+        }
     }
 
     private ConversationListVO convertToListVO(AiConversation conversation) {

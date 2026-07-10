@@ -74,6 +74,12 @@ async def lifespan(app: FastAPI):
 
     await nacos_service.deregister()
     await nacos_service.shutdown()
+
+    # 关闭 SmartAgent 的持久化 checkpointer 连接
+    from agents.smart_agent import _smart_agent
+    if _smart_agent is not None:
+        await _smart_agent.close()
+
     logger.info("👋 应用关闭")
 
 
@@ -90,7 +96,7 @@ def create_app() -> FastAPI:
 
 ### 功能模块
 
-| 模块 | 说明 |
+| 模块 | 说明 |uv
 |------|------|
 | Chat | 统一对话接口，支持多轮对话、上下文记忆、自动工具调用 |
 | RAG | 知识问答，基于 pgvector |

@@ -22,6 +22,7 @@ dependencies = [
     "langchain-text-splitters>=1.1.0",
     "langgraph>=1.1.0",
     "langgraph-checkpoint>=4.0.0",
+    "langgraph-checkpoint-redis>=0.4.0",
     "langgraph-sdk>=0.3.0",
     "langsmith>=0.7.0",
     # Deep Agents 框架 (2026-05 新增)
