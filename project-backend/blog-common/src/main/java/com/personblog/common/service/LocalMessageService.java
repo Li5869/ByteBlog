@@ -10,7 +10,6 @@ import com.personblog.common.entity.LocalMessage;
  * @since 2026-06-05
  */
 public interface LocalMessageService extends IService<LocalMessage> {
-
     /**
      * 尝试发送已持久化的消息到 MQ
      * 发送成功则更新状态为已完成，失败则保留待发送状态等待定时任务补偿

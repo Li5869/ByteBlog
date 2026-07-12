@@ -87,7 +87,7 @@ class StreamEvent:
             base["tool_name"] = self.tool_name
         if self.event_type == "done":
             base["conversation_id"] = self.conversation_id
-            base["tool_calls"] = self.tool_calls_summary
+            base["tool_calls"] = self.tool_calls_summary # type: ignore[arg-type]
         return base
 
 
@@ -123,7 +123,7 @@ class SmartAgent:
         # - content：最终回答（给用户的内容）
         self.llm = ChatDeepSeek(
             model=settings.model_name_deepseek,
-            api_key=settings.openai_api_key_deepseek,
+            api_key=settings.openai_api_key_deepseek,  # type: ignore[arg-type]
             streaming=True,
             extra_body={
                 "thinking": {"type": "enabled"},
@@ -158,7 +158,7 @@ class SmartAgent:
         if settings.mid_term_memory_enabled:
             self.summarization_model = ChatDeepSeek(
                 model=settings.model_name_deepseek,
-                api_key=settings.openai_api_key_deepseek,
+                api_key=settings.openai_api_key_deepseek,# type: ignore[arg-type]
                 streaming=False,  # 摘要不需要流式
             ).bind(max_tokens=settings.mid_term_memory_max_summary_tokens)
             self._mid_term_memory_enabled = True
@@ -203,10 +203,10 @@ class SmartAgent:
         4. tool_executor：执行工具（如果有）
         5. 回到 thinking：基于工具结果继续推理
         """
-        workflow = StateGraph(AgentState)
-        workflow.add_node("memory_recall", self._memory_recall_node)
-        workflow.add_node("thinking", self._thinking_node)
-        workflow.add_node("tool_executor", self._tool_executor_node)
+        workflow = StateGraph(AgentState)# type: ignore[arg-type]
+        workflow.add_node("memory_recall", self._memory_recall_node)# type: ignore[arg-type]
+        workflow.add_node("thinking", self._thinking_node)# type: ignore[arg-type]
+        workflow.add_node("tool_executor", self._tool_executor_node)# type: ignore[arg-type]
 
         # 入口改为 memory_recall
         workflow.set_entry_point("memory_recall")
@@ -338,10 +338,6 @@ class SmartAgent:
         """
         思考节点：流式调用 LLM，实时发射 thinking 事件。
 
-        DeepSeek 思考模式下 reasoning_content 和 content 天然分离：
-        - reasoning_content → thinking 事件（通过 custom 模式发射）
-        - content → 由 messages 流模式自动处理（无需手动发射）
-
         中期记忆集成：在 LLM 调用前，基于 token 阈值压缩对话历史。
         - 旧消息自动摘要，近期消息保持原样
         - RunningSummary 跨轮次追踪已摘要消息，避免重复摘要
@@ -363,7 +359,7 @@ class SmartAgent:
         else:
             llm_messages = messages
 
-        # 注入最新时间上下文（每轮对话都需最新时间，不持久化到 state）
+        # 注入最新时间上下文
         # 同时注入系统提示词（从 initial_state 中移除，避免多轮对话后 SystemMessage 重复堆积）
         llm_messages = [
             SystemMessage(content=self.system_prompt),

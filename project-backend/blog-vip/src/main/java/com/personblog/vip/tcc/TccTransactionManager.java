@@ -77,12 +77,4 @@ public class TccTransactionManager {
             }
         }
     }
-
-    /**
-     * 仅取消 TCC 分支状态（不执行回滚操作）
-     * 用于 Confirm 失败后清理 TCC 状态
-     */
-    public void cancelBranchOnly(String xid, String bizType) {
-        tccTransactionService.cancelBranch(xid, bizType);
-    }
 }

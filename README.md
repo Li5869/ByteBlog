@@ -1086,7 +1086,7 @@ ByteBlog/
 │   ├── 代码评审/             # 代码评审报告
 │   └── 项目概览/             # 项目知识库
 ├── .gitignore                # Git 忽略规则
-├── CLAUDE.md                 # AI 辅助开发规则
+├── AGENTS.md                 # AI 辅助开发规则
 └── README.md                 # 本文件
 ```
 

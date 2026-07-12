@@ -51,7 +51,7 @@ from models.research_models import (
 
 # ==================== 硬性终止条件 ====================
 
-MAX_TASKS = 8          # 任务总数上限
+MAX_TASKS = 16          # 任务总数上限
 MAX_ROUNDS = 3         # Replanner 迭代轮次上限
 MAX_DURATION = 900     # 全局执行时间上限（秒，15 分钟）
 
@@ -223,7 +223,7 @@ class ResearchAgent:
 
     # ==================== 节点实现 ====================
 
-    # ==================== Planner 节点（拆分为两个节点）====================
+    # ==================== Planner 节点====================
 
     async def _plan_generator_node(self, state: ResearchAgentState, writer: StreamWriter) -> dict:
         """
