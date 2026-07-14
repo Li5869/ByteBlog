@@ -79,63 +79,26 @@ public class PointApiImpl implements PointAPI {
                 .availablePoints(userPoint.getAvailablePoints())
                 .build();
     }
-
     @Override
-    public boolean freezePoints(Long userId, Integer points) {
-        // 原子减
-        return userPointService.lambdaUpdate()
+    public boolean deductPoints(Long userId, Integer points, String type, Long bizId, String description) {
+        // 原子扣减可用积分：ge 条件保证积分不足时返回 false（防超扣）
+        boolean updated = userPointService.lambdaUpdate()
                 .eq(UserPoint::getUserId, userId)
                 .ge(UserPoint::getAvailablePoints, points)
-                .setSql("available_points = available_points - " + points)  // 原子减
-                .setSql("frozen_points = frozen_points + " + points)
+                .setSql("available_points = available_points - " + points)
                 .update();
-    }
-
-    @Override
-    public void confirmDeductPoints(Long userId, Integer points, String type, Long bizId, String description) {
-        // 确认扣减：减少冻结积分（积分已在预扣减时从可用积分中扣除）
-        // ge 条件防御重复调用导致 frozen_points 变为负数
-        userPointService.lambdaUpdate()
-                .eq(UserPoint::getUserId, userId)
-                .ge(UserPoint::getFrozenPoints, points)
-                .setSql("frozen_points = frozen_points - " + points)
-                .update();
+        if (!updated) {
+            return false;
+        }
         // 写积分流水
         PointLog pointLog = new PointLog();
         pointLog.setUserId(userId);
-        pointLog.setPoints(-points);  // 负数表示扣减
+        pointLog.setPoints(-points);
         pointLog.setType(type);
         pointLog.setBizId(bizId);
         pointLog.setDescription(description);
         pointLog.setCreatedAt(LocalDateTime.now());
         pointLogService.save(pointLog);
-    }
-
-    @Override
-    public void cancelDeductPoints(Long userId, Integer points) {
-        // 取消扣减：恢复可用积分，减少冻结积分
-        // ge 条件防御空回滚：Try 从未执行时 frozen_points=0，避免变为负数
-        userPointService.lambdaUpdate()
-                .eq(UserPoint::getUserId, userId)
-                .ge(UserPoint::getFrozenPoints, points)
-                .setSql("available_points = available_points + " + points)
-                .setSql("frozen_points = frozen_points - " + points)
-                .update();
-    }
-    //confirm失败，退回积分
-    @Override
-    public void refundPoints(Long userId, Integer actualPoints, String vipPurchaseCancel, Long id, String Reason) {
-        boolean update = userPointService.lambdaUpdate()
-                .eq(UserPoint::getUserId, userId)
-                .setSql("available_points = available_points + " + actualPoints)
-                .update();
-        if(update){
-            PointLog pointLog = new PointLog();
-            pointLog.setUserId(userId);
-            pointLog.setDescription(Reason);
-            pointLog.setType(vipPurchaseCancel);
-            pointLog.setBizId(id);
-            pointLogService.save(pointLog);
-        }
+        return true;
     }
 }

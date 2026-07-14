@@ -142,7 +142,7 @@ ByteBlog 是一个面向开发者的 **AI 增强技术交流社区平台**，覆
 | ![代码执行](docs/演示素材/代码执行.gif) | AI 代码执行功能（编写代码 → 沙箱执行 → 查看结果） | Judge0 CE 沙箱、60+ 编程语言支持、安全隔离执行 |
 | ![个人中心](docs/演示素材/个人中心.gif) | 个人中心（积分记录 + 签到 + VIP 会员状态 + 收藏/关注） | 积分系统、用户画像、签到 |
 | ![优惠券领取](docs/演示素材/优惠券领取.gif) | 优惠券中心（限时限量领券 + 我的优惠券） | Redis Lua 原子扣减、三层防超卖、本地消息表可靠投递 |
-| ![会员购买](docs/演示素材/会员购买.gif) | VIP 会员购买（套餐选择 → 下单支付 → 权益解锁） | TCC + Saga分布式事务、积分冻结、优惠券核销、Redisson 分布式锁 |
+| ![会员购买](docs/演示素材/会员购买.gif) | VIP 会员购买（套餐选择 → 下单支付 → 权益解锁） | 本地事务原子提交、SQL原子防超扣、Redisson 分布式锁（事务外） |
 | ![用户登录注册](docs/演示素材/用户登录.gif) | 用户登录/注册（JWT 双令牌 + Redis 状态管理） | JWT Access/Refresh 令牌、Redis 服务端状态、可控登出 |
 | ![LangSmith 追踪](docs/演示素材/langsmith追踪.gif) | LangSmith 可观测性（Agent 调用链追踪 + Token 消耗分析） | LangSmith Trace、LLM 请求/响应记录、工具调用耗时统计 |
 
@@ -328,9 +328,8 @@ project-backen/  —— Spring Boot 4 + Maven 多模块（17 个子模块）
 ├── blog-vip/         # VIP 会员模块
 │   ├── entity/                VipPlan、VipMembership
 │   ├── controller/            VipOrderController、VipPlanController、VipStatueController
-│   ├── bizService/            OrderBizService（TCC 事务编排）、CompensationService（逆序补偿）、VipMqBizService（超时取消）
-│   ├── tcc/                   TccTransactionManager（TCC 生命周期模板方法）
-│   ├── api/                   VipTccAPIImpl（TCC 超时补偿）
+│   ├── bizService/            OrderBizService（本地事务+分布式锁编排）、VipMqBizService（超时取消）
+│   ├── api/                   VipApiImpl（跨模块接口实现）
 │   └── config/mqConfig/       VipOrderMqConfig（延迟队列配置）
 │
 ├── blog-search/      # Elasticsearch 全文搜索
