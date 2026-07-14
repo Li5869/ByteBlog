@@ -11,9 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
 
-import static com.personblog.common.constant.OrderStatus.FROZEN;
 import static com.personblog.vip.constant.RedisKeys.getConfirmOrderLockKey;
-import static com.personblog.vip.constant.TccXid.xid;
 
 /**
  * MQ 消息业务处理层
@@ -28,11 +26,10 @@ public class VipMqBizService {
 
     private final IOrderService orderService;
     private final RedissonClient redissonClient;
-    // 复用 OrderBizService 的 Cancel 逻辑
-    private final OrderBizService orderBizService;
 
     /**
-     * 订单超时处理：释放资源，关闭订单
+     * 订单超时处理：关闭待确认订单
+     * 本体模式下无 FROZEN 中间态，PENDING 超时直接关闭即可（无需释放冻结资源）
      *
      * @param orderId 订单ID
      */
@@ -52,23 +49,17 @@ public class VipMqBizService {
                 log.warn("超时处理：订单不存在, orderId={}", orderId);
                 return;
             }
-            // 幂等：只处理待确认或已冻结状态
-            if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != FROZEN) {
+            // 幂等：只处理待确认状态
+            if (order.getStatus() != OrderStatus.PENDING) {
                 log.info("超时处理：订单状态无需处理，跳过, orderId={}, status={}",
                         orderId, order.getStatus());
                 return;
             }
 
-            // Cancel阶段：释放FROZEN状态下的冻结资源（复用 OrderBizService 逻辑）
-            if (order.getStatus() == FROZEN) {
-                orderBizService.cancelFrozenResources(order, xid(orderId));
-            }
-
-            // 更新订单状态为已关闭
-            short oldStatus = order.getStatus();
+            // PENDING 超时直接关闭（无需释放冻结资源，因为确认下单在同一本地事务中原子完成）
             order.setStatus(OrderStatus.CLOSED);
             orderService.updateById(order);
-            log.info("订单超时取消成功: orderId={}, 原状态={}", orderId, oldStatus);
+            log.info("订单超时取消成功: orderId={}", orderId);
         } catch (Exception e) {
             log.error("超时处理异常: orderId={}", orderId, e);
             throw e;

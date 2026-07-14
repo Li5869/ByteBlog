@@ -18,7 +18,7 @@
   - judge 路由：根据是否有 tool_calls 决定进入 tool_executor 还是结束
 
 三层记忆体系：
-  - 短期记忆：MemorySaver checkpointer，保持完整消息历史（会话内）
+  - 短期记忆：AsyncRedisSaver 持久化 checkpointer，完整消息历史 + 进程重启不丢失
   - 中期记忆：LangMem summarize_messages，基于 token 阈值压缩旧消息（会话内）
   - 长期记忆：Mem0 LongTermMemoryService，跨会话用户画像/偏好/经历
 
@@ -37,7 +37,9 @@ from typing import TypedDict, List, Optional, Literal, Annotated, Sequence
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_deepseek import ChatDeepSeek
-from langgraph.checkpoint.memory import MemorySaver
+# 短期记忆：Redis 持久化 Checkpointer（进程重启不丢失对话状态）
+# 官方文档：https://docs.langchain.com/oss/python/langgraph/persistence
+from langgraph.checkpoint.redis.aio import AsyncRedisSaver
 from langgraph.config import get_stream_writer
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
@@ -85,7 +87,7 @@ class StreamEvent:
             base["tool_name"] = self.tool_name
         if self.event_type == "done":
             base["conversation_id"] = self.conversation_id
-            base["tool_calls"] = self.tool_calls_summary
+            base["tool_calls"] = self.tool_calls_summary # type: ignore[arg-type]
         return base
 
 
@@ -121,7 +123,7 @@ class SmartAgent:
         # - content：最终回答（给用户的内容）
         self.llm = ChatDeepSeek(
             model=settings.model_name_deepseek,
-            api_key=settings.openai_api_key_deepseek,
+            api_key=settings.openai_api_key_deepseek,  # type: ignore[arg-type]
             streaming=True,
             extra_body={
                 "thinking": {"type": "enabled"},
@@ -138,6 +140,15 @@ class SmartAgent:
         self.llm_with_tools = self.llm.bind_tools(self.tools)
         self.prompt_manager = prompt_manager
         self.system_prompt = prompt_manager.get_smart_agent_system_prompt()
+
+        # 短期记忆：Redis 持久化 Checkpointer（替代 MemorySaver）
+        # 进程重启后通过 thread_id 自动恢复完整消息历史
+        # 官方文档：https://docs.langchain.com/oss/python/langgraph/persistence
+        checkpointer_redis_url = settings.checkpointer_redis_url or settings.redis_url
+        self._checkpointer = AsyncRedisSaver(checkpointer_redis_url)
+        self._checkpointer_initialized = False
+        logger.info(f"[Checkpointer] Redis 持久化 checkpointer 已创建: {checkpointer_redis_url}")
+
         self.graph = self._build_graph()
         # 工具调用记录（跨节点共享：_tool_executor_node 写入，astream_chat_with_result 读取）
         self._tool_calls_list: List[dict] = []
@@ -147,7 +158,7 @@ class SmartAgent:
         if settings.mid_term_memory_enabled:
             self.summarization_model = ChatDeepSeek(
                 model=settings.model_name_deepseek,
-                api_key=settings.openai_api_key_deepseek,
+                api_key=settings.openai_api_key_deepseek,# type: ignore[arg-type]
                 streaming=False,  # 摘要不需要流式
             ).bind(max_tokens=settings.mid_term_memory_max_summary_tokens)
             self._mid_term_memory_enabled = True
@@ -164,6 +175,21 @@ class SmartAgent:
             self._mid_term_memory_enabled = False
             logger.info("[MidTermMemory] 已禁用")
 
+    async def _ensure_checkpointer_setup(self):
+        """确保 checkpointer 已初始化（首次调用时执行 Redis SETUP，幂等）"""
+        if not self._checkpointer_initialized:
+            await self._checkpointer.asetup()
+            self._checkpointer_initialized = True
+            logger.info("[Checkpointer] Redis checkpointer SETUP 完成")
+
+    async def close(self):
+        """关闭 checkpointer 连接（应用关闭时调用）"""
+        try:
+            await self._checkpointer.aclose()
+            logger.info("[Checkpointer] Redis checkpointer 连接已关闭")
+        except Exception as e:
+            logger.warning(f"[Checkpointer] 关闭连接异常: {e}")
+
     # ==================== 图构建 ====================
 
     def _build_graph(self):
@@ -177,10 +203,10 @@ class SmartAgent:
         4. tool_executor：执行工具（如果有）
         5. 回到 thinking：基于工具结果继续推理
         """
-        workflow = StateGraph(AgentState)
-        workflow.add_node("memory_recall", self._memory_recall_node)
-        workflow.add_node("thinking", self._thinking_node)
-        workflow.add_node("tool_executor", self._tool_executor_node)
+        workflow = StateGraph(AgentState)# type: ignore[arg-type]
+        workflow.add_node("memory_recall", self._memory_recall_node)# type: ignore[arg-type]
+        workflow.add_node("thinking", self._thinking_node)# type: ignore[arg-type]
+        workflow.add_node("tool_executor", self._tool_executor_node)# type: ignore[arg-type]
 
         # 入口改为 memory_recall
         workflow.set_entry_point("memory_recall")
@@ -195,7 +221,7 @@ class SmartAgent:
         # tool_executor 执行完后，回到 thinking 继续推理
         workflow.add_edge("tool_executor", "thinking")
 
-        return workflow.compile(checkpointer=MemorySaver())
+        return workflow.compile(checkpointer=self._checkpointer)
 
     # ==================== 节点函数 ====================
 
@@ -312,14 +338,12 @@ class SmartAgent:
         """
         思考节点：流式调用 LLM，实时发射 thinking 事件。
 
-        DeepSeek 思考模式下 reasoning_content 和 content 天然分离：
-        - reasoning_content → thinking 事件（通过 custom 模式发射）
-        - content → 由 messages 流模式自动处理（无需手动发射）
-
         中期记忆集成：在 LLM 调用前，基于 token 阈值压缩对话历史。
         - 旧消息自动摘要，近期消息保持原样
         - RunningSummary 跨轮次追踪已摘要消息，避免重复摘要
         - 完整消息历史仍保存在 state["messages"]（checkpoint 用），LLM 只看压缩后的
+
+        系统提示词注入：每轮 LLM 调用前注入 system_prompt（不持久化到 state，避免重复堆积）。
 
         使用 add_messages reducer，只需返回新消息，LangGraph 自动追加。
         """
@@ -335,8 +359,12 @@ class SmartAgent:
         else:
             llm_messages = messages
 
-        # 注入最新时间上下文（每轮对话都需最新时间，不持久化到 state）
-        llm_messages = [SystemMessage(content=f"[时间] {get_formatted_time()}")] + llm_messages
+        # 注入最新时间上下文
+        # 同时注入系统提示词（从 initial_state 中移除，避免多轮对话后 SystemMessage 重复堆积）
+        llm_messages = [
+            SystemMessage(content=self.system_prompt),
+            SystemMessage(content=f"[时间] {get_formatted_time()}"),
+        ] + llm_messages
 
         full_response = None
         reasoning_chunks = []
@@ -544,6 +572,9 @@ class SmartAgent:
         """
         logger.info(f"[LangGraph] 开始处理, message={message[:50]}..., user_id={user_id}")
 
+        # 确保 checkpointer 已初始化（首次调用时执行 Redis SETUP）
+        await self._ensure_checkpointer_setup()
+
         # 重置工具调用记录（实例变量，供 _tool_executor_node 写入）
         self._tool_calls_list = []
 
@@ -551,11 +582,10 @@ class SmartAgent:
         accumulated_thinking = ""
         accumulated_response = ""
 
+        # 不再将 SystemMessage 放入 initial_state（由 _thinking_node 每次注入）
+        # 仅放入当前用户消息，历史消息由 checkpointer 通过 thread_id 自动恢复
         initial_state: AgentState = {
-            "messages": [
-                SystemMessage(content=self.system_prompt),
-                HumanMessage(content=message),
-            ],
+            "messages": [HumanMessage(content=message)],
             "iteration": 0,
             "final_answer": "",
         }

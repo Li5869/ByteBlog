@@ -27,21 +27,12 @@ public interface PointAPI {
      * @return 积分信息
      */
     PointInfoVO getPointInfo(Long userId);
-    /**
-     * 预扣减积分（扣减可用 + 增加冻结）
-     * @return true=成功，false=积分不足
-     */
-    boolean freezePoints(Long userId, Integer points);
 
-    /**
-     * 确认扣减（扣减冻结积分）
+       /**
+     * 直接扣减积分（原子防超扣 + 写流水）
+     * 单体本地事务模式：替代 freezePoints + confirmDeductPoints 两步
+     *
+     * @return true=扣减成功，false=积分不足
      */
-    void confirmDeductPoints(Long userId, Integer points, String type, Long bizId, String description);
-
-    /**
-     * 取消扣减（恢复可用积分 + 扣减冻结积分）
-     */
-    void cancelDeductPoints(Long userId, Integer points);
-
-    void refundPoints(Long userId, Integer actualPoints, String vipPurchaseCancel, Long OrderId, String Reason);
+    boolean deductPoints(Long userId, Integer points, String type, Long bizId, String description);
 }
