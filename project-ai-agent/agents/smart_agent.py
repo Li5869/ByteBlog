@@ -51,6 +51,7 @@ from loguru import logger
 from config.prompts import get_prompt_manager
 from config.settings import get_settings
 from services.core.long_term_memory_service import get_long_term_memory_service
+from services.skill.loader import get_skill_loader
 from tools import DIRECT_TOOLS, SUB_AGENT_TOOLS, WRITING_TOOLS
 from services.business.user_service import get_user_service
 from common.user_context import set_current_user_id
@@ -139,7 +140,11 @@ class SmartAgent:
         # bind_tools 在初始化时执行一次（工具列表不变，无需每次调用时重复绑定）
         self.llm_with_tools = self.llm.bind_tools(self.tools)
         self.prompt_manager = prompt_manager
-        self.system_prompt = prompt_manager.get_smart_agent_system_prompt()
+        # 渐进式披露首层：系统提示词注入 Skill 摘要（名称+简述）
+        # Agent 需要详情时，通过 search_skill_guide / get_skill_details 工具按需获取
+        # 相比全量注入完整 SKILL.md，Token 消耗降低约 40%
+        skill_brief = get_skill_loader().get_skill_brief()
+        self.system_prompt = f"{prompt_manager.get_smart_agent_system_prompt()}\n\n{skill_brief}"
 
         # 短期记忆：Redis 持久化 Checkpointer（替代 MemorySaver）
         # 进程重启后通过 thread_id 自动恢复完整消息历史
@@ -208,7 +213,7 @@ class SmartAgent:
         workflow.add_node("thinking", self._thinking_node)# type: ignore[arg-type]
         workflow.add_node("tool_executor", self._tool_executor_node)# type: ignore[arg-type]
 
-        # 入口改为 memory_recall
+        # 入口为 memory_recall
         workflow.set_entry_point("memory_recall")
         workflow.add_edge("memory_recall", "thinking")
 

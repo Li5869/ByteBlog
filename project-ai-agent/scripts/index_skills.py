@@ -105,8 +105,7 @@ def _preview_chunks(chunks: list) -> None:
     for c in chunks:
         preview = c.content[:80].replace("\n", " ")
         suffix = "..." if len(c.content) > 80 else ""
-        print(f"  [{c.chunk_index:2d}/{c.total_chunks}] {c.chunk_id}")
-        print(f"        {c.section_title:40s} | {len(c.content):4d}字 | {preview}{suffix}")
+        print(f"  {c.section_title:40s} | {len(c.content):4d}字 | {preview}{suffix}")
 
 
 async def _run_preview() -> None:

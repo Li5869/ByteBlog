@@ -18,27 +18,17 @@ from models.schemas import SkillChunk
 _HEADING_RE = re.compile(r"^(#{2,3})\s+(.+)$", re.MULTILINE)
 
 
-def _slugify(text: str) -> str:
-    """将标题文本转为 chunk_id 后缀，保留中文字符"""
-    slug = text.strip()
-    slug = re.sub(r"[^\w\s-]", "", slug)
-    slug = re.sub(r"[\s_]+", "-", slug)
-    slug = slug.strip("-")
-    return slug or "unnamed"
-
-
 class SkillChunker:
     """
     语义切片器：将 SKILL.md 按 Markdown 标题边界切分为独立 chunk
 
     切片逻辑：
-    1. 解析 YAML frontmatter -> skill_name, description
-    2. 按正则 ^#{2,3}\\s+(.+) 找到所有标题位置作为分割边界
-    3. 遍历标题段生成 SkillChunk:
+    1. 按正则 ^#{2,3}\\s+(.+) 找到所有标题位置作为分割边界
+    2. 遍历标题段生成 SkillChunk:
        - ## 级别的段直接成为一个 chunk
        - ### 级别也独立成 chunk（工具详细说明等细粒度检索）
        - 标题之间的内容合并到所属 chunk
-    4. 为每个 chunk 注入 skill_name + description + source_path
+    3. 为每个 chunk 注入 skill_name + source_path
     """
 
     def __init__(self, skills_dir: str | Path = "skills"):
@@ -52,24 +42,16 @@ class SkillChunker:
 
         Args:
             content: SKILL.md 完整内容（含 frontmatter）
-            skill_name: Skill 名称（用于兜底，优先从 frontmatter 解析）
+            skill_name: Skill 名称
             source_path: 文件路径
 
         Returns:
             SkillChunk 列表
         """
-        skill_description = ""
         body = content
         if content.startswith("---"):
             parts = content.split("---", 2)
             if len(parts) >= 3:
-                try:
-                    fm = yaml.safe_load(parts[1])
-                    if fm:
-                        skill_name = fm.get("name", skill_name)
-                        skill_description = fm.get("description", "")
-                except yaml.YAMLError:
-                    pass
                 body = parts[2]
 
         headings = list(_HEADING_RE.finditer(body))
@@ -80,14 +62,9 @@ class SkillChunker:
                 return []
             return [
                 SkillChunk(
-                    chunk_id=f"{skill_name}:content",
                     skill_name=skill_name,
-                    skill_description=skill_description,
-                    section_title="内容",
-                    section_level=0,
+                    section_title="概述",
                     content=stripped,
-                    chunk_index=1,
-                    total_chunks=1,
                     source_path=source_path,
                 )
             ]
@@ -108,7 +85,6 @@ class SkillChunker:
 
         chunks: list[SkillChunk] = []
         for level, title, sec_body in sections:
-            chunk_id = f"{skill_name}:{_slugify(title)}"
             if level == 0:
                 content_text = sec_body
             else:
@@ -117,22 +93,12 @@ class SkillChunker:
 
             chunks.append(
                 SkillChunk(
-                    chunk_id=chunk_id,
                     skill_name=skill_name,
-                    skill_description=skill_description,
                     section_title=title,
-                    section_level=level,
                     content=content_text,
-                    chunk_index=0,
-                    total_chunks=0,
                     source_path=source_path,
                 )
             )
-
-        total = len(chunks)
-        for i, chunk in enumerate(chunks):
-            chunk.chunk_index = i + 1
-            chunk.total_chunks = total
 
         return chunks
 

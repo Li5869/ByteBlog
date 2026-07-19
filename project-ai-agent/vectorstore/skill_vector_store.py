@@ -55,13 +55,8 @@ class SkillVectorStore:
             doc = Document(
                 page_content=chunk.content,
                 metadata={
-                    "chunk_id": chunk.chunk_id,
                     "skill_name": chunk.skill_name,
-                    "skill_description": chunk.skill_description,
                     "section_title": chunk.section_title,
-                    "section_level": chunk.section_level,
-                    "chunk_index": chunk.chunk_index,
-                    "total_chunks": chunk.total_chunks,
                     "source_path": chunk.source_path,
                 }
             )
@@ -103,14 +98,9 @@ class SkillVectorStore:
         for doc in docs:
             meta = doc.metadata
             chunks.append(SkillChunk(
-                chunk_id=meta.get("chunk_id", ""),
                 skill_name=meta.get("skill_name", ""),
-                skill_description=meta.get("skill_description", ""),
                 section_title=meta.get("section_title", ""),
-                section_level=meta.get("section_level", 2),
                 content=doc.page_content,
-                chunk_index=meta.get("chunk_index", 0),
-                total_chunks=meta.get("total_chunks", 0),
                 source_path=meta.get("source_path", ""),
             ))
         return chunks
@@ -220,7 +210,7 @@ class SkillVectorStore:
         lines = []
         for c in chunks:
             lines.append(f"## {c.section_title}")
-            lines.append(f"（来源: `{c.skill_name}` Skill, 第 {c.chunk_index}/{c.total_chunks} 段）")
+            lines.append(f"（来源: `{c.skill_name}` Skill）")
             lines.append("")
             lines.append(c.content)
             lines.append("")
