@@ -28,12 +28,12 @@ public class AiTitleMqHandler {
                            @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         try {
             Long conversationId = dto.getConversationId();
-            String title = Objects.requireNonNull(chatClient.prompt()
-                            .system("为用户提出的问题生成对话标题，要求客观并且简洁明了，10字以内")
-                            .user(dto.getUserPrompt())
-                            .call()
-                            .chatResponse())
-                    .getResult()
+            String title = Objects.requireNonNull(Objects.requireNonNull(chatClient.prompt()
+                                    .system("为用户提出的问题生成对话标题，要求客观并且简洁明了，10字以内")
+                                    .user(dto.getUserPrompt())
+                                    .call()
+                                    .chatResponse())
+                            .getResult())
                     .getOutput()
                     .getText();
            conversationService.lambdaUpdate()
